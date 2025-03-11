@@ -13,6 +13,7 @@ type AuthContextType = {
   isLoading: boolean;
   signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateUserProfile: (attributes: { [key: string]: any }) => Promise<any>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -117,6 +118,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUserProfile = async (attributes: { [key: string]: any }) => {
+    if (!user) throw new Error("No user logged in");
+
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: attributes,
+      });
+
+      if (error) {
+        console.error("Supabase error updating user:", error);
+        toast("Update Error", {
+          description: error.message || "Failed to update profile",
+        });
+        throw error;
+      }
+
+      // Update the local user state with the new metadata
+      if (data.user) {
+        setUser(data.user);
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error("Error updating user profile:", error);
+      toast("Update Error", {
+        description: error?.message || "An unexpected error occurred",
+      });
+      // Re-throw the error but make sure to return a rejected promise
+      return Promise.reject(error);
+    }
+  };
+
   const value = {
     user,
     role,
@@ -124,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     signInWithGitHub,
     signOut,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

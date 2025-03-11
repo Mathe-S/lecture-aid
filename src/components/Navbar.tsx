@@ -61,15 +61,6 @@ export default function Navbar() {
                   Admin
                 </Link>
               )}
-
-              {(role === "admin" || role === "lecturer") && (
-                <Link
-                  href="/courses"
-                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Courses
-                </Link>
-              )}
             </nav>
           </div>
 
@@ -106,14 +97,6 @@ export default function Navbar() {
                     >
                       <Shield className="mr-2 h-4 w-4" />
                       <span>Admin</span>
-                    </DropdownMenuItem>
-                  )}
-                  {(role === "admin" || role === "lecturer") && (
-                    <DropdownMenuItem
-                      onClick={() => (window.location.href = "/courses")}
-                    >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      <span>Courses</span>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
@@ -154,13 +137,6 @@ export default function Navbar() {
                       onClick={() => (window.location.href = "/admin")}
                     >
                       Admin
-                    </DropdownMenuItem>
-                  )}
-                  {(role === "admin" || role === "lecturer") && (
-                    <DropdownMenuItem
-                      onClick={() => (window.location.href = "/courses")}
-                    >
-                      Courses
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -12,15 +12,38 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/Button";
-import { User, Mail, Shield, Github, Loader2 } from "lucide-react";
+import {
+  User,
+  Mail,
+  Shield,
+  Github,
+  Loader2,
+  Edit,
+  Check,
+  X,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export default function DashboardPage() {
-  const { user, role, isLoading } = useAuth();
+  const { user, role, isLoading, updateUserProfile } = useAuth();
   const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login");
+    }
+
+    if (user) {
+      // Initialize name fields from user data
+      const fullName =
+        user.user_metadata?.full_name || user.user_metadata?.name || "";
+      const nameParts = fullName.split(" ");
+      setFirstName(nameParts[0] || "");
+      setLastName(nameParts.slice(1).join(" ") || "");
     }
   }, [user, isLoading, router]);
 
@@ -49,6 +72,21 @@ export default function DashboardPage() {
     .join("")
     .toUpperCase();
 
+  const handleSaveName = async () => {
+    if (!firstName.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const fullName = `${firstName} ${lastName}`.trim();
+      setIsEditingName(false);
+      await updateUserProfile({ full_name: fullName });
+    } catch (error) {
+      console.error("Failed to update name:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -76,7 +114,60 @@ export default function DashboardPage() {
                 <User className="h-5 w-5 text-slate-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-900">Name</p>
-                  <p className="text-sm text-slate-500">{userName}</p>
+                  {isEditingName ? (
+                    <div className="mt-1 space-y-2">
+                      <div className="flex space-x-2">
+                        <Input
+                          placeholder="First name"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="text-sm"
+                        />
+                        <Input
+                          placeholder="Last name"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          onClick={handleSaveName}
+                          disabled={isSaving || !firstName.trim()}
+                          className="flex items-center"
+                        >
+                          {isSaving ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-1" />
+                          )}
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setIsEditingName(false)}
+                          className="flex items-center"
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <p className="text-sm text-slate-500">{userName}</p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingName(true)}
+                        className="ml-2 h-6 w-6 p-0"
+                      >
+                        <Edit className="h-3.5 w-3.5 text-slate-400" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
