@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase, UserRole } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type AuthContextType = {
   user: User | null;
@@ -25,24 +26,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const setupAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user || null);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user || null);
 
-      if (session?.user) {
-        // Fetch user role
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
+        if (session?.user) {
+          // Fetch user role
+          const { data } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
 
-        setRole(data?.role || null);
+          setRole(data?.role || null);
+        }
+      } catch (error) {
+        console.error("Error setting up auth:", error);
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
 
       // Set up auth state listener
       const {
@@ -76,17 +81,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const signInWithGitHub = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // If we get here and data.url exists, we need to redirect the user
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error("GitHub sign in error:", error);
+      toast("Authentication Error", {
+        description: "Failed to sign in with GitHub. Please try again.",
+      });
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
+    try {
+      await supabase.auth.signOut();
+      router.push("/");
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast("Sign Out Error", {
+        description: "Failed to sign out. Please try again.",
+      });
+    }
   };
 
   const value = {

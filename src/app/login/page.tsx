@@ -2,9 +2,18 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FaGithub } from "react-icons/fa";
+import { Github } from "lucide-react";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function LoginPage() {
   const { user, signInWithGitHub, isLoading } = useAuth();
@@ -17,45 +26,37 @@ export default function LoginPage() {
   }, [user, isLoading, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            Sign In
+          </CardTitle>
+          <CardDescription className="text-center">
             Use your GitHub account to access the platform
-          </p>
-        </div>
+          </CardDescription>
+        </CardHeader>
 
-        <div className="mt-8">
-          <div className="rounded-md shadow-sm">
-            <Button
-              onClick={signInWithGitHub}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              disabled={isLoading}
-            >
-              <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                <FaGithub className="h-5 w-5 text-gray-300 group-hover:text-gray-400" />
-              </span>
-              {isLoading ? "Loading..." : "Sign in with GitHub"}
-            </Button>
-          </div>
-        </div>
+        <CardContent>
+          <Button
+            variant="outline"
+            onClick={signInWithGitHub}
+            className="w-full py-6 border-slate-300 hover:bg-slate-100"
+            disabled={isLoading}
+          >
+            <Github className="mr-2 h-5 w-5" />
+            {isLoading ? "Loading..." : "Sign in with GitHub"}
+          </Button>
+        </CardContent>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">
-                No registration needed
-              </span>
-            </div>
+        <CardFooter className="flex flex-col space-y-2">
+          <div className="text-sm text-center text-slate-500">
+            No registration needed - just sign in with GitHub
           </div>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
+
+      <Toaster />
     </div>
   );
 }

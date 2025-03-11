@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Learning Platform",
+  title: "Lecture aid",
   description: "A platform for students, lecturers, and administrators",
 };
 
@@ -27,17 +28,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-slate-50`}
       >
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
+          <div className="flex flex-col min-h-screen">
             <Navbar />
             <main className="flex-grow">{children}</main>
-            <footer className="bg-gray-100 py-4 text-center text-gray-600 text-sm">
-              © {new Date().getFullYear()} Learning Platform. All rights
-              reserved.
+            <footer className="py-6 border-t border-slate-200 bg-white">
+              <div className="container mx-auto px-4 text-center text-slate-500 text-sm">
+                © {new Date().getFullYear()} Lecture aid. All rights reserved.
+              </div>
             </footer>
           </div>
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

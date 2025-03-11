@@ -3,7 +3,16 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { FaUser, FaGithub, FaEnvelope, FaIdBadge } from "react-icons/fa";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/Button";
+import { User, Mail, Shield, Github, Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, role, isLoading } = useAuth();
@@ -17,10 +26,10 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-700">Loading...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-slate-400 mx-auto" />
+          <p className="mt-4 text-slate-600">Loading...</p>
         </div>
       </div>
     );
@@ -30,92 +39,106 @@ export default function DashboardPage() {
     return null; // Will redirect in useEffect
   }
 
+  // Get avatar URL from GitHub user metadata
+  const avatarUrl = user.user_metadata?.avatar_url || "";
+  const userName =
+    user.user_metadata?.full_name || user.user_metadata?.name || "User";
+  const userInitials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6 bg-indigo-50">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              User Dashboard
-            </h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Welcome to your personal dashboard
-            </p>
-          </div>
-
-          <div className="border-t border-gray-200">
-            <dl>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                  <FaUser className="mr-2" /> Name
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {user.user_metadata?.full_name ||
-                    user.user_metadata?.name ||
-                    "Not provided"}
-                </dd>
-              </div>
-
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                  <FaEnvelope className="mr-2" /> Email address
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {user.email || "Not provided"}
-                </dd>
-              </div>
-
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                  <FaIdBadge className="mr-2" /> Role
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
-                    {role || "Loading..."}
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center space-x-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={avatarUrl} alt={userName} />
+                <AvatarFallback>{userInitials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-2xl">{userName}</CardTitle>
+                <CardDescription>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {role || "Loading role..."}
                   </span>
-                </dd>
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4 text-sm">
+                <User className="h-5 w-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">Name</p>
+                  <p className="text-sm text-slate-500">{userName}</p>
+                </div>
               </div>
 
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                  <FaGithub className="mr-2" /> GitHub
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {user.user_metadata?.preferred_username ||
-                    user.user_metadata?.user_name ||
-                    "Not available"}
-                </dd>
+              <div className="flex items-center space-x-4 text-sm">
+                <Mail className="h-5 w-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">Email</p>
+                  <p className="text-sm text-slate-500">
+                    {user.email || "Not provided"}
+                  </p>
+                </div>
               </div>
 
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">User ID</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 break-all">
-                  {user.id}
-                </dd>
+              <div className="flex items-center space-x-4 text-sm">
+                <Shield className="h-5 w-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">Role</p>
+                  <p className="text-sm text-slate-500">
+                    {role || "Not assigned"}
+                  </p>
+                </div>
               </div>
-            </dl>
-          </div>
-        </div>
+
+              <div className="flex items-center space-x-4 text-sm">
+                <Github className="h-5 w-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">GitHub</p>
+                  <p className="text-sm text-slate-500">
+                    {user.user_metadata?.preferred_username ||
+                      user.user_metadata?.user_name ||
+                      "Not available"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="h-5 w-5 text-slate-400 flex items-center justify-center">
+                  ID
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">User ID</p>
+                  <p className="text-sm text-slate-500 break-all">{user.id}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {role === "admin" && (
-          <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6 bg-purple-50">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Admin Actions
-              </h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Actions</CardTitle>
+              <CardDescription>
                 Special actions available to administrators
-              </p>
-            </div>
-            <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-              <a
-                href="/admin"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-              >
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => router.push("/admin")}>
                 Go to Admin Panel
-              </a>
-            </div>
-          </div>
+              </Button>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

@@ -3,23 +3,43 @@
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Menu, LogOut, User, BookOpen, Shield } from "lucide-react";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
 
+  // Get avatar URL and initials from user metadata
+  const avatarUrl = user?.user_metadata?.avatar_url || "";
+  const userName =
+    user?.user_metadata?.full_name || user?.user_metadata?.name || "User";
+  const userInitials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase();
+
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-indigo-600">
-              Learning Platform
+            <Link href="/" className="text-xl font-bold text-blue-600">
+              Lecture aid
             </Link>
 
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
+            <nav className="hidden md:ml-10 md:flex md:space-x-8">
               <Link
                 href="/"
-                className="px-3 py-2 text-gray-700 hover:text-indigo-600"
+                className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
               >
                 Home
               </Link>
@@ -27,7 +47,7 @@ export default function Navbar() {
               {user && (
                 <Link
                   href="/dashboard"
-                  className="px-3 py-2 text-gray-700 hover:text-indigo-600"
+                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
                 >
                   Dashboard
                 </Link>
@@ -36,7 +56,7 @@ export default function Navbar() {
               {role === "admin" && (
                 <Link
                   href="/admin"
-                  className="px-3 py-2 text-gray-700 hover:text-indigo-600"
+                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
                 >
                   Admin
                 </Link>
@@ -45,40 +65,110 @@ export default function Navbar() {
               {(role === "admin" || role === "lecturer") && (
                 <Link
                   href="/courses"
-                  className="px-3 py-2 text-gray-700 hover:text-indigo-600"
+                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
                 >
                   Courses
                 </Link>
               )}
-            </div>
+            </nav>
           </div>
 
           <div className="flex items-center">
             {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700">
-                  {role && (
-                    <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
-                      {role}
-                    </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={avatarUrl} alt={userName} />
+                      <AvatarFallback>{userInitials}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>{role}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => (window.location.href = "/dashboard")}
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </DropdownMenuItem>
+                  {role === "admin" && (
+                    <DropdownMenuItem
+                      onClick={() => (window.location.href = "/admin")}
+                    >
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin</span>
+                    </DropdownMenuItem>
                   )}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() => signOut()}
-                  className="text-sm"
-                >
-                  Sign Out
-                </Button>
-              </div>
+                  {(role === "admin" || role === "lecturer") && (
+                    <DropdownMenuItem
+                      onClick={() => (window.location.href = "/courses")}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      <span>Courses</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Link href="/login" passHref>
-                <Button className="text-sm">Sign In</Button>
+                <Button>Sign In</Button>
               </Link>
             )}
+
+            <div className="md:hidden ml-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => (window.location.href = "/")}
+                  >
+                    Home
+                  </DropdownMenuItem>
+                  {user && (
+                    <DropdownMenuItem
+                      onClick={() => (window.location.href = "/dashboard")}
+                    >
+                      Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  {role === "admin" && (
+                    <DropdownMenuItem
+                      onClick={() => (window.location.href = "/admin")}
+                    >
+                      Admin
+                    </DropdownMenuItem>
+                  )}
+                  {(role === "admin" || role === "lecturer") && (
+                    <DropdownMenuItem
+                      onClick={() => (window.location.href = "/courses")}
+                    >
+                      Courses
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
