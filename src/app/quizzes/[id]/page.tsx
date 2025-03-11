@@ -15,18 +15,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { getQuizWithQuestions } from "@/lib/quizService";
-import { QuizAnswers, QuizResult, QuizWithQuestions } from "@/types";
+import { QuizAnswers, QuizWithQuestions } from "@/types";
 import { supabase } from "@/lib/supabase";
 
 export default function TakeQuizPage() {
   const params = useParams();
   const router = useRouter();
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(null);
-  console.log("🚀 ~ TakeQuizPage ~ quiz:", quiz);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<QuizAnswers>({});
   const [submitted, setSubmitted] = useState(false);
-  const [score, setScore] = useState<QuizResult | null>(null);
+  const [score, setScore] = useState<{
+    score: number;
+    total: number;
+    percentage: number;
+  } | null>(null);
 
   useEffect(() => {
     async function fetchQuiz() {

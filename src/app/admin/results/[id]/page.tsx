@@ -15,17 +15,24 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import {
+  ProfileRecord,
+  Quiz,
+  QuizOption,
+  QuizQuestion,
+  QuizResult,
+} from "@/types";
 
 export default function QuizResultDetailPage() {
   const params = useParams();
   const router = useRouter();
   const resultId = params.id as string;
 
-  const [result, setResult] = useState<any>(null);
-  const [quiz, setQuiz] = useState<any>(null);
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [options, setOptions] = useState<Record<string, any[]>>({});
-  const [user, setUser] = useState<any>(null);
+  const [result, setResult] = useState<QuizResult | null>(null);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [options, setOptions] = useState<Record<string, QuizOption[]>>({});
+  const [user, setUser] = useState<ProfileRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,11 +84,11 @@ export default function QuizResultDetailPage() {
           }
           acc[option.question_id].push(option);
           return acc;
-        }, {} as Record<string, any[]>);
+        }, {} as Record<string, QuizOption[]>);
 
         // Fetch user information
         // Adjust this based on your user data structure
-        const { data: userData, error: userError } = await supabase
+        const { data: userData } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", resultData.user_id)
@@ -106,7 +113,9 @@ export default function QuizResultDetailPage() {
 
   function getAnswerForQuestion(questionId: string) {
     if (!result || !result.answers) return null;
-    return result.answers[questionId];
+    return (
+      (result.answers as Record<string, string | string[]>)[questionId] || null
+    );
   }
 
   function isAnswerCorrect(questionId: string) {

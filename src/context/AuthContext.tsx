@@ -156,12 +156,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData.user);
 
       return userData.user;
-    } catch (error: any) {
-      toast.error(
-        error.message && typeof error.message === "string"
-          ? error.message
-          : "An unexpected error occurred"
-      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
       return Promise.reject(error);
     } finally {
       setIsLoading(false);

@@ -60,3 +60,11 @@ export type Tables = {
   quiz_options: QuizOptionRecord;
   quiz_results: QuizResultRecord;
 };
+
+export interface QuizResultRecord {
+  id: string;
+  quiz_id: string;
+  user_id: string;
+  score: number;
+  total_questions: number;
+}

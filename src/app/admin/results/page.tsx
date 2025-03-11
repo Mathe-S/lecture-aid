@@ -20,12 +20,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import { ProfileRecord, Quiz, QuizResult } from "@/types";
 
 export default function AdminQuizResultsPage() {
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [quizzes, setQuizzes] = useState<Record<string, any>>({});
-  const [users, setUsers] = useState<Record<string, any>>({});
+  const [quizzes, setQuizzes] = useState<Record<string, Quiz>>({});
+  const [users, setUsers] = useState<Record<string, ProfileRecord>>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -50,9 +51,9 @@ export default function AdminQuizResultsPage() {
 
         // Create a map of quiz IDs to quiz titles
         const quizzesMap = quizzesData.reduce((acc, quiz) => {
-          acc[quiz.id] = quiz;
+          acc[quiz.id] = quiz as Quiz;
           return acc;
-        }, {} as Record<string, any>);
+        }, {} as Record<string, Quiz>);
 
         // Fetch user profiles to display names instead of IDs
         const userIds = [
@@ -71,7 +72,7 @@ export default function AdminQuizResultsPage() {
         const usersMap = (usersData || []).reduce((acc, user) => {
           acc[user.id] = user;
           return acc;
-        }, {} as Record<string, any>);
+        }, {} as Record<string, ProfileRecord>);
 
         setResults(resultsData);
         setQuizzes(quizzesMap);
