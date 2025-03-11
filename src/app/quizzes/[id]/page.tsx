@@ -138,11 +138,18 @@ export default function TakeQuizPage() {
     answers: Record<string, string | string[]>
   ) {
     try {
+      // First, get the user data
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData.user) {
+        console.error("No authenticated user found");
+        return;
+      }
+
+      // Then use the user ID in your insert
       const { error } = await supabase.from("quiz_results").insert({
         quiz_id: quizId,
-        user_id: supabase.auth
-          .getUser()
-          .then(({ data }) => data.user?.id) as unknown as string,
+        user_id: userData.user.id,
         score,
         total_questions: totalQuestions,
         answers,

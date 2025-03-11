@@ -120,37 +120,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUserProfile = async (attributes: UserAttributes) => {
-    if (!user) throw new Error("No user logged in");
-
     try {
-      const { data, error } = await supabase.auth.updateUser({
-        data: attributes,
-      });
+      setIsLoading(true);
 
-      if (error) {
-        console.error("Supabase error updating user:", error);
-        toast("Update Error", {
-          description: error.message || "Failed to update profile",
-        });
-        throw error;
+      // Update the user in Supabase Auth
+      const { data: userData, error: userError } =
+        await supabase.auth.updateUser(attributes);
+
+      if (userError) throw userError;
+
+      // Also update the profiles table
+      if (userData.user) {
+        const { error: profileError } = await supabase.from("profiles").upsert(
+          {
+            id: userData.user.id,
+            email: userData.user.email,
+            name: userData.user.user_metadata?.name,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "id",
+            ignoreDuplicates: false,
+          }
+        );
+
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+          // We don't throw here to avoid breaking auth updates if profile update fails
+        }
       }
 
-      // Update the local user state with the new metadata
-      if (data.user) {
-        setUser(data.user);
-      }
+      // Refresh the session to get updated user data
+      const { data: sessionData } = await supabase.auth.getSession();
+      setSession(sessionData.session);
+      setUser(userData.user);
 
-      return data.user || null;
-    } catch (error: unknown) {
-      console.error("Error updating user profile:", error);
-      toast("Update Error", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      });
-      // Re-throw the error but make sure to return a rejected promise
+      return userData.user;
+    } catch (error: any) {
+      toast.error(
+        error.message && typeof error.message === "string"
+          ? error.message
+          : "An unexpected error occurred"
+      );
       return Promise.reject(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
