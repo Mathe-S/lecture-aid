@@ -16,11 +16,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { getQuizWithQuestions } from "@/lib/quizService";
 import { QuizAnswers, QuizResult, QuizWithQuestions } from "@/types";
+import { supabase } from "@/lib/supabase";
 
 export default function TakeQuizPage() {
   const params = useParams();
   const router = useRouter();
   const [quiz, setQuiz] = useState<QuizWithQuestions | null>(null);
+  console.log("🚀 ~ TakeQuizPage ~ quiz:", quiz);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<QuizAnswers>({});
   const [submitted, setSubmitted] = useState(false);
@@ -115,10 +117,43 @@ export default function TakeQuizPage() {
   }
 
   function handleSubmit() {
-    setScore(calculateScore());
+    const scoreResult = calculateScore();
+    setScore(scoreResult);
     setSubmitted(true);
 
-    // Here you could also save the quiz result to the database
+    // Save the quiz result to the database
+    saveQuizResult(
+      quiz?.id as string,
+      scoreResult.score,
+      scoreResult.total,
+      answers
+    );
+  }
+
+  // Add this function to save the quiz result
+  async function saveQuizResult(
+    quizId: string,
+    score: number,
+    totalQuestions: number,
+    answers: Record<string, string | string[]>
+  ) {
+    try {
+      const { error } = await supabase.from("quiz_results").insert({
+        quiz_id: quizId,
+        user_id: supabase.auth
+          .getUser()
+          .then(({ data }) => data.user?.id) as unknown as string,
+        score,
+        total_questions: totalQuestions,
+        answers,
+      });
+
+      if (error) {
+        console.error("Error saving quiz result:", error);
+      }
+    } catch (error) {
+      console.error("Error saving quiz result:", error);
+    }
   }
 
   if (loading) {

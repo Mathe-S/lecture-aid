@@ -1,5 +1,5 @@
 import { Session, User } from "@supabase/supabase-js";
-import { UserRole } from "@/lib/supabase";
+import { UserRole } from "./user.types";
 
 export type UserAttributes = {
   [key: string]: string | number | boolean | null | undefined;

@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { supabase, UserRole } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { UserAttributes } from "@/types";
+import { UserAttributes, UserRole } from "@/types";
 
 type AuthContextType = {
   user: User | null;

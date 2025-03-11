@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { UserRole } from "@/lib/supabase";
+import { UserRole } from "@/types";
 import { ReactNode } from "react";
 
 type RoleGuardProps = {

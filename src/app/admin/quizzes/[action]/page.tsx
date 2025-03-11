@@ -20,21 +20,25 @@ import { useAuth } from "@/context/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash, Save, ArrowLeft } from "lucide-react";
-import { QuizQuestionWithOptions } from "@/types";
+import { Quiz, QuizQuestionWithOptions } from "@/types";
 
 export default function QuizFormPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
   const isEditing = params.action !== "new";
-  const quizId = isEditing ? (params.action as string) : null;
+  const quizId = isEditing ? (params.action as string) : "";
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
-  const [quiz, setQuiz] = useState({
+  const [quiz, setQuiz] = useState<Quiz>({
+    id: "",
     title: "",
     description: "",
     is_multiple_choice: false,
+    created_by: "",
+    created_at: "",
+    updated_at: "",
   });
   const [questions, setQuestions] = useState<QuizQuestionWithOptions[]>([]);
   const [activeTab, setActiveTab] = useState("details");
@@ -104,7 +108,7 @@ export default function QuizFormPage() {
             title: quiz.title,
             description: quiz.description,
             is_multiple_choice: quiz.is_multiple_choice,
-            created_by: user?.id,
+            created_by: user?.id as string,
           })
           .select()
           .single();
