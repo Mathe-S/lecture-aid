@@ -55,6 +55,15 @@ export default function Navbar() {
                 </Link>
               )}
 
+              {user && (
+                <Link
+                  href="/quizzes"
+                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                >
+                  Quizzes
+                </Link>
+              )}
+
               {role === "admin" && (
                 <Link
                   href="/admin"
@@ -93,13 +102,29 @@ export default function Navbar() {
                     <User className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => (window.location.href = "/quizzes")}
+                  >
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    <span>Quizzes</span>
+                  </DropdownMenuItem>
                   {role === "admin" && (
-                    <DropdownMenuItem
-                      onClick={() => (window.location.href = "/admin")}
-                    >
-                      <Shield className="mr-2 h-4 w-4" />
-                      <span>Admin</span>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => (window.location.href = "/admin")}
+                      >
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Admin</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          (window.location.href = "/admin/quizzes")
+                        }
+                      >
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Quiz Management</span>
+                      </DropdownMenuItem>
+                    </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut}>
@@ -130,18 +155,34 @@ export default function Navbar() {
                     </DropdownMenuItem>
                   )}
                   {user && (
-                    <DropdownMenuItem
-                      onClick={() => (window.location.href = "/dashboard")}
-                    >
-                      Dashboard
-                    </DropdownMenuItem>
-                  )}
-                  {role === "admin" && (
-                    <DropdownMenuItem
-                      onClick={() => (window.location.href = "/admin")}
-                    >
-                      Admin
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => (window.location.href = "/dashboard")}
+                      >
+                        Dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => (window.location.href = "/quizzes")}
+                      >
+                        Quizzes
+                      </DropdownMenuItem>
+                      {role === "admin" && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => (window.location.href = "/admin")}
+                          >
+                            Admin
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              (window.location.href = "/admin/quizzes")
+                            }
+                          >
+                            Quiz Management
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

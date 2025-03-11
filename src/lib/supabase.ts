@@ -20,6 +20,90 @@ export type Database = {
           role?: UserRole;
         };
       };
+      quizzes: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          is_multiple_choice: boolean;
+          created_by: string;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          is_multiple_choice?: boolean;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          is_multiple_choice?: boolean;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+      };
+      quiz_questions: {
+        Row: {
+          id: string;
+          quiz_id: string;
+          text: string;
+          order_index: number;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          quiz_id: string;
+          text: string;
+          order_index: number;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          quiz_id?: string;
+          text?: string;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+      };
+      quiz_options: {
+        Row: {
+          id: string;
+          question_id: string;
+          text: string;
+          is_correct: boolean;
+          order_index: number;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          question_id: string;
+          text: string;
+          is_correct?: boolean;
+          order_index: number;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          question_id?: string;
+          text?: string;
+          is_correct?: boolean;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+      };
       // other tables...
     };
   };
