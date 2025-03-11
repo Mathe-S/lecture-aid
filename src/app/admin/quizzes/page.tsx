@@ -25,9 +25,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { QuizWithQuestionCount } from "@/types";
 
 export default function QuizzesPage() {
-  const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [quizzes, setQuizzes] = useState<QuizWithQuestionCount[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -70,7 +71,7 @@ export default function QuizzesPage() {
   const handleDeleteQuiz = async (quizId: string) => {
     try {
       await supabase.from("quizzes").delete().eq("id", quizId);
-      setQuizzes(quizzes.filter((q: any) => q.id !== quizId));
+      setQuizzes(quizzes.filter((q) => q.id !== quizId));
     } catch (error) {
       console.error("Error deleting quiz:", error);
     }
@@ -107,7 +108,7 @@ export default function QuizzesPage() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {quizzes.map((quiz: any) => (
+            {quizzes.map((quiz) => (
               <Card key={quiz.id}>
                 <CardHeader>
                   <CardTitle>{quiz.title}</CardTitle>

@@ -20,17 +20,14 @@ import { useAuth } from "@/context/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash, Save, ArrowLeft } from "lucide-react";
+import { QuizQuestionWithOptions } from "@/types";
 
 export default function QuizFormPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
   const isEditing = params.action !== "new";
-  const quizId = isEditing ? params.action : null;
-
-  console.log("Params:", params);
-  console.log("Is editing:", isEditing);
-  console.log("Quiz ID:", quizId);
+  const quizId = isEditing ? (params.action as string) : null;
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -39,7 +36,7 @@ export default function QuizFormPage() {
     description: "",
     is_multiple_choice: false,
   });
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState<QuizQuestionWithOptions[]>([]);
   const [activeTab, setActiveTab] = useState("details");
 
   useEffect(() => {
@@ -60,7 +57,6 @@ export default function QuizFormPage() {
 
       if (quizError) throw quizError;
 
-      console.log("🚀 ~ fetchQuizData ~ quizData:", quizData);
       // Fetch quiz questions
       const { data: questionData, error: questionError } = await supabase
         .from("quiz_questions")
@@ -68,7 +64,6 @@ export default function QuizFormPage() {
         .eq("quiz_id", id)
         .order("order_index", { ascending: true });
 
-      console.log("🚀 ~ fetchQuizData ~ questionData:", questionData);
       if (questionError) throw questionError;
 
       setQuiz(quizData);
@@ -109,7 +104,7 @@ export default function QuizFormPage() {
             title: quiz.title,
             description: quiz.description,
             is_multiple_choice: quiz.is_multiple_choice,
-            created_by: user.id,
+            created_by: user?.id,
           })
           .select()
           .single();
@@ -206,18 +201,27 @@ export default function QuizFormPage() {
         id: `temp-${Date.now()}`,
         text: "",
         order_index: questions.length,
+        quiz_id: "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         quiz_options: [
           {
             id: `temp-option-${Date.now()}`,
+            question_id: "",
             text: "",
             is_correct: true,
             order_index: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           },
           {
             id: `temp-option-${Date.now() + 1}`,
             text: "",
             is_correct: false,
             order_index: 1,
+            question_id: "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           },
         ],
       },
@@ -429,6 +433,9 @@ export default function QuizFormPage() {
                                   is_correct: false,
                                   order_index:
                                     newQuestions[qIndex].quiz_options.length,
+                                  question_id: question.id,
+                                  created_at: new Date().toISOString(),
+                                  updated_at: new Date().toISOString(),
                                 });
                                 setQuestions(newQuestions);
                               }}

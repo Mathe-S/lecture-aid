@@ -1,3 +1,8 @@
+import {
+  QuizOption,
+  QuizQuestionWithOptions,
+  QuizWithQuestions,
+} from "@/types";
 import { supabase } from "./supabase";
 
 export async function getQuizzes() {
@@ -21,7 +26,9 @@ export async function getQuizById(id: string) {
   return data;
 }
 
-export async function getQuizWithQuestions(id: string) {
+export async function getQuizWithQuestions(
+  id: string
+): Promise<QuizWithQuestions> {
   // Get quiz
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
@@ -48,14 +55,14 @@ export async function getQuizWithQuestions(id: string) {
   // Sort options by order_index
   questions.forEach((question) => {
     question.quiz_options.sort(
-      (a: any, b: any) => a.order_index - b.order_index
+      (a: QuizOption, b: QuizOption) => a.order_index - b.order_index
     );
   });
 
   return { ...quiz, questions };
 }
 
-export async function createQuiz(quizData: any, userId: string) {
+export async function createQuiz(quizData: QuizWithQuestions, userId: string) {
   // Create quiz
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
@@ -78,7 +85,7 @@ export async function createQuiz(quizData: any, userId: string) {
   return quiz;
 }
 
-export async function updateQuiz(id: string, quizData: any) {
+export async function updateQuiz(id: string, quizData: QuizWithQuestions) {
   // Update quiz
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
@@ -115,7 +122,10 @@ export async function deleteQuiz(id: string) {
   return true;
 }
 
-async function createQuestionsWithOptions(quizId: string, questions: any) {
+async function createQuestionsWithOptions(
+  quizId: string,
+  questions: QuizQuestionWithOptions[]
+) {
   for (let i = 0; i < questions.length; i++) {
     const question = questions[i];
 
@@ -135,7 +145,7 @@ async function createQuestionsWithOptions(quizId: string, questions: any) {
     // Create options for this question
     if (question.quiz_options && question.quiz_options.length > 0) {
       const optionsToInsert = question.quiz_options.map(
-        (option: any, index: number) => ({
+        (option: QuizOption, index: number) => ({
           question_id: createdQuestion.id,
           text: option.text,
           is_correct: option.is_correct,

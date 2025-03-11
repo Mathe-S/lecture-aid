@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BookOpen, Users, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminPage() {

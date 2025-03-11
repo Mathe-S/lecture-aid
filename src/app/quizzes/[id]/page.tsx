@@ -15,29 +15,28 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { getQuizWithQuestions } from "@/lib/quizService";
-import { useAuth } from "@/context/AuthContext";
+import { QuizAnswers, QuizResult, QuizWithQuestions } from "@/types";
 
 export default function TakeQuizPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
-  const [quiz, setQuiz] = useState(null);
+  const [quiz, setQuiz] = useState<QuizWithQuestions | null>(null);
   const [loading, setLoading] = useState(true);
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState<QuizAnswers>({});
   const [submitted, setSubmitted] = useState(false);
-  const [score, setScore] = useState(null);
+  const [score, setScore] = useState<QuizResult | null>(null);
 
   useEffect(() => {
     async function fetchQuiz() {
       try {
         setLoading(true);
-        const quizData = await getQuizWithQuestions(params.id);
+        const quizData = await getQuizWithQuestions(params.id as string);
         setQuiz(quizData);
 
         // Initialize answers object
-        const initialAnswers = {};
+        const initialAnswers: QuizAnswers = {};
         quizData.questions.forEach((question) => {
-          initialAnswers[question.id] = quizData.is_multiple_choice ? [] : null;
+          initialAnswers[question.id] = quizData.is_multiple_choice ? [] : "";
         });
         setAnswers(initialAnswers);
       } catch (error) {
@@ -52,14 +51,18 @@ export default function TakeQuizPage() {
     }
   }, [params.id]);
 
-  function handleSingleChoiceChange(questionId, optionId) {
+  function handleSingleChoiceChange(questionId: string, optionId: string) {
     setAnswers({
       ...answers,
       [questionId]: optionId,
     });
   }
 
-  function handleMultipleChoiceChange(questionId, optionId, checked) {
+  function handleMultipleChoiceChange(
+    questionId: string,
+    optionId: string,
+    checked: boolean
+  ) {
     const currentAnswers = [...(answers[questionId] || [])];
 
     if (checked) {
@@ -81,9 +84,9 @@ export default function TakeQuizPage() {
 
   function calculateScore() {
     let correctAnswers = 0;
-    let totalQuestions = quiz.questions.length;
+    const totalQuestions: number = quiz?.questions.length || 0;
 
-    quiz.questions.forEach((question) => {
+    quiz?.questions.forEach((question) => {
       const userAnswer = answers[question.id];
       const correctOptions = question.quiz_options
         .filter((option) => option.is_correct)
@@ -98,7 +101,7 @@ export default function TakeQuizPage() {
         if (isCorrect) correctAnswers++;
       } else {
         // For single choice, the selected option must be correct
-        if (correctOptions.includes(userAnswer)) {
+        if (correctOptions.includes(userAnswer as string)) {
           correctAnswers++;
         }
       }
@@ -112,8 +115,7 @@ export default function TakeQuizPage() {
   }
 
   function handleSubmit() {
-    const quizScore = calculateScore();
-    setScore(quizScore);
+    setScore(calculateScore());
     setSubmitted(true);
 
     // Here you could also save the quiz result to the database
@@ -140,9 +142,9 @@ export default function TakeQuizPage() {
               <div className="text-center py-4">
                 <h2 className="text-2xl font-bold">Your Score</h2>
                 <p className="text-4xl font-bold mt-2">
-                  {score.score}/{score.total}
+                  {score?.score}/{score?.total}
                 </p>
-                <p className="text-xl mt-2">{score.percentage}%</p>
+                <p className="text-xl mt-2">{score?.percentage}%</p>
               </div>
 
               <div className="space-y-4">
@@ -159,7 +161,7 @@ export default function TakeQuizPage() {
                       correctOptions.every((id) => userAnswer.includes(id)) &&
                       userAnswer.length === correctOptions.length;
                   } else {
-                    isCorrect = correctOptions.includes(userAnswer);
+                    isCorrect = correctOptions.includes(userAnswer as string);
                   }
 
                   return (
@@ -240,7 +242,7 @@ export default function TakeQuizPage() {
                                 handleMultipleChoiceChange(
                                   question.id,
                                   option.id,
-                                  checked
+                                  checked as boolean
                                 )
                               }
                             />
@@ -252,7 +254,7 @@ export default function TakeQuizPage() {
                       </div>
                     ) : (
                       <RadioGroup
-                        value={answers[question.id] || ""}
+                        value={answers[question.id] as string}
                         onValueChange={(value) =>
                           handleSingleChoiceChange(question.id, value)
                         }

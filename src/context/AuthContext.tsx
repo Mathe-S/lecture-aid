@@ -5,6 +5,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase, UserRole } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { UserAttributes } from "@/types";
 
 type AuthContextType = {
   user: User | null;
@@ -13,7 +14,7 @@ type AuthContextType = {
   isLoading: boolean;
   signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
-  updateUserProfile: (attributes: { [key: string]: any }) => Promise<any>;
+  updateUserProfile: (attributes: UserAttributes) => Promise<User | null>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data?.url) {
         window.location.href = data.url;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("GitHub sign in error:", error);
       toast("Authentication Error", {
         description: "Failed to sign in with GitHub. Please try again.",
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await supabase.auth.signOut();
       router.push("/");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Sign out error:", error);
       toast("Sign Out Error", {
         description: "Failed to sign out. Please try again.",
@@ -118,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateUserProfile = async (attributes: { [key: string]: any }) => {
+  const updateUserProfile = async (attributes: UserAttributes) => {
     if (!user) throw new Error("No user logged in");
 
     try {
@@ -139,11 +140,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(data.user);
       }
 
-      return data;
-    } catch (error: any) {
+      return data.user || null;
+    } catch (error: unknown) {
       console.error("Error updating user profile:", error);
       toast("Update Error", {
-        description: error?.message || "An unexpected error occurred",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
       // Re-throw the error but make sure to return a rejected promise
       return Promise.reject(error);

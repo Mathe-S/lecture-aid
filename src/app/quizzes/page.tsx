@@ -12,13 +12,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getQuizzes } from "@/lib/quizService";
-import { useAuth } from "@/context/AuthContext";
+import { QuizWithQuestionCount } from "@/types";
 
 export default function QuizzesPage() {
-  const [quizzes, setQuizzes] = useState([]);
+  const [quizzes, setQuizzes] = useState<QuizWithQuestionCount[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user } = useAuth();
 
   useEffect(() => {
     async function fetchQuizzes() {
