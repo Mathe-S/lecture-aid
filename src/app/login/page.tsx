@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { Github } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 
-export default function Home() {
+export default function LoginPage() {
   const { user, signInWithGitHub, isLoading } = useAuth();
   const router = useRouter();
 
@@ -25,25 +25,8 @@ export default function Home() {
     }
   }, [user, isLoading, router]);
 
-  // If user is logged in, don't render the home page content
-  // as we're redirecting to dashboard
-  if (user) {
-    return null;
-  }
-
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 p-4">
-      <div className="max-w-3xl w-full text-center space-y-8 mb-8">
-        <h1 className="text-4xl md:text-6xl font-bold text-slate-900">
-          Welcome to Lecture+
-        </h1>
-
-        <p className="text-xl text-slate-700 max-w-2xl mx-auto">
-          A collaborative platform for students, lecturers, and administrators
-          to manage educational resources.
-        </p>
-      </div>
-
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
@@ -72,10 +55,6 @@ export default function Home() {
           </div>
         </CardFooter>
       </Card>
-
-      <div className="pt-8 text-slate-600">
-        <p>Available roles: Admin, Lecturer, Student</p>
-      </div>
 
       <Toaster />
     </div>
