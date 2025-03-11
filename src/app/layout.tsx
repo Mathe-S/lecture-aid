@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lecture aid",
+  title: "Lecture+",
   description: "A platform for students, lecturers, and administrators",
 };
 
@@ -36,7 +36,7 @@ export default function RootLayout({
             <main className="flex-grow">{children}</main>
             <footer className="py-6 border-t border-slate-200 bg-white">
               <div className="container mx-auto px-4 text-center text-slate-500 text-sm">
-                © {new Date().getFullYear()} Lecture aid. All rights reserved.
+                © {new Date().getFullYear()} Lecture+. All rights reserved.
               </div>
             </footer>
           </div>

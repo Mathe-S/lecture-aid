@@ -33,16 +33,18 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="text-xl font-bold text-blue-600">
-              Lecture aid
+              Lecture+
             </Link>
 
             <nav className="hidden md:ml-10 md:flex md:space-x-8">
-              <Link
-                href="/"
-                className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-              >
-                Home
-              </Link>
+              {!user && (
+                <Link
+                  href="/"
+                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                >
+                  Home
+                </Link>
+              )}
 
               {user && (
                 <Link
@@ -120,11 +122,13 @@ export default function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => (window.location.href = "/")}
-                  >
-                    Home
-                  </DropdownMenuItem>
+                  {!user && (
+                    <DropdownMenuItem
+                      onClick={() => (window.location.href = "/")}
+                    >
+                      Home
+                    </DropdownMenuItem>
+                  )}
                   {user && (
                     <DropdownMenuItem
                       onClick={() => (window.location.href = "/dashboard")}
