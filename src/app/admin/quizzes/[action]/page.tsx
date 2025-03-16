@@ -38,7 +38,6 @@ export default function QuizFormPage() {
     id: "",
     title: "",
     description: "",
-    isMultipleChoice: false,
     createdAt: "",
     createdBy: "",
     updatedAt: "",
@@ -53,7 +52,6 @@ export default function QuizFormPage() {
         id: quizData.id,
         title: quizData.title,
         description: quizData.description,
-        isMultipleChoice: quizData.isMultipleChoice,
         createdAt: quizData.createdAt,
         createdBy: quizData.createdBy,
         updatedAt: quizData.updatedAt,
@@ -181,19 +179,6 @@ export default function QuizFormPage() {
                       rows={4}
                     />
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="multiple-choice"
-                      checked={quiz.isMultipleChoice || false}
-                      onCheckedChange={(checked) =>
-                        setQuiz({ ...quiz, isMultipleChoice: checked })
-                      }
-                    />
-                    <Label htmlFor="multiple-choice">
-                      Allow multiple correct answers
-                    </Label>
-                  </div>
                 </div>
               </TabsContent>
 
@@ -269,11 +254,15 @@ export default function QuizFormPage() {
                                         onCheckedChange={(checked) => {
                                           const newQuestions = [...questions];
 
-                                          // For single choice, uncheck all other options
-                                          if (
-                                            !quiz.isMultipleChoice &&
-                                            checked
-                                          ) {
+                                          const isMultipleChoice =
+                                            newQuestions[
+                                              qIndex
+                                            ].quizOptions.filter(
+                                              (o, i) =>
+                                                i !== oIndex && o.isCorrect
+                                            ).length > 0;
+
+                                          if (!isMultipleChoice && checked) {
                                             newQuestions[
                                               qIndex
                                             ].quizOptions.forEach((opt, i) => {

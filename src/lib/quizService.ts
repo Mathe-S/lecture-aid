@@ -62,18 +62,15 @@ export async function createQuiz(
   quizData: QuizWithQuestionsAndOptions,
   userId: string
 ) {
-  // Create quiz
   const [quiz] = await db
     .insert(quizzes)
     .values({
       title: quizData.title,
       description: quizData.description,
-      isMultipleChoice: quizData.isMultipleChoice,
       createdBy: userId,
     })
     .returning();
 
-  // Create questions and options if provided
   if (quizData.quizQuestions && quizData.quizQuestions.length > 0) {
     await createQuestionsWithOptions(quiz.id, quizData.quizQuestions);
   }
@@ -85,19 +82,16 @@ export async function updateQuiz(
   id: string,
   quizData: QuizWithQuestionsAndOptions
 ) {
-  // Update quiz
   const [quiz] = await db
     .update(quizzes)
     .set({
       title: quizData.title,
       description: quizData.description,
-      isMultipleChoice: quizData.isMultipleChoice,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(quizzes.id, id))
     .returning();
 
-  // Handle questions update if provided
   if (quizData.quizQuestions) {
     // First delete existing questions (cascade will delete options)
     await db.delete(quizQuestions).where(eq(quizQuestions.quizId, id));

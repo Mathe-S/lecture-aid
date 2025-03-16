@@ -156,14 +156,6 @@ export default function QuizResultDetailPage() {
                     </p>
                     <p>{new Date(result.completedAt || "").toLocaleString()}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Quiz Type</p>
-                    <p>
-                      {quiz.isMultipleChoice
-                        ? "Multiple Choice"
-                        : "Single Choice"}
-                    </p>
-                  </div>
                 </div>
               </div>
 

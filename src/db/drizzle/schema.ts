@@ -53,7 +53,6 @@ export const quizzes = pgTable(
       .notNull(),
     title: text().notNull(),
     description: text(),
-    isMultipleChoice: boolean("is_multiple_choice").default(false),
     createdBy: uuid("created_by").notNull(),
     createdAt: timestamp("created_at", {
       withTimezone: true,
@@ -263,3 +262,10 @@ export type QuizAnswers = Record<string, string | string[]>;
 export type ProfileRecord = typeof profiles.$inferSelect;
 
 export type UserRole = typeof userRoles.$inferSelect.role;
+
+// Helper function to determine if a question is multiple choice
+export function isQuestionMultipleChoice(
+  question: QuizQuestionWithOptions
+): boolean {
+  return question.quizOptions.filter((option) => option.isCorrect).length > 1;
+}

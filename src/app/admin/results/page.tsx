@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import RoleGuard from "@/components/RoleGuard";
 import {
   Card,
@@ -19,41 +18,18 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
-import { ProfileRecord, Quiz, QuizResult } from "@/db/drizzle/schema";
+import { Loader2 } from "lucide-react";
+import { useQuizResults } from "@/hooks/useQuizResults";
+import { QuizResult } from "@/db/drizzle/schema";
 
 export default function AdminQuizResultsPage() {
-  const [results, setResults] = useState<QuizResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [quizzes, setQuizzes] = useState<Record<string, Quiz>>({});
-  const [users, setUsers] = useState<Record<string, ProfileRecord>>({});
   const router = useRouter();
+  const { data, isLoading, error } = useQuizResults();
 
-  useEffect(() => {
-    async function fetchResults() {
-      try {
-        setLoading(true);
-
-        // Fetch all data through our API route
-        const response = await fetch("/api/quiz-results");
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch results: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        setResults(data.results);
-        setQuizzes(data.quizzes);
-        setUsers(data.users);
-      } catch (error) {
-        console.error("Error fetching quiz results:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchResults();
-  }, []);
+  // Extract data
+  const results = data?.results || [];
+  const quizzes = data?.quizzes || {};
+  const users = data?.users || {};
 
   function handleViewDetails(resultId: string) {
     router.push(`/admin/results/${resultId}`);
@@ -73,8 +49,15 @@ export default function AdminQuizResultsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="flex justify-center py-8">Loading results...</div>
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+                <span>Loading results...</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-500">
+                Error loading results
+              </div>
             ) : results.length === 0 ? (
               <div className="text-center py-8">No quiz results found.</div>
             ) : (
@@ -90,7 +73,7 @@ export default function AdminQuizResultsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {results.map((result) => {
+                  {results.map((result: QuizResult) => {
                     const quiz = quizzes[result.quizId] || {
                       title: "Unknown Quiz",
                     };

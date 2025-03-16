@@ -15,10 +15,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { QuizAnswers, QuizQuestion } from "@/db/drizzle/schema";
+import { QuizAnswers, QuizQuestionWithOptions } from "@/db/drizzle/schema";
 import { useQuiz } from "@/hooks/useQuizzes";
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { saveQuizResult } from "@/app/api/actions/quiz-results";
+import { isQuestionMultipleChoice } from "@/db/drizzle/schema";
+import { toast } from "sonner";
 
 export default function TakeQuizPage() {
   const params = useParams();
@@ -31,21 +33,22 @@ export default function TakeQuizPage() {
     percentage: number;
   } | null>(null);
 
-  // Use React Query to fetch the quiz
   const { data: quiz, isLoading, error } = useQuiz(params.id as string);
 
-  // Initialize answers when quiz loads
   useEffect(() => {
     if (quiz) {
       const initialAnswers: QuizAnswers = {};
-      quiz.quizQuestions.forEach((question: QuizQuestion) => {
-        initialAnswers[question.id] = quiz.isMultipleChoice ? [] : "";
+      quiz.quizQuestions.forEach((question: QuizQuestionWithOptions) => {
+        const hasMultipleCorrectAnswers =
+          question.quizOptions &&
+          question.quizOptions.filter((o) => o.isCorrect).length > 1;
+
+        initialAnswers[question.id] = hasMultipleCorrectAnswers ? [] : "";
       });
       setAnswers(initialAnswers);
     }
   }, [quiz]);
 
-  // Create a mutation for submitting quiz results
   const saveResultMutation = useMutation({
     mutationFn: async ({
       quizId,
@@ -58,26 +61,28 @@ export default function TakeQuizPage() {
       totalQuestions: number;
       answers: Record<string, string | string[]>;
     }) => {
-      // Get the user data
-      const { data: userData } = await supabase.auth.getUser();
-
-      if (!userData.user) {
-        throw new Error("No authenticated user found");
-      }
-
-      // Save the result
-      const { error } = await supabase.from("quiz_results").insert({
-        quiz_id: quizId,
-        user_id: userData.user.id,
+      const result = await saveQuizResult({
+        quizId,
         score,
-        total_questions: totalQuestions,
+        totalQuestions,
         answers,
       });
 
-      if (error) throw error;
-      return { success: true };
+      if (!result.success) {
+        throw new Error(result.error || "Failed to save quiz result");
+      }
+
+      return result;
     },
-    onError: (error) => {
+    onSuccess: () => {
+      toast.success("Quiz result saved successfully");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to save quiz result", {
+        description: error.message,
+        duration: 5000,
+      });
+
       console.error("Error saving quiz result:", error);
     },
   });
@@ -123,7 +128,10 @@ export default function TakeQuizPage() {
         .filter((option) => option.isCorrect)
         .map((option) => option.id);
 
-      if (quiz.isMultipleChoice) {
+      // Determine if this is a multiple choice question
+      const isMultipleCorrectAnswers = correctOptions.length > 1;
+
+      if (isMultipleCorrectAnswers) {
         // For multiple choice, all correct options must be selected and no incorrect ones
         const isCorrect =
           correctOptions.every((id) => userAnswer.includes(id)) &&
@@ -153,12 +161,19 @@ export default function TakeQuizPage() {
     setSubmitted(true);
 
     // Save the quiz result using mutation
-    saveResultMutation.mutate({
-      quizId: quiz.id,
-      score: scoreResult.score,
-      totalQuestions: scoreResult.total,
-      answers,
-    });
+    toast.promise(
+      saveResultMutation.mutateAsync({
+        quizId: quiz.id,
+        score: scoreResult.score,
+        totalQuestions: scoreResult.total,
+        answers,
+      }),
+      {
+        loading: "Saving your quiz results...",
+        success: "Your quiz results were saved successfully!",
+        error: (err) => `Failed to save results: ${err.message}`,
+      }
+    );
   }
 
   if (isLoading) {
@@ -205,7 +220,7 @@ export default function TakeQuizPage() {
                     .map((option) => option.id);
 
                   let isCorrect;
-                  if (quiz.isMultipleChoice) {
+                  if (isQuestionMultipleChoice(question)) {
                     isCorrect =
                       correctOptions.every((id) => userAnswer.includes(id)) &&
                       userAnswer.length === correctOptions.length;
@@ -227,37 +242,54 @@ export default function TakeQuizPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {question.quizOptions.map((option) => {
-                            const isSelected = quiz.isMultipleChoice
-                              ? userAnswer.includes(option.id)
-                              : userAnswer === option.id;
-
-                            return (
-                              <div
-                                key={option.id}
-                                className={`p-2 rounded ${
-                                  option.isCorrect
-                                    ? "bg-green-100"
-                                    : isSelected && !option.isCorrect
-                                    ? "bg-red-100"
-                                    : ""
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {quiz.isMultipleChoice ? (
+                          {isQuestionMultipleChoice(question) ? (
+                            question.quizOptions.map((option) => {
+                              const isSelected = userAnswer.includes(option.id);
+                              return (
+                                <div
+                                  key={option.id}
+                                  className={`p-2 rounded ${
+                                    option.isCorrect
+                                      ? "bg-green-100"
+                                      : isSelected && !option.isCorrect
+                                      ? "bg-red-100"
+                                      : ""
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
                                     <Checkbox checked={isSelected} disabled />
-                                  ) : (
-                                    <RadioGroupItem
-                                      value={option.id}
-                                      checked={isSelected}
-                                      disabled
-                                    />
-                                  )}
-                                  <span>{option.text}</span>
+                                    <span>{option.text}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })
+                          ) : (
+                            <RadioGroup value={userAnswer as string} disabled>
+                              {question.quizOptions.map((option) => {
+                                const isSelected = userAnswer === option.id;
+                                return (
+                                  <div
+                                    key={option.id}
+                                    className={`p-2 rounded ${
+                                      option.isCorrect
+                                        ? "bg-green-100"
+                                        : isSelected && !option.isCorrect
+                                        ? "bg-red-100"
+                                        : ""
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <RadioGroupItem
+                                        value={option.id}
+                                        disabled
+                                      />
+                                      <span>{option.text}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </RadioGroup>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -267,56 +299,39 @@ export default function TakeQuizPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {quiz.quizQuestions.map((question, qIndex) => (
-                <Card key={question.id} className="border border-muted">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">
-                      Question {qIndex + 1}: {question.text}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {quiz.isMultipleChoice ? (
-                      <div className="space-y-2">
-                        {question.quizOptions.map((option) => (
-                          <div
-                            key={option.id}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              id={`option-${option.id}`}
-                              checked={(answers[question.id] || []).includes(
-                                option.id
-                              )}
-                              onCheckedChange={(checked) =>
-                                handleMultipleChoiceChange(
-                                  question.id,
-                                  option.id,
-                                  checked as boolean
-                                )
-                              }
-                            />
-                            <Label htmlFor={`option-${option.id}`}>
-                              {option.text}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <RadioGroup
-                        value={answers[question.id] as string}
-                        onValueChange={(value) =>
-                          handleSingleChoiceChange(question.id, value)
-                        }
-                      >
+              {quiz.quizQuestions.map((question, qIndex) => {
+                // Determine if this question has multiple correct answers
+                const isMultipleCorrectAnswers =
+                  question.quizOptions &&
+                  question.quizOptions.filter((o) => o.isCorrect).length > 1;
+
+                return (
+                  <Card key={question.id} className="border border-muted">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">
+                        Question {qIndex + 1}: {question.text}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {isMultipleCorrectAnswers ? (
                         <div className="space-y-2">
                           {question.quizOptions.map((option) => (
                             <div
                               key={option.id}
                               className="flex items-center space-x-2"
                             >
-                              <RadioGroupItem
-                                value={option.id}
+                              <Checkbox
                                 id={`option-${option.id}`}
+                                checked={(answers[question.id] || []).includes(
+                                  option.id
+                                )}
+                                onCheckedChange={(checked) =>
+                                  handleMultipleChoiceChange(
+                                    question.id,
+                                    option.id,
+                                    checked as boolean
+                                  )
+                                }
                               />
                               <Label htmlFor={`option-${option.id}`}>
                                 {option.text}
@@ -324,11 +339,35 @@ export default function TakeQuizPage() {
                             </div>
                           ))}
                         </div>
-                      </RadioGroup>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                      ) : (
+                        <RadioGroup
+                          value={answers[question.id] as string}
+                          onValueChange={(value) =>
+                            handleSingleChoiceChange(question.id, value)
+                          }
+                        >
+                          <div className="space-y-2">
+                            {question.quizOptions.map((option) => (
+                              <div
+                                key={option.id}
+                                className="flex items-center space-x-2"
+                              >
+                                <RadioGroupItem
+                                  value={option.id}
+                                  id={`option-${option.id}`}
+                                />
+                                <Label htmlFor={`option-${option.id}`}>
+                                  {option.text}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </RadioGroup>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </CardContent>

@@ -111,76 +111,75 @@ export default function QuizList({
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {quizzes.map((quiz) => (
-            <Card key={quiz.id}>
-              <CardHeader>
-                <CardTitle>{quiz.title}</CardTitle>
-                <CardDescription>
-                  {quiz.description
-                    ? quiz.description.substring(0, 100) +
-                      (quiz.description.length > 100 ? "..." : "")
-                    : "No description available"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {quiz.quizQuestions?.length || 0} questions
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Type:{" "}
-                  {quiz.isMultipleChoice ? "Multiple Choice" : "Single Choice"}
-                </p>
-              </CardContent>
-              <CardFooter>
-                {isAdmin ? (
-                  <div className="flex justify-between w-full">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/admin/quizzes/${quiz.id}`)}
-                    >
-                      <Edit size={16} className="mr-2" />
-                      Edit
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="default" size="sm">
-                          <Trash size={16} className="mr-2" />
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Are you absolutely sure?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently
-                            delete the quiz and all associated data.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteQuiz(quiz.id)}
-                          >
+          {quizzes.map((quiz) => {
+            return (
+              <Card key={quiz.id}>
+                <CardHeader>
+                  <CardTitle>{quiz.title}</CardTitle>
+                  <CardDescription>
+                    {quiz.description
+                      ? quiz.description.substring(0, 100) +
+                        (quiz.description.length > 100 ? "..." : "")
+                      : "No description available"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {quiz.quizQuestions?.length || 0} questions
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  {isAdmin ? (
+                    <div className="flex justify-between w-full">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/admin/quizzes/${quiz.id}`)}
+                      >
+                        <Edit size={16} className="mr-2" />
+                        Edit
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="default" size="sm">
+                            <Trash size={16} className="mr-2" />
                             Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => router.push(`/quizzes/${quiz.id}`)}
-                    className="w-full cursor-pointer"
-                  >
-                    Take Quiz
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Are you absolutely sure?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will
+                              permanently delete the quiz and all associated
+                              data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteQuiz(quiz.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => router.push(`/quizzes/${quiz.id}`)}
+                      className="w-full cursor-pointer"
+                    >
+                      Take Quiz
+                    </Button>
+                  )}
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
