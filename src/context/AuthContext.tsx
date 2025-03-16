@@ -4,10 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User, UserAttributes } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
-
-// Remove direct database imports!
-// import { getUserRole, updateUserProfile as updateDbUserProfile } from "@/lib/userService";
+import { createClient } from "@/utils/supabase/client";
 
 type AuthContextType = {
   user: User | null;
@@ -27,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const supabase = createClient();
 
   // Fetch user role via API route
   const fetchUserRole = async (userId: string) => {
@@ -91,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     setupAuth();
-  }, [router]);
+  }, [router, supabase.auth]);
 
   const signInWithGitHub = async () => {
     try {
@@ -117,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast("Authentication Error", {
         description: "Failed to sign in with GitHub. Please try again.",
       });
+    } finally {
       setIsLoading(false);
     }
     // Note: We don't set isLoading to false on success because we're redirecting

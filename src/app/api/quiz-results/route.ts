@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import db from "@/db";
 import { quizResults, quizzes, profiles, userRoles } from "@/db/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { getCurrentUser, getSupabaseServerClient } from "@/lib/auth/server";
+import { createClient } from "@/utils/supabase/client";
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const supabase = createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json(
@@ -76,7 +80,7 @@ export async function POST(request: Request) {
     const { quizId, score, totalQuestions, answers } = await request.json();
 
     // Get the user from Supabase auth
-    const supabase = await getSupabaseServerClient();
+    const supabase = createClient();
 
     const {
       data: { user },

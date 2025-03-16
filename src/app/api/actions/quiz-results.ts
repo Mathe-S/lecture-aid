@@ -2,7 +2,7 @@
 
 import db from "@/db";
 import { quizResults } from "@/db/drizzle/schema";
-import { getCurrentUser } from "@/lib/auth/server";
+import { createClient } from "@/utils/supabase/server";
 
 export async function saveQuizResult({
   quizId,
@@ -16,8 +16,11 @@ export async function saveQuizResult({
   answers: Record<string, string | string[]>;
 }) {
   try {
-    // Get the current user using our centralized utility
-    const user = await getCurrentUser();
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return { success: false, error: "No authenticated user found" };

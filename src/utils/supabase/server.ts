@@ -1,11 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-/**
- * Creates a Supabase server client for use in server actions and server components
- * @returns Supabase server client
- */
-export async function getSupabaseServerClient() {
+export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -30,23 +26,4 @@ export async function getSupabaseServerClient() {
       },
     }
   );
-}
-
-/**
- * Gets the currently authenticated user from Supabase auth
- * @returns The authenticated user or null
- */
-export async function getCurrentUser() {
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error) {
-    console.error("Error getting user:", error);
-    return null;
-  }
-
-  return user;
 }

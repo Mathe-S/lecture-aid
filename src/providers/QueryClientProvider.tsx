@@ -32,7 +32,7 @@ export function QueryClientProvider({
           },
         }),
         mutationCache: new MutationCache({
-          onError: (error: any, variables, context) => {
+          onError: (error: any) => {
             toast.error("Operation failed", {
               description: error?.message || "Please try again",
             });
