@@ -2,7 +2,7 @@
 
 import db from "@/db";
 import { quizResults } from "@/db/drizzle/schema";
-import { createClient } from "@/utils/supabase/server";
+import { supabaseForServer } from "@/utils/supabase/server";
 
 export async function saveQuizResult({
   quizId,
@@ -16,7 +16,7 @@ export async function saveQuizResult({
   answers: Record<string, string | string[]>;
 }) {
   try {
-    const supabase = await createClient();
+    const supabase = await supabaseForServer();
 
     const {
       data: { user },

@@ -94,7 +94,7 @@ export default function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-8 w-8 rounded-full cursor-pointer"
+                    className="relative h-8 w-8 rounded-full p-0 overflow-hidden  justify-center"
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={avatarUrl} alt={userName} />
@@ -102,9 +102,9 @@ export default function Navbar() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="center" sideOffset={4}>
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuItem className="flex items-center cursor-pointer">
+                  <DropdownMenuItem className="flex items-center">
                     <User className="mr-2 h-4 w-4" />
                     <span>{role}</span>
                   </DropdownMenuItem>

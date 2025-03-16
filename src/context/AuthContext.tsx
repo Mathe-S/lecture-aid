@@ -14,6 +14,7 @@ type AuthContextType = {
   signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
   updateUserProfile: (attributes: UserAttributes) => Promise<User | null>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,7 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast("Authentication Error", {
         description: "Failed to sign in with GitHub. Please try again.",
       });
-    } finally {
       setIsLoading(false);
     }
     // Note: We don't set isLoading to false on success because we're redirecting
@@ -188,6 +188,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const {
+        data: { user: freshUser },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error("Error refreshing user:", error);
+        return;
+      }
+
+      setUser(freshUser);
+
+      if (freshUser) {
+        // Update the role as well
+        const userRole = await fetchUserRole(freshUser.id);
+        setRole(userRole);
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    }
+  };
+
   const value = {
     user,
     role,
@@ -196,6 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGitHub,
     signOut,
     updateUserProfile,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

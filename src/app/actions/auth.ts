@@ -11,12 +11,24 @@ export async function fetchUserRole(userId: string) {
   }
 }
 
-export async function updateUserProfileAction(profileData: any) {
+export async function updateUserProfileAction(profileData: {
+  id: string;
+  email?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+}) {
   try {
     await updateUserProfile(profileData);
-    return { success: true };
+    return {
+      success: true,
+      message: "Profile updated successfully",
+    };
   } catch (error) {
     console.error("Error updating profile:", error);
-    return { error: "Failed to update profile" };
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update profile",
+    };
   }
 }

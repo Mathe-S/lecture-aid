@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import db from "@/db";
 import { quizResults, quizzes, profiles, userRoles } from "@/db/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { createClient } from "@/utils/supabase/client";
+import { supabaseForServer } from "@/utils/supabase/server";
 
 export async function GET() {
   try {
-    const supabase = createClient();
+    const supabase = await supabaseForServer();
 
     const {
       data: { user },
@@ -19,7 +19,6 @@ export async function GET() {
       );
     }
 
-    // Check if user has admin role
     const userRole = await db.query.userRoles.findFirst({
       where: eq(userRoles.id, user.id),
     });
@@ -80,7 +79,7 @@ export async function POST(request: Request) {
     const { quizId, score, totalQuestions, answers } = await request.json();
 
     // Get the user from Supabase auth
-    const supabase = createClient();
+    const supabase = await supabaseForServer();
 
     const {
       data: { user },

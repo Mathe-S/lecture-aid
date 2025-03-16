@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { updateUserProfileAction } from "../actions/auth";
 
 export default function DashboardPage() {
-  const { user, role, isLoading } = useAuth();
+  const { user, role, isLoading, refreshUser } = useAuth();
   const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -79,14 +79,19 @@ export default function DashboardPage() {
     setIsSaving(true);
     try {
       const fullName = `${firstName} ${lastName}`.trim();
-      setIsEditingName(false);
-      await updateUserProfileAction({
+      const result = await updateUserProfileAction({
         id: user.id,
         fullName: fullName,
       });
+
+      if (result.success) {
+        // Refresh the user data to update the UI
+        await refreshUser();
+      }
     } catch (error) {
       console.error("Failed to update name:", error);
     } finally {
+      setIsEditingName(false);
       setIsSaving(false);
     }
   };

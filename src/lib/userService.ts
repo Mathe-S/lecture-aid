@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import db from "@/db";
 import { userRoles, profiles } from "@/db/drizzle/schema";
+import { supabaseForServer } from "@/utils/supabase/server";
 
 /**
  * Get a user's role from the database
@@ -22,7 +23,7 @@ export async function getUserRole(userId: string): Promise<string | null> {
 }
 
 /**
- * Update a user's profile in the database
+ * Update a user's profile in the database and Supabase auth metadata
  */
 export async function updateUserProfile(profileData: {
   id: string;
@@ -33,6 +34,30 @@ export async function updateUserProfile(profileData: {
 }) {
   try {
     const { id, ...data } = profileData;
+
+    const supabase = await supabaseForServer();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: data.fullName,
+        },
+      });
+
+      if (error) {
+        console.error("Error updating Supabase user metadata:", error);
+      }
+    } catch (supabaseError) {
+      console.error("Failed to update Supabase user metadata:", supabaseError);
+      // Continue with database update even if Supabase update fails
+    }
 
     // Check if profile exists
     const existingProfile = await db.query.profiles.findFirst({
