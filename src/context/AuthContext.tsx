@@ -95,6 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGitHub = async () => {
     try {
+      setIsLoading(true);
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
@@ -115,12 +117,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast("Authentication Error", {
         description: "Failed to sign in with GitHub. Please try again.",
       });
+      setIsLoading(false);
     }
+    // Note: We don't set isLoading to false on success because we're redirecting
   };
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      console.log("🚀 ~ signOut ~ router:", router);
       router.push("/");
     } catch (error: unknown) {
       console.error("Sign out error:", error);

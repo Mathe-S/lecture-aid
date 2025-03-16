@@ -14,18 +14,15 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import {
-  QuizAnswers,
-  QuizQuestion,
-  QuizWithQuestionsAndOptions,
-} from "@/db/drizzle/schema";
+import { Loader2 } from "lucide-react";
+import { QuizAnswers, QuizQuestion } from "@/db/drizzle/schema";
+import { useQuiz } from "@/hooks/useQuizzes";
+import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
 export default function TakeQuizPage() {
   const params = useParams();
   const router = useRouter();
-  const [quiz, setQuiz] = useState<QuizWithQuestionsAndOptions | null>(null);
-  const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<QuizAnswers>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState<{
@@ -34,32 +31,56 @@ export default function TakeQuizPage() {
     percentage: number;
   } | null>(null);
 
+  // Use React Query to fetch the quiz
+  const { data: quiz, isLoading, error } = useQuiz(params.id as string);
+
+  // Initialize answers when quiz loads
   useEffect(() => {
-    async function fetchQuiz() {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/quizzes/${params.id}`);
-        const quizData = await response.json();
-        console.log("🚀 ~ fetchQuiz ~ quizData:", quizData);
-        setQuiz(quizData);
+    if (quiz) {
+      const initialAnswers: QuizAnswers = {};
+      quiz.quizQuestions.forEach((question: QuizQuestion) => {
+        initialAnswers[question.id] = quiz.isMultipleChoice ? [] : "";
+      });
+      setAnswers(initialAnswers);
+    }
+  }, [quiz]);
 
-        // Initialize answers object
-        const initialAnswers: QuizAnswers = {};
-        quizData.questions.forEach((question: QuizQuestion) => {
-          initialAnswers[question.id] = quizData.is_multiple_choice ? [] : "";
-        });
-        setAnswers(initialAnswers);
-      } catch (error) {
-        console.error("Error fetching quiz:", error);
-      } finally {
-        setLoading(false);
+  // Create a mutation for submitting quiz results
+  const saveResultMutation = useMutation({
+    mutationFn: async ({
+      quizId,
+      score,
+      totalQuestions,
+      answers,
+    }: {
+      quizId: string;
+      score: number;
+      totalQuestions: number;
+      answers: Record<string, string | string[]>;
+    }) => {
+      // Get the user data
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData.user) {
+        throw new Error("No authenticated user found");
       }
-    }
 
-    if (params.id) {
-      fetchQuiz();
-    }
-  }, [params.id]);
+      // Save the result
+      const { error } = await supabase.from("quiz_results").insert({
+        quiz_id: quizId,
+        user_id: userData.user.id,
+        score,
+        total_questions: totalQuestions,
+        answers,
+      });
+
+      if (error) throw error;
+      return { success: true };
+    },
+    onError: (error) => {
+      console.error("Error saving quiz result:", error);
+    },
+  });
 
   function handleSingleChoiceChange(questionId: string, optionId: string) {
     setAnswers({
@@ -125,58 +146,36 @@ export default function TakeQuizPage() {
   }
 
   function handleSubmit() {
+    if (!quiz) return;
+
     const scoreResult = calculateScore();
     setScore(scoreResult);
     setSubmitted(true);
 
-    // Save the quiz result to the database
-    saveQuizResult(
-      quiz?.id as string,
-      scoreResult.score,
-      scoreResult.total,
-      answers
+    // Save the quiz result using mutation
+    saveResultMutation.mutate({
+      quizId: quiz.id,
+      score: scoreResult.score,
+      totalQuestions: scoreResult.total,
+      answers,
+    });
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 flex justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading quiz...</span>
+      </div>
     );
   }
 
-  // Add this function to save the quiz result
-  async function saveQuizResult(
-    quizId: string,
-    score: number,
-    totalQuestions: number,
-    answers: Record<string, string | string[]>
-  ) {
-    try {
-      // First, get the user data
-      const { data: userData } = await supabase.auth.getUser();
-
-      if (!userData.user) {
-        console.error("No authenticated user found");
-        return;
-      }
-
-      // Then use the user ID in your insert
-      const { error } = await supabase.from("quiz_results").insert({
-        quiz_id: quizId,
-        user_id: userData.user.id,
-        score,
-        total_questions: totalQuestions,
-        answers,
-      });
-
-      if (error) {
-        console.error("Error saving quiz result:", error);
-      }
-    } catch (error) {
-      console.error("Error saving quiz result:", error);
-    }
-  }
-
-  if (loading) {
-    return <div className="container mx-auto py-8">Loading quiz...</div>;
-  }
-
-  if (!quiz) {
-    return <div className="container mx-auto py-8">Quiz not found</div>;
+  if (error || !quiz) {
+    return (
+      <div className="container mx-auto py-8">
+        Quiz not found or error loading quiz
+      </div>
+    );
   }
 
   return (

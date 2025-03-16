@@ -35,7 +35,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push("/login");
+      router.push("/");
     }
 
     if (user) {
@@ -60,7 +60,7 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   // Get avatar URL from GitHub user metadata

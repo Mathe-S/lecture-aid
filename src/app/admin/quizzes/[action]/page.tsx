@@ -18,8 +18,9 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash, Save, ArrowLeft } from "lucide-react";
+import { Plus, Trash, Save, ArrowLeft, Loader2 } from "lucide-react";
 import { Quiz, QuizOption, QuizQuestionWithOptions } from "@/db/drizzle/schema";
+import { useQuiz, useCreateQuiz, useUpdateQuiz } from "@/hooks/useQuizzes";
 
 export default function QuizFormPage() {
   const router = useRouter();
@@ -28,8 +29,11 @@ export default function QuizFormPage() {
   const isEditing = params.action !== "new";
   const quizId = isEditing ? (params.action as string) : "";
 
-  const [loading, setLoading] = useState(isEditing);
-  const [saving, setSaving] = useState(false);
+  // React Query hooks
+  const { data: quizData, isLoading: isLoadingQuiz } = useQuiz(quizId);
+  const createQuizMutation = useCreateQuiz();
+  const updateQuizMutation = useUpdateQuiz(quizId);
+
   const [quiz, setQuiz] = useState<Quiz>({
     id: "",
     title: "",
@@ -42,25 +46,9 @@ export default function QuizFormPage() {
   const [questions, setQuestions] = useState<QuizQuestionWithOptions[]>([]);
   const [activeTab, setActiveTab] = useState("details");
 
+  // Populate form when quiz data is loaded
   useEffect(() => {
-    if (isEditing && quizId) {
-      fetchQuizData(quizId);
-    }
-  }, [isEditing, quizId]);
-
-  async function fetchQuizData(id: string) {
-    try {
-      setLoading(true);
-
-      // Use the API route instead of direct Supabase calls
-      const response = await fetch(`/api/quizzes/${id}`);
-
-      if (!response.ok) {
-        throw new Error(`Error fetching quiz: ${response.statusText}`);
-      }
-
-      const quizData = await response.json();
-
+    if (quizData) {
       setQuiz({
         id: quizData.id,
         title: quizData.title,
@@ -70,60 +58,23 @@ export default function QuizFormPage() {
         createdBy: quizData.createdBy,
         updatedAt: quizData.updatedAt,
       });
-
       setQuestions(quizData.quizQuestions);
-    } catch (error) {
-      console.error("Error fetching quiz data:", error);
-    } finally {
-      setLoading(false);
     }
-  }
+  }, [quizData]);
 
   async function handleSave() {
-    try {
-      setSaving(true);
+    const quizToSave = {
+      ...quiz,
+      quizQuestions: questions,
+    };
 
-      // Create the full quiz object with questions and options
-      const quizToSave = {
-        ...quiz,
-        quizQuestions: questions,
-      };
-
-      let response;
-
-      if (isEditing) {
-        // Update existing quiz
-        response = await fetch(`/api/quizzes/${quizId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(quizToSave),
-        });
-      } else {
-        // Create new quiz
-        response = await fetch("/api/quizzes", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...quizToSave,
-            createdBy: user?.id as string,
-          }),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save quiz");
-      }
-
-      router.push("/admin/quizzes");
-    } catch (error) {
-      console.error("Error saving quiz:", error);
-    } finally {
-      setSaving(false);
+    if (isEditing) {
+      updateQuizMutation.mutate(quizToSave);
+    } else {
+      createQuizMutation.mutate({
+        ...quizToSave,
+        createdBy: user?.id as string,
+      });
     }
   }
 
@@ -161,8 +112,16 @@ export default function QuizFormPage() {
     ]);
   }
 
-  if (loading) {
-    return <div>Loading quiz data...</div>;
+  const isLoading = isLoadingQuiz;
+  const isSaving = createQuizMutation.isPending || updateQuizMutation.isPending;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-2">Loading quiz data...</p>
+      </div>
+    );
   }
 
   return (
@@ -401,14 +360,17 @@ export default function QuizFormPage() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || !quiz.title}
+              disabled={isSaving || !quiz.title}
               className="flex items-center gap-2"
             >
-              {saving ? (
-                "Saving..."
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
               ) : (
                 <>
-                  <Save size={16} />
+                  <Save size={16} className="mr-2" />
                   Save Quiz
                 </>
               )}

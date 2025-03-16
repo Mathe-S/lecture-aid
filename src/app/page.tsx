@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Github } from "lucide-react";
+import { Github, Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function Home() {
@@ -25,8 +25,6 @@ export default function Home() {
     }
   }, [user, isLoading, router]);
 
-  // If user is logged in, don't render the home page content
-  // as we're redirecting to dashboard
   if (user) {
     return null;
   }
@@ -58,11 +56,20 @@ export default function Home() {
           <Button
             variant="outline"
             onClick={signInWithGitHub}
-            className="w-full py-6 border-slate-300 hover:bg-slate-100"
+            className="w-full py-6 border-slate-300 hover:bg-slate-100 cursor-pointer transition-all"
             disabled={isLoading}
           >
-            <Github className="mr-2 h-5 w-5" />
-            {isLoading ? "Loading..." : "Sign in with GitHub"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Connecting to GitHub...
+              </>
+            ) : (
+              <>
+                <Github className="mr-2 h-5 w-5" />
+                Sign in with GitHub
+              </>
+            )}
           </Button>
         </CardContent>
 

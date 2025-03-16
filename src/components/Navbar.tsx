@@ -13,9 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Menu, LogOut, User, BookOpen, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
+  const router = useRouter();
 
   // Get avatar URL and initials from user metadata
   const avatarUrl = user?.user_metadata?.avatar_url || "";
@@ -27,59 +29,62 @@ export default function Navbar() {
     .join("")
     .toUpperCase();
 
+  // Navigation items - defined once and used for both desktop and mobile
+  const navItems = [
+    // Always visible
+    { label: "Home", href: "/", showWhen: !user },
+    // Only when logged in
+    { label: "Dashboard", href: "/dashboard", showWhen: !!user },
+    { label: "Quizzes", href: "/quizzes", showWhen: !!user },
+    // Admin only
+    { label: "Admin", href: "/admin", showWhen: role === "admin" },
+    { label: "Results", href: "/admin/results", showWhen: role === "admin" },
+  ];
+
+  // User menu items - used in dropdown
+  const userMenuItems = [
+    { label: "Dashboard", href: "/dashboard", icon: User },
+    { label: "Quizzes", href: "/quizzes", icon: BookOpen },
+    // Admin only items
+    { label: "Admin", href: "/admin", icon: Shield, adminOnly: true },
+    {
+      label: "Quiz Management",
+      href: "/admin/quizzes",
+      icon: Shield,
+      adminOnly: true,
+    },
+  ];
+
+  // Helper function to navigate
+  const navigateTo = (href: string) => {
+    router.push(href);
+  };
+
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-blue-600">
+            <Link
+              href={user ? "/dashboard" : "/"}
+              className="text-xl font-bold text-blue-600 cursor-pointer"
+            >
               Lecture+
             </Link>
 
+            {/* Desktop Navigation */}
             <nav className="hidden md:ml-10 md:flex md:space-x-8">
-              {!user && (
-                <Link
-                  href="/"
-                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Home
-                </Link>
-              )}
-
-              {user && (
-                <Link
-                  href="/dashboard"
-                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Dashboard
-                </Link>
-              )}
-
-              {user && (
-                <Link
-                  href="/quizzes"
-                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Quizzes
-                </Link>
-              )}
-
-              {role === "admin" && (
-                <Link
-                  href="/admin"
-                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Admin
-                </Link>
-              )}
-              {role === "admin" && (
-                <Link
-                  href="/admin/results"
-                  className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Results
-                </Link>
-              )}
+              {navItems
+                .filter((item) => item.showWhen)
+                .map((item, index) => (
+                  <Link
+                    key={index}
+                    href={item.href}
+                    className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium cursor-pointer"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
             </nav>
           </div>
 
@@ -89,7 +94,7 @@ export default function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-8 w-8 rounded-full"
+                    className="relative h-8 w-8 rounded-full cursor-pointer"
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={avatarUrl} alt={userName} />
@@ -99,99 +104,64 @@ export default function Navbar() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="flex items-center">
+                  <DropdownMenuItem className="flex items-center cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     <span>{role}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => (window.location.href = "/dashboard")}
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Dashboard</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => (window.location.href = "/quizzes")}
-                  >
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    <span>Quizzes</span>
-                  </DropdownMenuItem>
-                  {role === "admin" && (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => (window.location.href = "/admin")}
-                      >
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Admin</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          (window.location.href = "/admin/quizzes")
-                        }
-                      >
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Quiz Management</span>
-                      </DropdownMenuItem>
-                    </>
-                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
+
+                  {userMenuItems
+                    .filter(
+                      (item) =>
+                        !item.adminOnly || (item.adminOnly && role === "admin")
+                    )
+                    .map((item, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        onClick={() => navigateTo(item.href)}
+                        className="cursor-pointer"
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        <span>{item.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={signOut}
+                    className="cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/login" passHref>
-                <Button>Sign In</Button>
+              <Link href="/" passHref>
+                <Button className="cursor-pointer">Sign In</Button>
               </Link>
             )}
 
+            {/* Mobile Menu */}
             <div className="md:hidden ml-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="cursor-pointer">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {!user && (
-                    <DropdownMenuItem
-                      onClick={() => (window.location.href = "/")}
-                    >
-                      Home
-                    </DropdownMenuItem>
-                  )}
-                  {user && (
-                    <>
+                  {navItems
+                    .filter((item) => item.showWhen)
+                    .map((item, index) => (
                       <DropdownMenuItem
-                        onClick={() => (window.location.href = "/dashboard")}
+                        key={index}
+                        onClick={() => navigateTo(item.href)}
+                        className="cursor-pointer"
                       >
-                        Dashboard
+                        {item.label}
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => (window.location.href = "/quizzes")}
-                      >
-                        Quizzes
-                      </DropdownMenuItem>
-                      {role === "admin" && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => (window.location.href = "/admin")}
-                          >
-                            Admin
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              (window.location.href = "/admin/quizzes")
-                            }
-                          >
-                            Quiz Management
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </>
-                  )}
+                    ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
