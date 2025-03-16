@@ -14,14 +14,17 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { getQuizWithQuestions } from "@/lib/quizService";
-import { QuizAnswers, QuizWithQuestions } from "@/types";
+import {
+  QuizAnswers,
+  QuizQuestion,
+  QuizWithQuestionsAndOptions,
+} from "@/db/drizzle/schema";
 import { supabase } from "@/lib/supabase";
 
 export default function TakeQuizPage() {
   const params = useParams();
   const router = useRouter();
-  const [quiz, setQuiz] = useState<QuizWithQuestions | null>(null);
+  const [quiz, setQuiz] = useState<QuizWithQuestionsAndOptions | null>(null);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<QuizAnswers>({});
   const [submitted, setSubmitted] = useState(false);
@@ -35,12 +38,14 @@ export default function TakeQuizPage() {
     async function fetchQuiz() {
       try {
         setLoading(true);
-        const quizData = await getQuizWithQuestions(params.id as string);
+        const response = await fetch(`/api/quizzes/${params.id}`);
+        const quizData = await response.json();
+        console.log("🚀 ~ fetchQuiz ~ quizData:", quizData);
         setQuiz(quizData);
 
         // Initialize answers object
         const initialAnswers: QuizAnswers = {};
-        quizData.questions.forEach((question) => {
+        quizData.questions.forEach((question: QuizQuestion) => {
           initialAnswers[question.id] = quizData.is_multiple_choice ? [] : "";
         });
         setAnswers(initialAnswers);
@@ -89,15 +94,15 @@ export default function TakeQuizPage() {
 
   function calculateScore() {
     let correctAnswers = 0;
-    const totalQuestions: number = quiz?.questions.length || 0;
+    const totalQuestions: number = quiz?.quizQuestions.length || 0;
 
-    quiz?.questions.forEach((question) => {
+    quiz?.quizQuestions.forEach((question) => {
       const userAnswer = answers[question.id];
-      const correctOptions = question.quiz_options
-        .filter((option) => option.is_correct)
+      const correctOptions = question.quizOptions
+        .filter((option) => option.isCorrect)
         .map((option) => option.id);
 
-      if (quiz.is_multiple_choice) {
+      if (quiz.isMultipleChoice) {
         // For multiple choice, all correct options must be selected and no incorrect ones
         const isCorrect =
           correctOptions.every((id) => userAnswer.includes(id)) &&
@@ -194,14 +199,14 @@ export default function TakeQuizPage() {
 
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Review Your Answers</h3>
-                {quiz.questions.map((question, qIndex) => {
+                {quiz.quizQuestions.map((question, qIndex) => {
                   const userAnswer = answers[question.id];
-                  const correctOptions = question.quiz_options
-                    .filter((option) => option.is_correct)
+                  const correctOptions = question.quizOptions
+                    .filter((option) => option.isCorrect)
                     .map((option) => option.id);
 
                   let isCorrect;
-                  if (quiz.is_multiple_choice) {
+                  if (quiz.isMultipleChoice) {
                     isCorrect =
                       correctOptions.every((id) => userAnswer.includes(id)) &&
                       userAnswer.length === correctOptions.length;
@@ -223,8 +228,8 @@ export default function TakeQuizPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {question.quiz_options.map((option) => {
-                            const isSelected = quiz.is_multiple_choice
+                          {question.quizOptions.map((option) => {
+                            const isSelected = quiz.isMultipleChoice
                               ? userAnswer.includes(option.id)
                               : userAnswer === option.id;
 
@@ -232,15 +237,15 @@ export default function TakeQuizPage() {
                               <div
                                 key={option.id}
                                 className={`p-2 rounded ${
-                                  option.is_correct
+                                  option.isCorrect
                                     ? "bg-green-100"
-                                    : isSelected && !option.is_correct
+                                    : isSelected && !option.isCorrect
                                     ? "bg-red-100"
                                     : ""
                                 }`}
                               >
                                 <div className="flex items-center gap-2">
-                                  {quiz.is_multiple_choice ? (
+                                  {quiz.isMultipleChoice ? (
                                     <Checkbox checked={isSelected} disabled />
                                   ) : (
                                     <RadioGroupItem
@@ -263,7 +268,7 @@ export default function TakeQuizPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {quiz.questions.map((question, qIndex) => (
+              {quiz.quizQuestions.map((question, qIndex) => (
                 <Card key={question.id} className="border border-muted">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">
@@ -271,9 +276,9 @@ export default function TakeQuizPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {quiz.is_multiple_choice ? (
+                    {quiz.isMultipleChoice ? (
                       <div className="space-y-2">
-                        {question.quiz_options.map((option) => (
+                        {question.quizOptions.map((option) => (
                           <div
                             key={option.id}
                             className="flex items-center space-x-2"
@@ -305,7 +310,7 @@ export default function TakeQuizPage() {
                         }
                       >
                         <div className="space-y-2">
-                          {question.quiz_options.map((option) => (
+                          {question.quizOptions.map((option) => (
                             <div
                               key={option.id}
                               className="flex items-center space-x-2"

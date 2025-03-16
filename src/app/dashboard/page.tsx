@@ -23,9 +23,10 @@ import {
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { updateUserProfileAction } from "../actions/auth";
 
 export default function DashboardPage() {
-  const { user, role, isLoading, updateUserProfile } = useAuth();
+  const { user, role, isLoading } = useAuth();
   const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -79,7 +80,10 @@ export default function DashboardPage() {
     try {
       const fullName = `${firstName} ${lastName}`.trim();
       setIsEditingName(false);
-      await updateUserProfile({ full_name: fullName });
+      await updateUserProfileAction({
+        id: user.id,
+        fullName: fullName,
+      });
     } catch (error) {
       console.error("Failed to update name:", error);
     } finally {

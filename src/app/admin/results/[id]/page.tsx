@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import RoleGuard from "@/components/RoleGuard";
 import {
   Card,
@@ -15,13 +14,9 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import {
-  ProfileRecord,
-  Quiz,
-  QuizOption,
-  QuizQuestion,
-  QuizResult,
-} from "@/types";
+import { ProfileRecord, QuizQuestion, QuizResult } from "@/db/drizzle/schema";
+import { QuizOption } from "@/db/drizzle/schema";
+import { Quiz } from "@/db/drizzle/schema";
 
 export default function QuizResultDetailPage() {
   const params = useParams();
@@ -40,65 +35,20 @@ export default function QuizResultDetailPage() {
       try {
         setLoading(true);
 
-        // Fetch the quiz result
-        const { data: resultData, error: resultError } = await supabase
-          .from("quiz_results")
-          .select("*")
-          .eq("id", resultId)
-          .single();
+        // Fetch all data through our API route
+        const response = await fetch(`/api/quiz-results/${resultId}`);
 
-        if (resultError) throw resultError;
+        if (!response.ok) {
+          throw new Error(`Failed to fetch result: ${response.statusText}`);
+        }
 
-        // Fetch the quiz
-        const { data: quizData, error: quizError } = await supabase
-          .from("quizzes")
-          .select("*")
-          .eq("id", resultData.quiz_id)
-          .single();
+        const data = await response.json();
 
-        if (quizError) throw quizError;
-
-        // Fetch the questions for this quiz
-        const { data: questionsData, error: questionsError } = await supabase
-          .from("quiz_questions")
-          .select("*")
-          .eq("quiz_id", resultData.quiz_id)
-          .order("order_index");
-
-        if (questionsError) throw questionsError;
-
-        // Fetch all options for all questions
-        const questionIds = questionsData.map((q) => q.id);
-        const { data: optionsData, error: optionsError } = await supabase
-          .from("quiz_options")
-          .select("*")
-          .in("question_id", questionIds)
-          .order("order_index");
-
-        if (optionsError) throw optionsError;
-
-        // Group options by question_id
-        const optionsMap = optionsData.reduce((acc, option) => {
-          if (!acc[option.question_id]) {
-            acc[option.question_id] = [];
-          }
-          acc[option.question_id].push(option);
-          return acc;
-        }, {} as Record<string, QuizOption[]>);
-
-        // Fetch user information
-        // Adjust this based on your user data structure
-        const { data: userData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", resultData.user_id)
-          .single();
-
-        setResult(resultData);
-        setQuiz(quizData);
-        setQuestions(questionsData);
-        setOptions(optionsMap);
-        setUser(userData || { id: resultData.user_id });
+        setResult(data.result);
+        setQuiz(data.quiz);
+        setQuestions(data.questions);
+        setOptions(data.options);
+        setUser(data.user || { id: data.result.userId });
       } catch (error) {
         console.error("Error fetching result details:", error);
       } finally {
@@ -127,13 +77,13 @@ export default function QuizResultDetailPage() {
     // For single choice questions
     if (typeof answer === "string") {
       const selectedOption = questionOptions.find((opt) => opt.id === answer);
-      return selectedOption?.is_correct || false;
+      return selectedOption?.isCorrect || false;
     }
 
     // For multiple choice questions
     if (Array.isArray(answer)) {
       const correctOptions = questionOptions
-        .filter((opt) => opt.is_correct)
+        .filter((opt) => opt.isCorrect)
         .map((opt) => opt.id);
       const selectedCorrectOptions = answer.filter((id) =>
         correctOptions.includes(id)
@@ -169,8 +119,8 @@ export default function QuizResultDetailPage() {
     );
   }
 
-  const percentage = Math.round((result.score / result.total_questions) * 100);
-  const userName = user?.full_name || user?.email || result.user_id;
+  const percentage = Math.round((result.score / result.totalQuestions) * 100);
+  const userName = user?.fullName || user?.email || result.userId;
 
   return (
     <RoleGuard allowedRoles={["admin"]}>
@@ -191,7 +141,7 @@ export default function QuizResultDetailPage() {
                     : "bg-red-500"
                 }
               >
-                {result.score} / {result.total_questions} ({percentage}%)
+                {result.score} / {result.totalQuestions} ({percentage}%)
               </Badge>
             </div>
           </CardHeader>
@@ -204,12 +154,12 @@ export default function QuizResultDetailPage() {
                     <p className="text-sm text-muted-foreground">
                       Completed On
                     </p>
-                    <p>{new Date(result.completed_at).toLocaleString()}</p>
+                    <p>{new Date(result.completedAt || "").toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Quiz Type</p>
                     <p>
-                      {quiz.is_multiple_choice
+                      {quiz.isMultipleChoice
                         ? "Multiple Choice"
                         : "Single Choice"}
                     </p>
@@ -259,9 +209,9 @@ export default function QuizResultDetailPage() {
                                   <span
                                     className={`
                                     ${isSelected ? "font-medium" : ""}
-                                    ${option.is_correct ? "text-green-600" : ""}
+                                    ${option.isCorrect ? "text-green-600" : ""}
                                     ${
-                                      isSelected && !option.is_correct
+                                      isSelected && !option.isCorrect
                                         ? "text-red-600"
                                         : ""
                                     }
@@ -274,7 +224,7 @@ export default function QuizResultDetailPage() {
                                       Selected
                                     </Badge>
                                   )}
-                                  {option.is_correct && (
+                                  {option.isCorrect && (
                                     <Badge
                                       variant="outline"
                                       className="bg-green-50 text-green-700 border-green-200"

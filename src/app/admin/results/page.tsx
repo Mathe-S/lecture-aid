@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
 import RoleGuard from "@/components/RoleGuard";
 import {
   Card,
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
-import { ProfileRecord, Quiz, QuizResult } from "@/types";
+import { ProfileRecord, Quiz, QuizResult } from "@/db/drizzle/schema";
 
 export default function AdminQuizResultsPage() {
   const [results, setResults] = useState<QuizResult[]>([]);
@@ -34,49 +33,18 @@ export default function AdminQuizResultsPage() {
       try {
         setLoading(true);
 
-        // Fetch all quiz results
-        const { data: resultsData, error: resultsError } = await supabase
-          .from("quiz_results")
-          .select("*")
-          .order("completed_at", { ascending: false });
+        // Fetch all data through our API route
+        const response = await fetch("/api/quiz-results");
 
-        if (resultsError) throw resultsError;
-
-        // Fetch all quizzes to get their titles
-        const { data: quizzesData, error: quizzesError } = await supabase
-          .from("quizzes")
-          .select("id, title");
-
-        if (quizzesError) throw quizzesError;
-
-        // Create a map of quiz IDs to quiz titles
-        const quizzesMap = quizzesData.reduce((acc, quiz) => {
-          acc[quiz.id] = quiz as Quiz;
-          return acc;
-        }, {} as Record<string, Quiz>);
-
-        // Fetch user profiles to display names instead of IDs
-        const userIds = [
-          ...new Set(resultsData.map((result) => result.user_id)),
-        ];
-
-        const { data: usersData, error: usersError } = await supabase
-          .from("profiles")
-          .select("id, email, full_name, avatar_url")
-          .in("id", userIds);
-
-        if (usersError) {
-          console.error("Error fetching user profiles:", usersError);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch results: ${response.statusText}`);
         }
 
-        const usersMap = (usersData || []).reduce((acc, user) => {
-          acc[user.id] = user;
-          return acc;
-        }, {} as Record<string, ProfileRecord>);
+        const data = await response.json();
 
-        setResults(resultsData);
-        setQuizzes(quizzesMap);
-        setUsers(usersMap);
+        setResults(data.results);
+        setQuizzes(data.quizzes);
+        setUsers(data.users);
       } catch (error) {
         console.error("Error fetching quiz results:", error);
       } finally {
@@ -123,31 +91,28 @@ export default function AdminQuizResultsPage() {
                 </TableHeader>
                 <TableBody>
                   {results.map((result) => {
-                    console.log("🚀 ~ {results.map ~ result:", result);
-                    const quiz = quizzes[result.quiz_id] || {
+                    const quiz = quizzes[result.quizId] || {
                       title: "Unknown Quiz",
                     };
-                    const user = users[result.user_id] || {
-                      full_name: "Unknown User",
-                    };
+                    const user = users[result.userId] || {};
                     const percentage = Math.round(
-                      (result.score / result.total_questions) * 100
+                      (result.score / result.totalQuestions) * 100
                     );
 
                     return (
                       <TableRow key={result.id}>
                         <TableCell>{quiz.title}</TableCell>
                         <TableCell>
-                          {user?.full_name ||
+                          {user?.fullName ||
                             user?.email ||
-                            `User (${result.user_id.substring(0, 8)}...)`}
+                            `User (${result.userId.substring(0, 8)}...)`}
                         </TableCell>
                         <TableCell>
-                          {result.score} / {result.total_questions}
+                          {result.score} / {result.totalQuestions}
                         </TableCell>
                         <TableCell>{percentage}%</TableCell>
                         <TableCell>
-                          {new Date(result.completed_at).toLocaleString()}
+                          {new Date(result.completedAt || "").toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <Button

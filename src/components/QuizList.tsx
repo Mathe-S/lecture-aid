@@ -12,8 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Plus, Edit, Trash } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { QuizWithQuestionCount } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { QuizWithQuestionsAndOptions } from "@/db/drizzle/schema";
 
 interface QuizListProps {
   isAdmin?: boolean;
@@ -37,7 +36,7 @@ export default function QuizList({
   title = "Available Quizzes",
   emptyMessage = "No quizzes available at the moment.",
 }: QuizListProps) {
-  const [quizzes, setQuizzes] = useState<QuizWithQuestionCount[]>([]);
+  const [quizzes, setQuizzes] = useState<QuizWithQuestionsAndOptions[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -46,27 +45,15 @@ export default function QuizList({
       try {
         setLoading(true);
 
-        // Option 1: Using a join to get question counts
-        const { data, error } = await supabase
-          .from("quizzes")
-          .select(
-            `
-            *,
-            quiz_questions:quiz_questions(count)
-          `
-          )
-          .order("created_at", { ascending: false });
+        // Use the API route with the includeQuestions parameter
+        const response = await fetch("/api/quizzes?includeQuestions=true");
 
-        if (error) throw error;
+        if (!response.ok) {
+          throw new Error(`Failed to fetch quizzes: ${response.statusText}`);
+        }
 
-        // Transform the data to include question_count
-        const quizzesWithCounts =
-          data?.map((quiz) => ({
-            ...quiz,
-            question_count: quiz.quiz_questions[0]?.count || 0,
-          })) || [];
-
-        setQuizzes(quizzesWithCounts);
+        const data = await response.json();
+        setQuizzes(data);
       } catch (error) {
         console.error("Error fetching quizzes:", error);
       } finally {
@@ -79,7 +66,16 @@ export default function QuizList({
 
   const handleDeleteQuiz = async (quizId: string) => {
     try {
-      await supabase.from("quizzes").delete().eq("id", quizId);
+      // Use the API route for deletion
+      const response = await fetch(`/api/quizzes/${quizId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete quiz: ${response.statusText}`);
+      }
+
+      // Only update UI if API call succeeds
       setQuizzes(quizzes.filter((q) => q.id !== quizId));
     } catch (error) {
       console.error("Error deleting quiz:", error);
@@ -128,13 +124,11 @@ export default function QuizList({
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {quiz.question_count || 0} questions
+                  {quiz.quizQuestions?.length || 0} questions
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Type:{" "}
-                  {quiz.is_multiple_choice
-                    ? "Multiple Choice"
-                    : "Single Choice"}
+                  {quiz.isMultipleChoice ? "Multiple Choice" : "Single Choice"}
                 </p>
               </CardContent>
               <CardFooter>

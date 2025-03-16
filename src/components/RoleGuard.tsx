@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { UserRole } from "@/types";
+import { UserRole } from "@/db/drizzle/schema";
 import { ReactNode } from "react";
 
 type RoleGuardProps = {

@@ -15,12 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash, Save, ArrowLeft } from "lucide-react";
-import { Quiz, QuizQuestionWithOptions } from "@/types";
+import { Quiz, QuizOption, QuizQuestionWithOptions } from "@/db/drizzle/schema";
 
 export default function QuizFormPage() {
   const router = useRouter();
@@ -35,10 +34,10 @@ export default function QuizFormPage() {
     id: "",
     title: "",
     description: "",
-    is_multiple_choice: false,
-    created_by: "",
-    created_at: "",
-    updated_at: "",
+    isMultipleChoice: false,
+    createdAt: "",
+    createdBy: "",
+    updatedAt: "",
   });
   const [questions, setQuestions] = useState<QuizQuestionWithOptions[]>([]);
   const [activeTab, setActiveTab] = useState("details");
@@ -52,26 +51,27 @@ export default function QuizFormPage() {
   async function fetchQuizData(id: string) {
     try {
       setLoading(true);
-      // Fetch quiz details
-      const { data: quizData, error: quizError } = await supabase
-        .from("quizzes")
-        .select("*")
-        .eq("id", id)
-        .single();
 
-      if (quizError) throw quizError;
+      // Use the API route instead of direct Supabase calls
+      const response = await fetch(`/api/quizzes/${id}`);
 
-      // Fetch quiz questions
-      const { data: questionData, error: questionError } = await supabase
-        .from("quiz_questions")
-        .select("*, quiz_options(*)")
-        .eq("quiz_id", id)
-        .order("order_index", { ascending: true });
+      if (!response.ok) {
+        throw new Error(`Error fetching quiz: ${response.statusText}`);
+      }
 
-      if (questionError) throw questionError;
+      const quizData = await response.json();
 
-      setQuiz(quizData);
-      setQuestions(questionData || []);
+      setQuiz({
+        id: quizData.id,
+        title: quizData.title,
+        description: quizData.description,
+        isMultipleChoice: quizData.isMultipleChoice,
+        createdAt: quizData.createdAt,
+        createdBy: quizData.createdBy,
+        updatedAt: quizData.updatedAt,
+      });
+
+      setQuestions(quizData.quizQuestions);
     } catch (error) {
       console.error("Error fetching quiz data:", error);
     } finally {
@@ -83,111 +83,40 @@ export default function QuizFormPage() {
     try {
       setSaving(true);
 
-      let quizResult;
+      // Create the full quiz object with questions and options
+      const quizToSave = {
+        ...quiz,
+        quizQuestions: questions,
+      };
 
-      // Create or update quiz
+      let response;
+
       if (isEditing) {
-        const { data, error } = await supabase
-          .from("quizzes")
-          .update({
-            title: quiz.title,
-            description: quiz.description,
-            is_multiple_choice: quiz.is_multiple_choice,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", quizId)
-          .select()
-          .single();
-
-        if (error) throw error;
-        quizResult = data;
+        // Update existing quiz
+        response = await fetch(`/api/quizzes/${quizId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(quizToSave),
+        });
       } else {
-        const { data, error } = await supabase
-          .from("quizzes")
-          .insert({
-            title: quiz.title,
-            description: quiz.description,
-            is_multiple_choice: quiz.is_multiple_choice,
-            created_by: user?.id as string,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        quizResult = data;
+        // Create new quiz
+        response = await fetch("/api/quizzes", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...quizToSave,
+            createdBy: user?.id as string,
+          }),
+        });
       }
 
-      // Now handle questions and options
-      const currentQuizId = quizResult.id;
-
-      // Process each question
-      for (let i = 0; i < questions.length; i++) {
-        const question = questions[i];
-        const isNewQuestion = question.id.toString().startsWith("temp-");
-        let questionId;
-
-        // Create or update question
-        if (isNewQuestion) {
-          // Create new question
-          const { data: newQuestion, error: questionError } = await supabase
-            .from("quiz_questions")
-            .insert({
-              quiz_id: currentQuizId,
-              text: question.text,
-              order_index: i,
-            })
-            .select()
-            .single();
-
-          if (questionError) throw questionError;
-          questionId = newQuestion.id;
-        } else {
-          // Update existing question
-          const { error: questionError } = await supabase
-            .from("quiz_questions")
-            .update({
-              text: question.text,
-              order_index: i,
-            })
-            .eq("id", question.id);
-
-          if (questionError) throw questionError;
-          questionId = question.id;
-        }
-
-        // Process options for this question
-        if (question.quiz_options && question.quiz_options.length > 0) {
-          for (let j = 0; j < question.quiz_options.length; j++) {
-            const option = question.quiz_options[j];
-            const isNewOption = option.id.toString().startsWith("temp-");
-
-            if (isNewOption) {
-              // Create new option
-              const { error: optionError } = await supabase
-                .from("quiz_options")
-                .insert({
-                  question_id: questionId,
-                  text: option.text,
-                  is_correct: option.is_correct,
-                  order_index: j,
-                });
-
-              if (optionError) throw optionError;
-            } else {
-              // Update existing option
-              const { error: optionError } = await supabase
-                .from("quiz_options")
-                .update({
-                  text: option.text,
-                  is_correct: option.is_correct,
-                  order_index: j,
-                })
-                .eq("id", option.id);
-
-              if (optionError) throw optionError;
-            }
-          }
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save quiz");
       }
 
       router.push("/admin/quizzes");
@@ -204,28 +133,28 @@ export default function QuizFormPage() {
       {
         id: `temp-${Date.now()}`,
         text: "",
-        order_index: questions.length,
-        quiz_id: "",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        quiz_options: [
+        orderIndex: questions.length,
+        quizId: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        quizOptions: [
           {
             id: `temp-option-${Date.now()}`,
-            question_id: "",
+            questionId: "",
             text: "",
-            is_correct: true,
-            order_index: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            isCorrect: true,
+            orderIndex: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           },
           {
             id: `temp-option-${Date.now() + 1}`,
             text: "",
-            is_correct: false,
-            order_index: 1,
-            question_id: "",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            isCorrect: false,
+            orderIndex: 1,
+            questionId: "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           },
         ],
       },
@@ -297,9 +226,9 @@ export default function QuizFormPage() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="multiple-choice"
-                      checked={quiz.is_multiple_choice}
+                      checked={quiz.isMultipleChoice || false}
                       onCheckedChange={(checked) =>
-                        setQuiz({ ...quiz, is_multiple_choice: checked })
+                        setQuiz({ ...quiz, isMultipleChoice: checked })
                       }
                     />
                     <Label htmlFor="multiple-choice">
@@ -356,74 +285,76 @@ export default function QuizFormPage() {
                           <CardContent>
                             <Label className="mb-2 block">Options</Label>
                             <div className="space-y-2">
-                              {question.quiz_options.map((option, oIndex) => (
-                                <div
-                                  key={option.id}
-                                  className="flex items-center gap-2"
-                                >
-                                  <div className="flex-1">
-                                    <Input
-                                      value={option.text}
-                                      onChange={(e) => {
-                                        const newQuestions = [...questions];
-                                        newQuestions[qIndex].quiz_options[
-                                          oIndex
-                                        ].text = e.target.value;
-                                        setQuestions(newQuestions);
-                                      }}
-                                      placeholder={`Option ${oIndex + 1}`}
-                                    />
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Switch
-                                      checked={option.is_correct}
-                                      onCheckedChange={(checked) => {
-                                        const newQuestions = [...questions];
-
-                                        // For single choice, uncheck all other options
-                                        if (
-                                          !quiz.is_multiple_choice &&
-                                          checked
-                                        ) {
-                                          newQuestions[
-                                            qIndex
-                                          ].quiz_options.forEach((opt, i) => {
-                                            newQuestions[qIndex].quiz_options[
-                                              i
-                                            ].is_correct = i === oIndex;
-                                          });
-                                        } else {
-                                          newQuestions[qIndex].quiz_options[
+                              {question.quizOptions.map(
+                                (option: QuizOption, oIndex: number) => (
+                                  <div
+                                    key={option.id}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <div className="flex-1">
+                                      <Input
+                                        value={option.text}
+                                        onChange={(e) => {
+                                          const newQuestions = [...questions];
+                                          newQuestions[qIndex].quizOptions[
                                             oIndex
-                                          ].is_correct = checked;
-                                        }
+                                          ].text = e.target.value;
+                                          setQuestions(newQuestions);
+                                        }}
+                                        placeholder={`Option ${oIndex + 1}`}
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Switch
+                                        checked={option.isCorrect || false}
+                                        onCheckedChange={(checked) => {
+                                          const newQuestions = [...questions];
 
-                                        setQuestions(newQuestions);
-                                      }}
-                                    />
-                                    <Label>Correct</Label>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        const newQuestions = [...questions];
-                                        newQuestions[qIndex].quiz_options =
-                                          newQuestions[
-                                            qIndex
-                                          ].quiz_options.filter(
-                                            (_, i) => i !== oIndex
-                                          );
-                                        setQuestions(newQuestions);
-                                      }}
-                                      disabled={
-                                        question.quiz_options.length <= 2
-                                      }
-                                    >
-                                      <Trash size={16} />
-                                    </Button>
+                                          // For single choice, uncheck all other options
+                                          if (
+                                            !quiz.isMultipleChoice &&
+                                            checked
+                                          ) {
+                                            newQuestions[
+                                              qIndex
+                                            ].quizOptions.forEach((opt, i) => {
+                                              newQuestions[qIndex].quizOptions[
+                                                i
+                                              ].isCorrect = i === oIndex;
+                                            });
+                                          } else {
+                                            newQuestions[qIndex].quizOptions[
+                                              oIndex
+                                            ].isCorrect = checked;
+                                          }
+
+                                          setQuestions(newQuestions);
+                                        }}
+                                      />
+                                      <Label>Correct</Label>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          const newQuestions = [...questions];
+                                          newQuestions[qIndex].quizOptions =
+                                            newQuestions[
+                                              qIndex
+                                            ].quizOptions.filter(
+                                              (_, i) => i !== oIndex
+                                            );
+                                          setQuestions(newQuestions);
+                                        }}
+                                        disabled={
+                                          question.quizOptions.length <= 2
+                                        }
+                                      >
+                                        <Trash size={16} />
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                )
+                              )}
                             </div>
                             <Button
                               variant="outline"
@@ -431,15 +362,15 @@ export default function QuizFormPage() {
                               className="mt-2"
                               onClick={() => {
                                 const newQuestions = [...questions];
-                                newQuestions[qIndex].quiz_options.push({
+                                newQuestions[qIndex].quizOptions.push({
                                   id: `temp-option-${Date.now()}`,
                                   text: "",
-                                  is_correct: false,
-                                  order_index:
-                                    newQuestions[qIndex].quiz_options.length,
-                                  question_id: question.id,
-                                  created_at: new Date().toISOString(),
-                                  updated_at: new Date().toISOString(),
+                                  isCorrect: false,
+                                  orderIndex:
+                                    newQuestions[qIndex].quizOptions.length,
+                                  questionId: question.id,
+                                  createdAt: new Date().toISOString(),
+                                  updatedAt: new Date().toISOString(),
                                 });
                                 setQuestions(newQuestions);
                               }}

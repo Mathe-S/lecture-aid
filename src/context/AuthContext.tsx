@@ -1,15 +1,17 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { Session, User, UserAttributes } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { UserAttributes, UserRole } from "@/types";
+import { supabase } from "@/lib/supabase";
+
+// Remove direct database imports!
+// import { getUserRole, updateUserProfile as updateDbUserProfile } from "@/lib/userService";
 
 type AuthContextType = {
   user: User | null;
-  role: UserRole | null;
+  role: string | null;
   session: Session | null;
   isLoading: boolean;
   signInWithGitHub: () => Promise<void>;
@@ -21,10 +23,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  // Fetch user role via API route
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const response = await fetch("/api/auth/user-role", {
+        headers: {
+          "x-user-id": userId,
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch user role");
+
+      const data = await response.json();
+      return data.role;
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const setupAuth = async () => {
@@ -36,14 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user || null);
 
         if (session?.user) {
-          // Fetch user role
-          const { data } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-
-          setRole(data?.role || null);
+          // Use API route to fetch user role
+          const userRole = await fetchUserRole(session.user.id);
+          setRole(userRole);
         }
       } catch (error) {
         console.error("Error setting up auth:", error);
@@ -54,19 +70,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Set up auth state listener
       const {
         data: { subscription },
-      } = await supabase.auth.onAuthStateChange(async (event, session) => {
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
         setSession(session);
         setUser(session?.user || null);
 
         if (session?.user) {
-          // Fetch user role
-          const { data } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-
-          setRole(data?.role || null);
+          // Use API route to fetch user role
+          const userRole = await fetchUserRole(session.user.id);
+          setRole(userRole);
         } else {
           setRole(null);
         }
@@ -129,23 +140,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (userError) throw userError;
 
-      // Also update the profiles table
+      // Use API route to update the profile
       if (userData.user) {
-        const { error: profileError } = await supabase.from("profiles").upsert(
-          {
-            id: userData.user.id,
-            email: userData.user.email,
-            name: userData.user.user_metadata?.name,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "id",
-            ignoreDuplicates: false,
-          }
-        );
+        try {
+          const response = await fetch("/api/auth/update-profile", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: userData.user.id,
+              email: userData.user.email,
+              fullName: userData.user.user_metadata?.name,
+              avatarUrl: userData.user.user_metadata?.avatar_url,
+              updatedAt: new Date().toISOString(),
+            }),
+          });
 
-        if (profileError) {
-          console.error("Error updating profile:", profileError);
+          if (!response.ok) {
+            console.error("Error updating profile:", await response.text());
+          }
+        } catch (error) {
+          console.error("Error updating profile:", error);
           // We don't throw here to avoid breaking auth updates if profile update fails
         }
       }

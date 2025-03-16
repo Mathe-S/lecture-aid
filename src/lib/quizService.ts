@@ -1,114 +1,110 @@
+import { eq } from "drizzle-orm";
+import db from "@/db";
 import {
   QuizOption,
   QuizQuestionWithOptions,
-  QuizWithQuestions,
-} from "@/types";
-import { supabase } from "./supabase";
+  quizzes,
+  quizQuestions,
+  quizOptions,
+  QuizWithQuestionsAndOptions,
+} from "@/db/drizzle/schema";
 
 export async function getQuizzes() {
-  const { data, error } = await supabase
-    .from("quizzes")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return data;
+  return await db.query.quizzes.findMany({
+    orderBy: (quizzes, { desc }) => [desc(quizzes.createdAt)],
+  });
 }
 
 export async function getQuizById(id: string) {
-  const { data, error } = await supabase
-    .from("quizzes")
-    .select("*")
-    .eq("id", id)
-    .single();
+  return await db.query.quizzes.findFirst({
+    where: eq(quizzes.id, id),
+  });
+}
 
-  if (error) throw error;
-  return data;
+export async function getQuizzesWithQuestions() {
+  return await db.query.quizzes.findMany({
+    orderBy: (quizzes, { desc }) => [desc(quizzes.createdAt)],
+    with: {
+      quizQuestions: {
+        orderBy: (questions, { asc }) => [asc(questions.orderIndex)],
+      },
+    },
+  });
 }
 
 export async function getQuizWithQuestions(
   id: string
-): Promise<QuizWithQuestions> {
-  // Get quiz
-  const { data: quiz, error: quizError } = await supabase
-    .from("quizzes")
-    .select("*")
-    .eq("id", id)
-    .single();
+): Promise<QuizWithQuestionsAndOptions> {
+  try {
+    const quiz = await db.query.quizzes.findFirst({
+      where: eq(quizzes.id, id),
+      with: {
+        quizQuestions: {
+          with: {
+            quizOptions: true,
+          },
+          orderBy: (questions, { asc }) => [asc(questions.orderIndex)],
+        },
+      },
+    });
+    console.log("🚀 ~ quiz:", quiz);
 
-  if (quizError) throw quizError;
+    if (!quiz) throw new Error("Quiz not found");
 
-  // Get questions with options
-  const { data: questions, error: questionsError } = await supabase
-    .from("quiz_questions")
-    .select(
-      `
-      *,
-      quiz_options(*)
-    `
-    )
-    .eq("quiz_id", id)
-    .order("order_index", { ascending: true });
-
-  if (questionsError) throw questionsError;
-
-  // Sort options by order_index
-  questions.forEach((question) => {
-    question.quiz_options.sort(
-      (a: QuizOption, b: QuizOption) => a.order_index - b.order_index
-    );
-  });
-
-  return { ...quiz, questions };
+    return quiz as QuizWithQuestionsAndOptions;
+  } catch (error) {
+    console.error("Error fetching quiz:", error);
+    throw error;
+  }
 }
 
-export async function createQuiz(quizData: QuizWithQuestions, userId: string) {
+export async function createQuiz(
+  quizData: QuizWithQuestionsAndOptions,
+  userId: string
+) {
   // Create quiz
-  const { data: quiz, error: quizError } = await supabase
-    .from("quizzes")
-    .insert({
+  const [quiz] = await db
+    .insert(quizzes)
+    .values({
       title: quizData.title,
       description: quizData.description,
-      is_multiple_choice: quizData.is_multiple_choice,
-      created_by: userId,
+      isMultipleChoice: quizData.isMultipleChoice,
+      createdBy: userId,
     })
-    .select()
-    .single();
-
-  if (quizError) throw quizError;
+    .returning();
 
   // Create questions and options if provided
-  if (quizData.questions && quizData.questions.length > 0) {
-    await createQuestionsWithOptions(quiz.id, quizData.questions);
+  if (quizData.quizQuestions && quizData.quizQuestions.length > 0) {
+    await createQuestionsWithOptions(quiz.id, quizData.quizQuestions);
   }
 
   return quiz;
 }
 
-export async function updateQuiz(id: string, quizData: QuizWithQuestions) {
+export async function updateQuiz(
+  id: string,
+  quizData: QuizWithQuestionsAndOptions
+) {
   // Update quiz
-  const { data: quiz, error: quizError } = await supabase
-    .from("quizzes")
-    .update({
+  const [quiz] = await db
+    .update(quizzes)
+    .set({
       title: quizData.title,
       description: quizData.description,
-      is_multiple_choice: quizData.is_multiple_choice,
-      updated_at: new Date().toISOString(),
+      isMultipleChoice: quizData.isMultipleChoice,
+      updatedAt: new Date().toISOString(),
     })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (quizError) throw quizError;
+    .where(eq(quizzes.id, id))
+    .returning();
 
   // Handle questions update if provided
-  if (quizData.questions) {
+  if (quizData.quizQuestions) {
     // First delete existing questions (cascade will delete options)
-    await supabase.from("quiz_questions").delete().eq("quiz_id", id);
+    await db.delete(quizQuestions).where(eq(quizQuestions.quizId, id));
 
     // Then create new questions with options
-    if (quizData.questions.length > 0) {
-      await createQuestionsWithOptions(id, quizData.questions);
+    if (quizData.quizQuestions.length > 0) {
+      await createQuestionsWithOptions(id, quizData.quizQuestions);
     }
   }
 
@@ -116,9 +112,7 @@ export async function updateQuiz(id: string, quizData: QuizWithQuestions) {
 }
 
 export async function deleteQuiz(id: string) {
-  const { error } = await supabase.from("quizzes").delete().eq("id", id);
-
-  if (error) throw error;
+  await db.delete(quizzes).where(eq(quizzes.id, id));
   return true;
 }
 
@@ -130,34 +124,27 @@ async function createQuestionsWithOptions(
     const question = questions[i];
 
     // Create question
-    const { data: createdQuestion, error: questionError } = await supabase
-      .from("quiz_questions")
-      .insert({
-        quiz_id: quizId,
+    const [createdQuestion] = await db
+      .insert(quizQuestions)
+      .values({
+        quizId,
         text: question.text,
-        order_index: i,
+        orderIndex: i,
       })
-      .select()
-      .single();
-
-    if (questionError) throw questionError;
+      .returning();
 
     // Create options for this question
-    if (question.quiz_options && question.quiz_options.length > 0) {
-      const optionsToInsert = question.quiz_options.map(
+    if (question.quizOptions && question.quizOptions.length > 0) {
+      const optionsToInsert = question.quizOptions.map(
         (option: QuizOption, index: number) => ({
-          question_id: createdQuestion.id,
+          questionId: createdQuestion.id,
           text: option.text,
-          is_correct: option.is_correct,
-          order_index: index,
+          isCorrect: option.isCorrect,
+          orderIndex: index,
         })
       );
 
-      const { error: optionsError } = await supabase
-        .from("quiz_options")
-        .insert(optionsToInsert);
-
-      if (optionsError) throw optionsError;
+      await db.insert(quizOptions).values(optionsToInsert);
     }
   }
 }
