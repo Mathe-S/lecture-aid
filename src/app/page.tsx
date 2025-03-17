@@ -10,22 +10,37 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Github, Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
+import { getAuthStatus } from "@/hooks/useAuth";
 
 export default function Home() {
   const { user, signInWithGitHub, isLoading } = useAuth();
+  const authStatus = getAuthStatus(user, isLoading);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    if (user && !isLoading) {
+    if (authStatus === "authenticated") {
       router.push("/dashboard");
     }
-  }, [user, isLoading, router]);
+  }, [authStatus, router]);
 
-  if (user) {
+  const handleSignIn = async () => {
+    setIsAuthenticating(true);
+    try {
+      await signInWithGitHub();
+    } catch (error) {
+      // Error is handled in the hook, just reset loading state
+      setIsAuthenticating(false);
+    }
+  };
+
+  const showLoader = isAuthenticating;
+
+  if (authStatus === "loading" || authStatus === "authenticated") {
     return null;
   }
 
@@ -55,11 +70,11 @@ export default function Home() {
         <CardContent>
           <Button
             variant="outline"
-            onClick={signInWithGitHub}
+            onClick={handleSignIn}
             className="w-full py-6 border-slate-300 hover:bg-slate-100 cursor-pointer transition-all"
-            disabled={isLoading}
+            disabled={showLoader}
           >
-            {isLoading ? (
+            {showLoader ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Connecting to GitHub...

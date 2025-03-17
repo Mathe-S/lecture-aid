@@ -4,12 +4,34 @@ import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { MessageSquare, ThumbsUp, Heart, Smile, Pin } from "lucide-react";
+import {
+  MessageSquare,
+  ThumbsUp,
+  Heart,
+  Smile,
+  Pin,
+  Trash2,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ChatMessageWithReplies } from "@/types/chat";
-import { useToggleReaction, useTogglePin } from "@/hooks/useChat";
+import {
+  useToggleReaction,
+  useTogglePin,
+  useDeleteMessage,
+} from "@/hooks/useChat";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ChatMessageProps {
   message: ChatMessageWithReplies;
@@ -32,10 +54,14 @@ export function ChatMessage({
   isPinned = false,
   showPin = true,
 }: ChatMessageProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { mutate: toggleReaction } = useToggleReaction();
   const { mutate: togglePin } = useTogglePin();
+  const { mutate: deleteMessageMutation } = useDeleteMessage();
   const [showReplies, setShowReplies] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const isAdmin = role === "admin";
 
   // Check if the current user has reacted with each reaction type
   const hasReacted = (reaction: string) => {
@@ -63,6 +89,19 @@ export function ChatMessage({
       messageId: message.id,
       chatRoomId: message.chatRoomId,
     });
+  };
+
+  const handleDelete = () => {
+    setIsDeleting(true);
+    deleteMessageMutation(
+      { messageId: message.id },
+      {
+        onSettled: () => {
+          setIsDeleting(false);
+          setDeleteDialogOpen(false);
+        },
+      }
+    );
   };
 
   return (
@@ -241,6 +280,50 @@ export function ChatMessage({
           <MessageSquare className="h-4 w-4 mr-1" />
           Reply
         </Button>
+
+        {isAdmin && (
+          <AlertDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+          >
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Message</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this message? This action
+                  cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive hover:bg-destructive/90"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <span className="animate-pulse mr-2">•••</span>
+                      Deleting
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </CardFooter>
     </Card>
   );

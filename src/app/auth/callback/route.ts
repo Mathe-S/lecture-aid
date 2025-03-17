@@ -3,21 +3,44 @@ import { supabaseForServer } from "@/utils/supabase/server";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get("code");
+  try {
+    const requestUrl = new URL(request.url);
+    const code = requestUrl.searchParams.get("code");
+    const error = requestUrl.searchParams.get("error");
+    const error_description = requestUrl.searchParams.get("error_description");
 
-  if (code) {
-    const supabase = await supabaseForServer();
-    try {
-      await supabase.auth.exchangeCodeForSession(code);
-    } catch (error) {
-      console.error("Error exchanging code for session:", error);
+    // Check for OAuth errors
+    if (error) {
+      console.error("OAuth error:", error, error_description);
       return NextResponse.redirect(
-        `${requestUrl.origin}/login?error=auth_callback_failed`
+        `${requestUrl.origin}/?error=${encodeURIComponent(
+          error
+        )}&error_description=${encodeURIComponent(error_description || "")}`
       );
     }
-  }
 
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(`${requestUrl.origin}/dashboard`);
+    // No code, redirect to home
+    if (!code) {
+      return NextResponse.redirect(requestUrl.origin);
+    }
+
+    // Exchange the code for a session
+    const supabase = await supabaseForServer();
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
+      code
+    );
+
+    if (exchangeError) {
+      console.error("Error exchanging code for session:", exchangeError);
+      return NextResponse.redirect(
+        `${requestUrl.origin}/?error=auth_callback_failed`
+      );
+    }
+
+    // Successful login, redirect to dashboard
+    return NextResponse.redirect(`${requestUrl.origin}/dashboard`);
+  } catch (error) {
+    console.error("Unexpected error in auth callback:", error);
+    return NextResponse.redirect("/");
+  }
 }

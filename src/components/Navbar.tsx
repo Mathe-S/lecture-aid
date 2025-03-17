@@ -21,6 +21,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import NProgress from "nprogress";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
@@ -69,6 +70,20 @@ export default function Navbar() {
   // Helper function to navigate
   const navigateTo = (href: string) => {
     router.push(href);
+  };
+
+  const handleSignOut = async () => {
+    // Show loading indicator
+    NProgress.start();
+
+    try {
+      await signOut();
+      // The redirect will be handled in the onSuccess callback
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Force reload as a fallback
+      window.location.href = "/";
+    }
   };
 
   return (
@@ -139,7 +154,7 @@ export default function Navbar() {
 
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={signOut}
+                    onClick={handleSignOut}
                     className="cursor-pointer"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
