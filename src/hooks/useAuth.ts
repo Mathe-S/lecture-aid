@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { UserAttributes } from "@supabase/supabase-js";
+import { User, UserAttributes } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { useState } from "react";
 
 // Query key factory
 export const authKeys = {
@@ -54,9 +55,17 @@ export function useSession() {
   return useQuery({
     queryKey: authKeys.session(),
     queryFn: async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      return data.session;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        // Don't throw on missing session, just return null
+        if (error && !error.message.includes("session")) {
+          throw error;
+        }
+        return data.session;
+      } catch (error) {
+        console.error("Session fetch error:", error);
+        return null;
+      }
     },
   });
 }
@@ -68,9 +77,17 @@ export function useUser() {
   return useQuery({
     queryKey: authKeys.user(),
     queryFn: async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) throw error;
-      return data.user;
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        // Don't throw on auth errors, just return null
+        if (error && !error.message.includes("auth")) {
+          throw error;
+        }
+        return data.user;
+      } catch (error) {
+        console.error("User fetch error:", error);
+        return null;
+      }
     },
   });
 }
@@ -95,32 +112,37 @@ export function useIsAdmin() {
 
 // Sign in with GitHub
 export function useGithubAuth() {
-  const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  return useMutation({
-    mutationFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "github",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+  return {
+    mutateAsync: async () => {
+      try {
+        setIsRedirecting(true);
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "github",
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
 
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data?.url) {
-        window.location.href = data.url;
+        if (error) throw error;
+
+        if (data?.url) {
+          window.location.href = data.url;
+        }
+
+        return data;
+      } catch (error: any) {
+        toast.error("Authentication Error", {
+          description: error.message || "Failed to sign in with GitHub",
+        });
+        setIsRedirecting(false);
+        throw error;
       }
     },
-    onError: (error: Error) => {
-      toast.error("Authentication Error", {
-        description: error.message || "Failed to sign in with GitHub",
-      });
-    },
-  });
+    isLoading: isRedirecting,
+  };
 }
 
 // Sign out
@@ -130,20 +152,34 @@ export function useSignOut() {
 
   return useMutation({
     mutationFn: async () => {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      return true;
+      try {
+        // Clear React Query cache
+        queryClient.clear();
+
+        // Call server-side sign out
+        await fetch("/api/auth/signout", { method: "POST" });
+
+        // Also sign out on client side
+        const supabase = createClient();
+        await supabase.auth.signOut();
+
+        return true;
+      } catch (error) {
+        console.error("Sign out error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
-      // Invalidate auth queries
-      queryClient.invalidateQueries({ queryKey: authKeys.all });
-      router.push("/");
+      // Hard reload the page instead of using Next.js router
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast.error("Sign Out Error", {
         description: error.message || "Failed to sign out",
       });
+
+      // Even on error, force refresh
+      window.location.href = "/";
     },
   });
 }
@@ -200,4 +236,11 @@ export function useAuthState() {
     isAuthenticated: !!user,
     isAdmin: role === "admin",
   };
+}
+
+// Helper function to check auth status more reliably
+export function getAuthStatus(user: User | null, isLoading: boolean) {
+  if (isLoading) return "loading";
+  if (user) return "authenticated";
+  return "unauthenticated";
 }

@@ -10,7 +10,7 @@ import {
 import { supabaseForServer } from "@/utils/supabase/server";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { checkAdminRole, getAuthenticatedUser } from "@/lib/authUtils";
+import { checkAdminRole } from "@/lib/authUtils";
 
 export async function sendMessage({
   chatRoomId,

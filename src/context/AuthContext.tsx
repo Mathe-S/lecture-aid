@@ -32,7 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: isUserLoading } = useUser();
   const { data: session, isLoading: isSessionLoading } = useSession();
   const { data: role, isLoading: isRoleLoading } = useUserRole(user?.id);
-  const { mutateAsync: signInWithGitHubMutation } = useGithubAuth();
+  const { mutateAsync: signInWithGitHubMutation, isLoading: isGithubLoading } =
+    useGithubAuth();
   const { mutateAsync: signOutMutation } = useSignOut();
   const { mutateAsync: updateProfileMutation } = useUpdateProfile();
 
@@ -55,10 +56,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [router, supabase.auth, queryClient]);
 
-  const isLoading = isUserLoading || isSessionLoading || isRoleLoading;
+  // Total loading state
+  const isLoading =
+    isUserLoading || isSessionLoading || isRoleLoading || isGithubLoading;
 
   const signInWithGitHub = async () => {
-    await signInWithGitHubMutation();
+    try {
+      await signInWithGitHubMutation();
+    } catch (error) {
+      console.error("GitHub sign in error:", error);
+    }
   };
 
   const signOut = async () => {

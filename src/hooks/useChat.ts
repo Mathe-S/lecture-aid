@@ -9,6 +9,7 @@ import {
   sendMessage,
   toggleReaction,
   togglePinMessage,
+  deleteMessage,
 } from "@/app/api/actions/chat";
 import {
   ChatMessageWithReplies,
@@ -174,6 +175,85 @@ export function useTogglePin() {
       toast.error("Failed to update pin status", {
         description: error.message,
       });
+    },
+  });
+}
+
+// Delete message with optimistic updates
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId }: { messageId: string }) => {
+      const result = await deleteMessage({ messageId });
+      if (!result.success) {
+        throw new Error(result.error || "Failed to delete message");
+      }
+      return result;
+    },
+    // Apply optimistic update before server responds
+    onMutate: async ({ messageId }) => {
+      // Cancel any outgoing refetches to avoid overwriting our optimistic update
+      await queryClient.cancelQueries({ queryKey: chatKeys.all });
+
+      // Get all messages from the cache
+      const previousMessages = queryClient.getQueryData<
+        Map<string, ChatMessageWithReplies[]>
+      >(chatKeys.all);
+
+      // Find the chatRoomId for this message
+      let chatRoomId: string | null = null;
+
+      // Update all cached message queries to remove the deleted message
+      queryClient.setQueriesData({ queryKey: chatKeys.all }, (old: any) => {
+        if (!old) return old;
+
+        if (Array.isArray(old)) {
+          // Remove the message from the array
+          const result = old.filter((msg) => {
+            if (msg.id === messageId) {
+              chatRoomId = msg.chatRoomId;
+              return false;
+            }
+
+            // Also filter out this message from any replies arrays
+            if (msg.replies) {
+              msg.replies = msg.replies.filter(
+                (reply: ChatMessageWithReplies) => reply.id !== messageId
+              );
+            }
+
+            return true;
+          });
+
+          return result;
+        }
+
+        return old;
+      });
+
+      // Return the previous messages so we can revert if there's an error
+      return { previousMessages, chatRoomId };
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, revert back to the previous messages
+      if (context?.previousMessages) {
+        queryClient.setQueryData(chatKeys.all, context.previousMessages);
+      }
+
+      toast.error("Failed to delete message", {
+        description: err.message,
+      });
+    },
+    onSettled: (data, error, variables, context) => {
+      // Always refetch after error or success to make sure our local data is correct
+      if (context?.chatRoomId) {
+        queryClient.invalidateQueries({
+          queryKey: chatKeys.messages(context.chatRoomId),
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: chatKeys.all });
+      }
     },
   });
 }
