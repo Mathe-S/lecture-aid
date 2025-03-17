@@ -12,7 +12,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, LogOut, User, BookOpen, Shield } from "lucide-react";
+import {
+  Menu,
+  LogOut,
+  User,
+  BookOpen,
+  Shield,
+  MessageSquare,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
@@ -36,6 +43,8 @@ export default function Navbar() {
     // Only when logged in
     { label: "Dashboard", href: "/dashboard", showWhen: !!user },
     { label: "Quizzes", href: "/quizzes", showWhen: !!user },
+    // Add Chat item
+    { label: "Chat", href: "/chat", showWhen: !!user },
     // Admin only
     { label: "Admin", href: "/admin", showWhen: role === "admin" },
     { label: "Results", href: "/admin/results", showWhen: role === "admin" },
@@ -45,6 +54,8 @@ export default function Navbar() {
   const userMenuItems = [
     { label: "Dashboard", href: "/dashboard", icon: User },
     { label: "Quizzes", href: "/quizzes", icon: BookOpen },
+    // Add Chat item to the dropdown menu
+    { label: "Chat", href: "/chat", icon: MessageSquare },
     // Admin only items
     { label: "Admin", href: "/admin", icon: Shield, adminOnly: true },
     {
