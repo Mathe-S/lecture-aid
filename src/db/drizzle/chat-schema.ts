@@ -1,13 +1,11 @@
 import {
   pgTable,
-  serial,
   uuid,
   varchar,
   text,
   timestamp,
   boolean,
-  primaryKey,
-  foreignKey,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { profiles } from "./schema"; // Assuming this is where your user profiles are defined
@@ -38,7 +36,9 @@ export const chatMessages = pgTable("chat_messages", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   isEdited: boolean("is_edited").default(false),
   // For reply functionality
-  parentMessageId: uuid("parent_message_id").references(() => chatMessages.id),
+  parentMessageId: uuid("parent_message_id").references(
+    (): any => chatMessages.id
+  ),
 });
 
 // Reactions table
@@ -52,17 +52,16 @@ export const messageReactions = pgTable(
     userId: uuid("user_id")
       .references(() => profiles.id)
       .notNull(),
-    reaction: varchar("reaction", { length: 20 }).notNull(), // e.g., 'like', 'heart', 'laugh'
+    reaction: varchar("reaction", { length: 20 }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => {
-    // Ensure a user can only react once with a specific reaction to a message
-    return {
-      uniqReaction: primaryKey({
-        columns: [table.messageId, table.userId, table.reaction],
-      }),
-    };
-  }
+  (table) => [
+    uniqueIndex("message_reaction_unique").on(
+      table.messageId,
+      table.userId,
+      table.reaction
+    ),
+  ]
 );
 
 // Pinned messages table
@@ -81,14 +80,9 @@ export const pinnedMessages = pgTable(
       .notNull(),
     pinnedAt: timestamp("pinned_at").defaultNow().notNull(),
   },
-  (table) => {
-    // Ensure a message can only be pinned once in a chat room
-    return {
-      uniqPinnedMessage: primaryKey({
-        columns: [table.messageId, table.chatRoomId],
-      }),
-    };
-  }
+  (table) => [
+    uniqueIndex("pinned_message_unique").on(table.messageId, table.chatRoomId),
+  ]
 );
 
 // Define relations

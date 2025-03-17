@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
-import { Loader2, MessageSquare, Plus, Search } from "lucide-react";
+import { Loader2, MessageSquare, Search } from "lucide-react";
 import { ChatRoom } from "@/types/chat";
 import { CreateChatRoomModal } from "@/components/chat/CreateChatRoomModal";
 

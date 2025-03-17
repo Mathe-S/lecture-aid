@@ -49,7 +49,7 @@ export function CreateChatRoomModal() {
       setIsOpen(false);
 
       // Navigate to the new chat room
-      router.push(`/chat/${result.data.id}`);
+      router.push(`/chat/${result.data?.id}`);
     } catch (error: any) {
       toast.error("Failed to create chat room", {
         description: error.message,

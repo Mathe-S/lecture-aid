@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  UseQueryResult,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   sendMessage,
@@ -10,6 +15,7 @@ import {
   SendMessageRequest,
   ReactionRequest,
   PinMessageRequest,
+  PinnedMessageWithMessage,
 } from "@/types/chat";
 import { useAuth } from "@/context/AuthContext";
 
@@ -48,7 +54,9 @@ export function useChatMessages(chatRoomId: string) {
 }
 
 // Hook to fetch pinned messages for a chat room
-export function usePinnedMessages(chatRoomId: string) {
+export function usePinnedMessages(
+  chatRoomId: string
+): UseQueryResult<PinnedMessageWithMessage[], Error> {
   const { user } = useAuth();
 
   return useQuery({

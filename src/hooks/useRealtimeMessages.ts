@@ -4,8 +4,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { chatKeys } from "@/hooks/useChat";
-import { ChatMessage, ChatMessageWithReplies } from "@/types/chat";
-import { toast } from "sonner";
+import { ChatMessageWithReplies } from "@/types/chat";
 
 export function useRealtimeMessages(chatRoomId: string) {
   const queryClient = useQueryClient();
@@ -15,7 +14,7 @@ export function useRealtimeMessages(chatRoomId: string) {
     if (!chatRoomId) return;
 
     // Subscribe to new messages
-    const messageSubscription = supabase
+    supabase
       .channel(`chat:${chatRoomId}`)
       .on(
         "postgres_changes",
@@ -79,7 +78,7 @@ export function useRealtimeMessages(chatRoomId: string) {
       .subscribe();
 
     // Subscribe to reactions
-    const reactionSubscription = supabase
+    supabase
       .channel(`reactions:${chatRoomId}`)
       .on(
         "postgres_changes",
@@ -99,7 +98,7 @@ export function useRealtimeMessages(chatRoomId: string) {
       .subscribe();
 
     // Subscribe to pinned messages
-    const pinnedSubscription = supabase
+    supabase
       .channel(`pinned:${chatRoomId}`)
       .on(
         "postgres_changes",

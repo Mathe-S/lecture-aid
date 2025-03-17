@@ -50,3 +50,7 @@ export type PinMessageRequest = {
   messageId: string;
   chatRoomId: string;
 };
+
+export type PinnedMessageWithMessage = PinnedMessage & {
+  message: ChatMessageWithAuthor;
+};

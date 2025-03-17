@@ -1,7 +1,6 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 import { ChatRoomsList } from "@/components/chat/ChatRoomsList";
 import { useRealtimeMessages } from "@/hooks/useRealtimeMessages";

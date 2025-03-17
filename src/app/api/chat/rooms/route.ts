@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import db from "@/db";
 import { supabaseForServer } from "@/utils/supabase/server";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // Auth check
     const supabase = await supabaseForServer();
