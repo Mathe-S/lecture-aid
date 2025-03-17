@@ -33,6 +33,7 @@ export default function Home() {
     try {
       await signInWithGitHub();
     } catch (error) {
+      console.error("Error signing in with GitHub:", error);
       // Error is handled in the hook, just reset loading state
       setIsAuthenticating(false);
     }

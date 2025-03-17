@@ -170,8 +170,7 @@ export function useSignOut() {
       }
     },
     onSuccess: () => {
-      // Hard reload the page instead of using Next.js router
-      window.location.href = "/";
+      router.refresh();
     },
     onError: (error: Error) => {
       toast.error("Sign Out Error", {
@@ -179,7 +178,7 @@ export function useSignOut() {
       });
 
       // Even on error, force refresh
-      window.location.href = "/";
+      router.refresh();
     },
   });
 }

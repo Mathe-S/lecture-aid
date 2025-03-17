@@ -66,7 +66,7 @@ export function QueryClientProvider({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         // Clear all queries when signed out
         queryClient.clear();

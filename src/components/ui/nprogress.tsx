@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import NProgress from "nprogress";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 // Import styles (add to your main CSS file or create a new one)
 // import "nprogress/nprogress.css";
@@ -26,7 +26,6 @@ const progressStyles = `
 
 export function GlobalLoadingIndicator() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     // Configure NProgress
@@ -45,7 +44,7 @@ export function GlobalLoadingIndicator() {
     return () => {
       NProgress.start();
     };
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   return (
     <style jsx global>
