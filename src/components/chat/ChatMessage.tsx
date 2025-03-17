@@ -4,12 +4,21 @@ import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { MessageSquare, ThumbsUp, Heart, Smile, Pin } from "lucide-react";
+import {
+  MessageSquare,
+  ThumbsUp,
+  Heart,
+  Smile,
+  Pin,
+  Trash2,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ChatMessageWithReplies } from "@/types/chat";
 import { useToggleReaction, useTogglePin } from "@/hooks/useChat";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { deleteMessage } from "@/app/api/actions/chat";
+import { toast } from "sonner";
 
 interface ChatMessageProps {
   message: ChatMessageWithReplies;
@@ -32,10 +41,11 @@ export function ChatMessage({
   isPinned = false,
   showPin = true,
 }: ChatMessageProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { mutate: toggleReaction } = useToggleReaction();
   const { mutate: togglePin } = useTogglePin();
   const [showReplies, setShowReplies] = useState(false);
+  const isAdmin = role === "admin";
 
   // Check if the current user has reacted with each reaction type
   const hasReacted = (reaction: string) => {
@@ -63,6 +73,15 @@ export function ChatMessage({
       messageId: message.id,
       chatRoomId: message.chatRoomId,
     });
+  };
+
+  const handleDelete = async () => {
+    if (confirm("Are you sure you want to delete this message?")) {
+      const result = await deleteMessage({ messageId: message.id });
+      if (!result.success) {
+        toast.error(result.error || "Failed to delete message");
+      }
+    }
   };
 
   return (
@@ -241,6 +260,18 @@ export function ChatMessage({
           <MessageSquare className="h-4 w-4 mr-1" />
           Reply
         </Button>
+
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDelete}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

@@ -10,6 +10,7 @@ import {
 import { supabaseForServer } from "@/utils/supabase/server";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { checkAdminRole, getAuthenticatedUser } from "@/lib/authUtils";
 
 export async function sendMessage({
   chatRoomId,
@@ -200,6 +201,43 @@ export async function createChatRoom({
     return {
       success: false,
       error: error.message || "Failed to create chat room",
+    };
+  }
+}
+
+export async function deleteMessage({ messageId }: { messageId: string }) {
+  try {
+    // Use the admin check utility
+    const adminCheck = await checkAdminRole();
+
+    if (!adminCheck.success) {
+      return {
+        success: false,
+        error: adminCheck.error,
+      };
+    }
+
+    // Get the message to find its chat room (for revalidation)
+    const message = await db.query.chatMessages.findFirst({
+      where: eq(chatMessages.id, messageId),
+    });
+
+    if (!message) {
+      return { success: false, error: "Message not found" };
+    }
+
+    // Delete the message
+    await db.delete(chatMessages).where(eq(chatMessages.id, messageId));
+
+    // Revalidate the chat page to update the UI
+    revalidatePath(`/chat/${message.chatRoomId}`);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting message:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to delete message",
     };
   }
 }

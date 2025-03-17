@@ -31,8 +31,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-slate-50`}
       >
-        <AuthProvider>
-          <QueryClientProvider>
+        <QueryClientProvider>
+          <AuthProvider>
             <div className="flex flex-col min-h-screen">
               <Navbar />
               <main className="flex-grow">{children}</main>
@@ -43,8 +43,8 @@ export default function RootLayout({
               </footer>
             </div>
             <Toaster />
-          </QueryClientProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </QueryClientProvider>
       </body>
     </html>
   );

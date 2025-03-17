@@ -54,3 +54,7 @@ export type PinMessageRequest = {
 export type PinnedMessageWithMessage = PinnedMessage & {
   message: ChatMessageWithAuthor;
 };
+
+export type DeleteMessageRequest = {
+  messageId: string;
+};
