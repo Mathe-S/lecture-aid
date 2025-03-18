@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClientProvider } from "@/providers/QueryClientProvider";
 import { GlobalLoadingIndicator } from "@/components/ui/nprogress";
+import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
       >
         <GlobalLoadingIndicator />
         <QueryClientProvider>
+          <Analytics />
           <AuthProvider>
             <div className="flex flex-col min-h-screen">
               <Navbar />
