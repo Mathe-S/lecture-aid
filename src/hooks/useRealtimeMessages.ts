@@ -13,9 +13,14 @@ export function useRealtimeMessages(chatRoomId: string) {
   useEffect(() => {
     if (!chatRoomId) return;
 
+    // Instead of hardcoded channel names, use more unique identifiers
+    const messagesChannel = `chat:${chatRoomId}`;
+    const reactionsChannel = `reactions:${chatRoomId}`;
+    const pinnedChannel = `pinned:${chatRoomId}`;
+
     // Subscribe to new messages
     supabase
-      .channel(`chat:${chatRoomId}`)
+      .channel(messagesChannel)
       .on(
         "postgres_changes",
         {
@@ -79,7 +84,7 @@ export function useRealtimeMessages(chatRoomId: string) {
 
     // Subscribe to reactions
     supabase
-      .channel(`reactions:${chatRoomId}`)
+      .channel(reactionsChannel)
       .on(
         "postgres_changes",
         {
@@ -99,7 +104,7 @@ export function useRealtimeMessages(chatRoomId: string) {
 
     // Subscribe to pinned messages
     supabase
-      .channel(`pinned:${chatRoomId}`)
+      .channel(pinnedChannel)
       .on(
         "postgres_changes",
         {
@@ -118,9 +123,9 @@ export function useRealtimeMessages(chatRoomId: string) {
 
     // Cleanup subscriptions on unmount
     return () => {
-      supabase.channel(`chat:${chatRoomId}`).unsubscribe();
-      supabase.channel(`reactions:${chatRoomId}`).unsubscribe();
-      supabase.channel(`pinned:${chatRoomId}`).unsubscribe();
+      supabase.channel(messagesChannel).unsubscribe();
+      supabase.channel(reactionsChannel).unsubscribe();
+      supabase.channel(pinnedChannel).unsubscribe();
     };
   }, [chatRoomId, queryClient, supabase]);
 

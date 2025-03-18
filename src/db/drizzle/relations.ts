@@ -7,6 +7,8 @@ import {
   quizOptions,
   quizResults,
   profiles,
+  assignments,
+  assignmentSubmissions,
 } from "./schema";
 
 export const userRolesRelations = relations(userRoles, ({ one }) => ({
@@ -21,6 +23,10 @@ export const usersInAuthRelations = relations(usersInAuth, ({ many }) => ({
   quizzes: many(quizzes),
   quizResults: many(quizResults),
   profiles: many(profiles),
+  createdAssignments: many(assignments, { relationName: "creator" }),
+  assignmentSubmissions: many(assignmentSubmissions, {
+    relationName: "student",
+  }),
 }));
 
 export const quizzesRelations = relations(quizzes, ({ one, many }) => ({
@@ -67,3 +73,25 @@ export const profilesRelations = relations(profiles, ({ one }) => ({
     references: [usersInAuth.id],
   }),
 }));
+
+export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
+  creator: one(usersInAuth, {
+    fields: [assignments.createdBy],
+    references: [usersInAuth.id],
+  }),
+  submissions: many(assignmentSubmissions),
+}));
+
+export const assignmentSubmissionsRelations = relations(
+  assignmentSubmissions,
+  ({ one }) => ({
+    assignment: one(assignments, {
+      fields: [assignmentSubmissions.assignmentId],
+      references: [assignments.id],
+    }),
+    student: one(usersInAuth, {
+      fields: [assignmentSubmissions.userId],
+      references: [usersInAuth.id],
+    }),
+  })
+);

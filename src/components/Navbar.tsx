@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -46,6 +46,7 @@ export default function Navbar() {
     { label: "Quizzes", href: "/quizzes", showWhen: !!user },
     // Add Chat item
     { label: "Chat", href: "/chat", showWhen: !!user },
+    { label: "Assignments", href: "/assignments", showWhen: !!user },
     // Admin only
     { label: "Admin", href: "/admin", showWhen: role === "admin" },
     { label: "Results", href: "/admin/results", showWhen: role === "admin" },
@@ -57,6 +58,7 @@ export default function Navbar() {
     { label: "Quizzes", href: "/quizzes", icon: BookOpen },
     // Add Chat item to the dropdown menu
     { label: "Chat", href: "/chat", icon: MessageSquare },
+    { label: "Assignments", href: "/assignments", icon: BookOpen },
     // Admin only items
     { label: "Admin", href: "/admin", icon: Shield, adminOnly: true },
     {

@@ -244,6 +244,129 @@ export const profiles = pgTable(
   ]
 );
 
+export const assignments = pgTable(
+  "assignments",
+  {
+    id: uuid()
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    title: text().notNull(),
+    description: text(),
+    dueDate: timestamp("due_date", { withTimezone: true, mode: "string" }),
+    createdBy: uuid("created_by").notNull(),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "string",
+    }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: "assignments_created_by_fkey",
+    }),
+    pgPolicy("Everyone can view assignments", {
+      as: "permissive",
+      for: "select",
+      to: ["authenticated"],
+      using: sql`true`,
+    }),
+    pgPolicy("Only lecturers and admins can create assignments", {
+      as: "permissive",
+      for: "insert",
+      to: ["authenticated"],
+      withCheck: sql`(
+        EXISTS (
+          SELECT 1 FROM user_roles 
+          WHERE user_roles.id = auth.uid() 
+          AND user_roles.role IN ('lecturer', 'admin')
+        )
+      )`,
+    }),
+    pgPolicy("Only lecturers and admins can update assignments", {
+      as: "permissive",
+      for: "update",
+      to: ["authenticated"],
+      using: sql`(
+        EXISTS (
+          SELECT 1 FROM user_roles 
+          WHERE user_roles.id = auth.uid() 
+          AND user_roles.role IN ('lecturer', 'admin')
+        )
+      )`,
+    }),
+  ]
+);
+
+export const assignmentSubmissions = pgTable(
+  "assignment_submissions",
+  {
+    id: uuid()
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    assignmentId: uuid("assignment_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    repositoryUrl: text("repository_url").notNull(),
+    repositoryName: text("repository_name"),
+    feedback: text(),
+    grade: integer(),
+    submittedAt: timestamp("submitted_at", {
+      withTimezone: true,
+      mode: "string",
+    }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.assignmentId],
+      foreignColumns: [assignments.id],
+      name: "assignment_submissions_assignment_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "assignment_submissions_user_id_fkey",
+    }).onDelete("cascade"),
+    unique("assignment_submissions_user_id_assignment_id_key").on(
+      table.userId,
+      table.assignmentId
+    ),
+    pgPolicy("Students can submit their own assignments", {
+      as: "permissive",
+      for: "insert",
+      to: ["authenticated"],
+      withCheck: sql`(user_id = auth.uid())`,
+    }),
+    pgPolicy("Students can update their own submissions", {
+      as: "permissive",
+      for: "update",
+      to: ["authenticated"],
+      using: sql`(user_id = auth.uid())`,
+      withCheck: sql`(user_id = auth.uid() AND grade IS NULL)`,
+    }),
+    pgPolicy("Everyone can view submissions", {
+      as: "permissive",
+      for: "select",
+      to: ["authenticated"],
+    }),
+    pgPolicy("Lecturers and admins can grade submissions", {
+      as: "permissive",
+      for: "update",
+      to: ["authenticated"],
+      using: sql`(
+        EXISTS (
+          SELECT 1 FROM user_roles 
+          WHERE user_roles.id = auth.uid() 
+          AND user_roles.role IN ('lecturer', 'admin')
+        )
+      )`,
+    }),
+  ]
+);
+
 export type Quiz = typeof quizzes.$inferSelect;
 export type QuizQuestion = typeof quizQuestions.$inferSelect;
 export type QuizOption = typeof quizOptions.$inferSelect;
@@ -269,3 +392,7 @@ export function isQuestionMultipleChoice(
 ): boolean {
   return question.quizOptions.filter((option) => option.isCorrect).length > 1;
 }
+
+// Add new types
+export type Assignment = typeof assignments.$inferSelect;
+export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;

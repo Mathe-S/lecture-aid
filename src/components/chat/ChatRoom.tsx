@@ -7,7 +7,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { PinnedMessages } from "@/components/chat/PinnedMessages";
 import { ChatMessageWithReplies } from "@/types/chat";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
