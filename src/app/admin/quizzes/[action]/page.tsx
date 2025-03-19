@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash, Save, ArrowLeft, Loader2 } from "lucide-react";
 import { Quiz, QuizOption, QuizQuestionWithOptions } from "@/db/drizzle/schema";
 import { useQuiz, useCreateQuiz, useUpdateQuiz } from "@/hooks/useQuizzes";
+import RichTextEditor from "@/components/RichTextEditor";
 
 export default function QuizFormPage() {
   const router = useRouter();
@@ -215,12 +216,12 @@ export default function QuizFormPage() {
                                 <Trash size={16} />
                               </Button>
                             </div>
-                            <Input
+                            <RichTextEditor
                               id={`question-${qIndex}`}
                               value={question.text}
-                              onChange={(e) => {
+                              onChange={(content) => {
                                 const newQuestions = [...questions];
-                                newQuestions[qIndex].text = e.target.value;
+                                newQuestions[qIndex].text = content;
                                 setQuestions(newQuestions);
                               }}
                               placeholder="Enter question text"

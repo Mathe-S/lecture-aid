@@ -22,6 +22,19 @@ import { saveQuizResult } from "@/app/api/actions/quiz-results";
 import { isQuestionMultipleChoice } from "@/db/drizzle/schema";
 import { toast } from "sonner";
 
+interface HTMLContentProps {
+  html: string;
+}
+
+function HTMLContent({ html }: HTMLContentProps) {
+  return (
+    <div
+      className="prose prose-sm max-w-none dark:prose-invert"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 export default function TakeQuizPage() {
   const params = useParams();
   const router = useRouter();
@@ -237,7 +250,11 @@ export default function TakeQuizPage() {
                     >
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base">
-                          Question {qIndex + 1}: {question.text}
+                          {/* Question {qIndex + 1}: {question.text} */}
+                          <div className="flex gap-2">
+                            <span>Question {qIndex + 1}:</span>
+                            <HTMLContent html={question.text} />
+                          </div>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -309,7 +326,11 @@ export default function TakeQuizPage() {
                   <Card key={question.id} className="border border-muted">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base">
-                        Question {qIndex + 1}: {question.text}
+                        {/* Question {qIndex + 1}: {question.text} */}
+                        <div className="flex gap-2">
+                          <span>Question {qIndex + 1}:</span>
+                          <HTMLContent html={question.text} />
+                        </div>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
