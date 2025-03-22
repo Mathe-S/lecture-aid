@@ -72,10 +72,10 @@ export default function AssignmentsPage() {
                 {assignment.description && (
                   <p className="text-slate-600">{assignment.description}</p>
                 )}
-                {assignment.dueDate && (
+                {assignment.due_date && (
                   <div className="flex items-center mt-2 text-sm text-slate-500">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    Due: {format(new Date(assignment.dueDate), "PPP")}
+                    Due: {format(new Date(assignment.due_date), "PPP")}
                   </div>
                 )}
               </CardContent>

@@ -76,7 +76,7 @@ export const profilesRelations = relations(profiles, ({ one }) => ({
 
 export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
   creator: one(usersInAuth, {
-    fields: [assignments.createdBy],
+    fields: [assignments.created_by],
     references: [usersInAuth.id],
   }),
   submissions: many(assignmentSubmissions),

@@ -253,9 +253,9 @@ export const assignments = pgTable(
       .notNull(),
     title: text().notNull(),
     description: text(),
-    dueDate: timestamp("due_date", { withTimezone: true, mode: "string" }),
-    createdBy: uuid("created_by").notNull(),
-    createdAt: timestamp("created_at", {
+    due_date: timestamp("due_date", { withTimezone: true, mode: "string" }),
+    created_by: uuid("created_by").notNull(),
+    created_at: timestamp("created_at", {
       withTimezone: true,
       mode: "string",
     }).defaultNow(),
@@ -263,7 +263,7 @@ export const assignments = pgTable(
   },
   (table) => [
     foreignKey({
-      columns: [table.createdBy],
+      columns: [table.created_by],
       foreignColumns: [users.id],
       name: "assignments_created_by_fkey",
     }),

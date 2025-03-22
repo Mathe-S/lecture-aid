@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -56,56 +55,12 @@ export function AssignmentForm() {
     }
 
     try {
-      // First ensure user has lecturer role
-      const supabase = createClient();
-
-      // Check current user role
-      const { data: roleData, error: roleError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (roleError && roleError.code !== "PGRST116") {
-        // PGRST116 is "no rows found"
-        console.error("Error checking role:", roleError);
-        toast.error("Error checking user role");
-        return;
-      }
-
-      // If no role exists or role isn't lecturer/admin, set it
-      if (!roleData || !["lecturer", "admin"].includes(roleData.role)) {
-        console.log("Setting user role to lecturer");
-        const { error: insertError } = await supabase
-          .from("user_roles")
-          .upsert({
-            id: user.id,
-            role: "lecturer",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-
-        if (insertError) {
-          console.error("Error setting role:", insertError);
-          toast.error("Could not set user role");
-          return;
-        }
-
-        // Give a moment for the role to propagate
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-
-      // Now create assignment using snake_case column names
-      const assignmentData = {
+      await createAssignment.mutateAsync({
         title: values.title,
         description: values.description || null,
         due_date: values.dueDate ? values.dueDate.toISOString() : null,
         created_by: user.id,
-      };
-
-      console.log("Sending assignment data:", assignmentData);
-
-      await createAssignment.mutateAsync(assignmentData as any);
+      });
 
       toast.success("Assignment created successfully");
       form.reset();

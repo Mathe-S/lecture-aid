@@ -83,10 +83,10 @@ export default function AssignmentDetailPage() {
             <p className="mb-4">{assignment.description}</p>
           )}
           <div className="flex flex-col sm:flex-row sm:gap-6 text-sm text-slate-500">
-            {assignment.dueDate && (
+            {assignment.due_date && (
               <div className="flex items-center mb-2 sm:mb-0">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                Due: {format(new Date(assignment.dueDate), "PPP")}
+                Due: {format(new Date(assignment.due_date), "PPP")}
               </div>
             )}
             <div className="flex items-center">
