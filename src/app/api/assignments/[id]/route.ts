@@ -4,6 +4,7 @@ import {
   deleteAssignment,
 } from "@/lib/assignmentService";
 import { NextRequest, NextResponse } from "next/server";
+import { supabaseForServer } from "@/utils/supabase/server";
 
 export async function GET(
   request: NextRequest,
@@ -55,6 +56,31 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Get the current user from the auth context
+    const supabase = await supabaseForServer();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if the user is an admin
+    const { data: userRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!userRole || userRole.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden: Only admins can delete assignments" },
+        { status: 403 }
+      );
+    }
+
     await deleteAssignment(id);
     return NextResponse.json({ success: true });
   } catch (error) {

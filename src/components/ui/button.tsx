@@ -10,11 +10,13 @@ export const buttonVariants = cva(
         default: "bg-indigo-600 text-white hover:bg-indigo-700",
         outline: "border border-indigo-200 bg-transparent hover:bg-indigo-50",
         ghost: "bg-transparent hover:bg-indigo-50",
+        destructive: "bg-red-600 text-white hover:bg-red-700",
       },
       size: {
         default: "h-10 py-2 px-4",
         sm: "h-9 px-3",
         lg: "h-11 px-8",
+        icon: "h-10 w-10 p-2",
       },
     },
     defaultVariants: {

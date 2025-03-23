@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -39,7 +40,7 @@ export function AssignmentForm() {
   const { user } = useAuth();
   const createAssignment = useCreateAssignment();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-
+  const router = useRouter();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,6 +65,7 @@ export function AssignmentForm() {
 
       toast.success("Assignment created successfully");
       form.reset();
+      router.push("/assignments");
     } catch (error) {
       console.error("Assignment creation error:", error);
       toast.error("Failed to create assignment");

@@ -1,28 +1,63 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useAssignment } from "@/hooks/useAssignments";
+import { useAssignment, useDeleteAssignment } from "@/hooks/useAssignments";
 import { useAssignmentSubmissions } from "@/hooks/useSubmissions";
 import { SubmitAssignment } from "@/components/submit-assignment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, CalendarIcon, User, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarIcon,
+  User,
+  Loader2,
+  PenSquare,
+  Trash2,
+} from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/ui/data-table";
 import { SubmissionsColumns } from "./columns";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
   const { role } = useAuth();
   const { data: assignment, isLoading } = useAssignment(id);
   const { data: submissions, isLoading: isLoadingSubmissions } =
     useAssignmentSubmissions(id);
+  const deleteAssignment = useDeleteAssignment();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  const isAdmin = role === "admin";
   const isLecturerOrAdmin = role === "lecturer" || role === "admin";
+
+  const handleDelete = async () => {
+    try {
+      await deleteAssignment.mutateAsync(id);
+      toast.success("Assignment deleted successfully");
+      router.push("/assignments");
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast.error("Failed to delete assignment");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -65,13 +100,55 @@ export default function AssignmentDetailPage() {
 
   return (
     <div className="container mx-auto py-10">
-      <div className="mb-6">
+      <div className="flex justify-between items-center mb-6">
         <Link href="/assignments">
           <Button variant="ghost" className="pl-0">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Assignments
           </Button>
         </Link>
+
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Link href={`/assignments/edit/${id}`}>
+              <Button variant="outline">
+                <PenSquare className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            </Link>
+
+            <AlertDialog
+              open={showDeleteDialog}
+              onOpenChange={setShowDeleteDialog}
+            >
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this assignment? This action
+                    cannot be undone. All submissions related to this assignment
+                    will also be deleted.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleteAssignment.isPending ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
 
       <Card className="mb-8">

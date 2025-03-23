@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useAssignments } from "@/hooks/useAssignments";
+import { useAssignments, useDeleteAssignment } from "@/hooks/useAssignments";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,16 +10,47 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CalendarIcon, PlusCircle } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 export default function AssignmentsPage() {
   const { role } = useAuth();
   const { data: assignments, isLoading } = useAssignments();
+  const deleteAssignment = useDeleteAssignment();
+  const [assignmentToDelete, setAssignmentToDelete] = useState<string | null>(
+    null
+  );
 
   const isLecturerOrAdmin = role === "lecturer" || role === "admin";
+  const isAdmin = role === "admin";
+
+  const handleDelete = async () => {
+    if (!assignmentToDelete) return;
+
+    try {
+      await deleteAssignment.mutateAsync(assignmentToDelete);
+      toast.success("Assignment deleted successfully");
+      setAssignmentToDelete(null);
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast.error("Failed to delete assignment");
+    }
+  };
 
   return (
     <div className="container mx-auto py-10">
@@ -79,12 +110,52 @@ export default function AssignmentsPage() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex justify-between">
                 <Link href={`/assignments/${assignment.id}`}>
                   <Button variant="outline">
                     {role === "student" ? "Submit" : "View Details"}
                   </Button>
                 </Link>
+
+                {isAdmin && (
+                  <AlertDialog
+                    open={assignmentToDelete === assignment.id}
+                    onOpenChange={(open) => {
+                      if (!open) setAssignmentToDelete(null);
+                    }}
+                  >
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => setAssignmentToDelete(assignment.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this assignment? This
+                          action cannot be undone. All submissions related to
+                          this assignment will also be deleted.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDelete}
+                          className="bg-destructive  hover:bg-destructive/90"
+                        >
+                          {deleteAssignment.isPending
+                            ? "Deleting..."
+                            : "Delete"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </CardFooter>
             </Card>
           ))}
