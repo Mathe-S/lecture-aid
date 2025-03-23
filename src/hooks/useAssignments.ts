@@ -106,7 +106,6 @@ export function useGradeSubmission() {
 
   return useMutation({
     mutationFn: ({
-      assignmentId,
       submissionId,
       feedback,
       grade,
@@ -115,13 +114,7 @@ export function useGradeSubmission() {
       submissionId: string;
       feedback: string;
       grade: number;
-    }) =>
-      assignmentApi.gradeSubmission(
-        assignmentId,
-        submissionId,
-        feedback,
-        grade
-      ),
+    }) => assignmentApi.gradeSubmission(submissionId, feedback, grade),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: assignmentKeys.submissions(variables.assignmentId),

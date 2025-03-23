@@ -62,12 +62,20 @@ export async function getSubmissionsByAssignment(assignmentId: string) {
   return await db.query.assignmentSubmissions.findMany({
     where: eq(assignmentSubmissions.assignmentId, assignmentId),
     orderBy: (submissions, { desc }) => [desc(submissions.submittedAt)],
+    with: {
+      profile: true,
+      assignment: true,
+    },
   });
 }
 
 export async function getSubmissionById(id: string) {
   return await db.query.assignmentSubmissions.findFirst({
     where: eq(assignmentSubmissions.id, id),
+    with: {
+      profile: true,
+      assignment: true,
+    },
   });
 }
 

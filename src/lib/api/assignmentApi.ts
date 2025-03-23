@@ -1,4 +1,8 @@
-import { Assignment, AssignmentSubmission } from "@/db/drizzle/schema";
+import {
+  Assignment,
+  AssignmentSubmission,
+  AssignmentSubmissionWithProfile,
+} from "@/db/drizzle/schema";
 
 // API Responses
 export type GetAssignmentResponse = Assignment;
@@ -84,7 +88,7 @@ export const assignmentApi = {
   // Assignment submissions
   getSubmissions: async (
     assignmentId: string
-  ): Promise<AssignmentSubmission[]> => {
+  ): Promise<AssignmentSubmissionWithProfile[]> => {
     const response = await fetch(
       `/api/assignments/${assignmentId}/submissions`
     );
@@ -96,7 +100,10 @@ export const assignmentApi = {
   },
 
   submitAssignment: async (
-    submission: Omit<AssignmentSubmission, "id" | "submittedAt" | "updatedAt">
+    submission: Omit<
+      AssignmentSubmission,
+      "id" | "submittedAt" | "updatedAt" | "feedback" | "grade"
+    >
   ): Promise<AssignmentSubmission> => {
     const response = await fetch(
       `/api/assignments/${submission.assignmentId}/submissions`,
@@ -116,25 +123,49 @@ export const assignmentApi = {
   },
 
   gradeSubmission: async (
-    assignmentId: string,
     submissionId: string,
     feedback: string,
     grade: number
   ): Promise<AssignmentSubmission> => {
-    const response = await fetch(
-      `/api/assignments/${assignmentId}/submissions/${submissionId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feedback, grade }),
-      }
-    );
+    const response = await fetch(`/api/submissions/${submissionId}/grade`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedback, grade }),
+    });
 
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to grade submission");
     }
 
+    return response.json();
+  },
+
+  getSubmission: async (
+    submissionId: string
+  ): Promise<AssignmentSubmissionWithProfile> => {
+    const response = await fetch(`/api/submissions/${submissionId}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch submission");
+    }
+    return response.json();
+  },
+
+  getUserSubmission: async (
+    assignmentId: string,
+    userId: string
+  ): Promise<AssignmentSubmission | null> => {
+    const response = await fetch(
+      `/api/assignments/${assignmentId}/submissions/user/${userId}`
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch user submission");
+    }
     return response.json();
   },
 };

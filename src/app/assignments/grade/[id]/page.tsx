@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useGradeSubmission, useSubmission } from "@/hooks/useSubmissions";
 import RoleGuard from "@/components/RoleGuard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,82 +18,52 @@ export default function GradeSubmissionPage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const [grade, setGrade] = useState<string>("");
   const [feedback, setFeedback] = useState<string>("");
 
   // Fetch submission details
-  const { data: submission, isLoading } = useQuery({
-    queryKey: ["assignmentSubmissions", "detail", id],
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("assignment_submissions")
-        .select(
-          `
-          *,
-          profiles(full_name, email),
-          assignments(title)
-        `
-        )
-        .eq("id", id)
-        .single();
+  const { data: submission, isLoading } = useSubmission(id);
 
-      if (error) throw error;
-
-      // Initialize form with existing values
-      if (data.grade !== null) {
-        setGrade(data.grade.toString());
+  useEffect(() => {
+    if (submission) {
+      if (submission.grade !== null) {
+        setGrade(submission.grade.toString());
       }
-      if (data.feedback) {
-        setFeedback(data.feedback);
+      if (submission.feedback) {
+        setFeedback(submission.feedback);
       }
-
-      return data;
-    },
-  });
+    }
+  }, [submission]);
 
   // Save grade mutation
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const gradeNum = parseInt(grade);
-      if (isNaN(gradeNum)) {
-        toast.error("Grade must be a number");
-        return;
+  const gradeMutation = useGradeSubmission();
+
+  const handleSubmit = () => {
+    const gradeNum = parseInt(grade);
+    if (isNaN(gradeNum)) {
+      toast.error("Grade must be a number");
+      return;
+    }
+
+    gradeMutation.mutate(
+      {
+        submissionId: id,
+        feedback,
+        grade: gradeNum,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Feedback and grade saved successfully");
+          if (submission?.assignmentId) {
+            router.push(`/assignments/${submission.assignmentId}`);
+          } else {
+            router.push("/assignments");
+          }
+        },
       }
-
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("assignment_submissions")
-        .update({
-          grade: gradeNum,
-          feedback: feedback,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      toast.success("Feedback and grade saved successfully");
-
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({
-        queryKey: ["assignmentSubmissions"],
-      });
-
-      // Navigate back to assignment page
-      router.push(`/assignments/${data.assignmentId}`);
-    },
-    onError: (error) => {
-      toast.error("Failed to save feedback and grade");
-      console.error(error);
-    },
-  });
+    );
+  };
 
   if (isLoading) {
     return (
@@ -151,8 +120,7 @@ export default function GradeSubmissionPage() {
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>
-                Grade Submission:{" "}
-                {submission.assignments?.title || "Assignment"}
+                Grade Submission: {submission.assignment?.title || "Assignment"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -162,11 +130,11 @@ export default function GradeSubmissionPage() {
                     Student
                   </h3>
                   <p className="mt-1">
-                    {submission.profiles?.full_name || "Unnamed Student"}
+                    {submission.profile?.fullName || "Unnamed Student"}
                   </p>
-                  {submission.profiles?.email && (
+                  {submission.profile?.email && (
                     <p className="text-sm text-slate-500">
-                      {submission.profiles.email}
+                      {submission.profile.email}
                     </p>
                   )}
                 </div>
@@ -193,7 +161,7 @@ export default function GradeSubmissionPage() {
                   </h3>
                   <p className="mt-1">
                     {format(
-                      new Date(submission.submittedAt),
+                      new Date(submission.submittedAt || ""),
                       "PPP 'at' h:mm a"
                     )}
                   </p>
@@ -233,11 +201,11 @@ export default function GradeSubmissionPage() {
             </CardContent>
             <CardContent className="pt-0">
               <Button
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending}
+                onClick={handleSubmit}
+                disabled={gradeMutation.isPending}
                 className="w-full sm:w-auto"
               >
-                {saveMutation.isPending ? (
+                {gradeMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving...

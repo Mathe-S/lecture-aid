@@ -67,11 +67,12 @@ export const quizResultsRelations = relations(quizResults, ({ one }) => ({
   }),
 }));
 
-export const profilesRelations = relations(profiles, ({ one }) => ({
+export const profilesRelations = relations(profiles, ({ one, many }) => ({
   usersInAuth: one(usersInAuth, {
     fields: [profiles.id],
     references: [usersInAuth.id],
   }),
+  submissions: many(assignmentSubmissions),
 }));
 
 export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
@@ -92,6 +93,10 @@ export const assignmentSubmissionsRelations = relations(
     student: one(usersInAuth, {
       fields: [assignmentSubmissions.userId],
       references: [usersInAuth.id],
+    }),
+    profile: one(profiles, {
+      fields: [assignmentSubmissions.userId],
+      references: [profiles.id],
     }),
   })
 );

@@ -396,3 +396,7 @@ export function isQuestionMultipleChoice(
 // Add new types
 export type Assignment = typeof assignments.$inferSelect;
 export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
+export type AssignmentSubmissionWithProfile = AssignmentSubmission & {
+  profile: Profile;
+  assignment: Assignment;
+};

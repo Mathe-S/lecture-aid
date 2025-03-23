@@ -1,15 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AssignmentSubmission } from "@/db/drizzle/schema";
-import { createClient } from "@/utils/supabase/client";
 import { getUserRepositories } from "@/lib/github-service";
 import { useAuth } from "@/context/AuthContext";
+import { assignmentApi } from "@/lib/api/assignmentApi";
 
 // Define query keys
 export const submissionKeys = {
   all: ["assignmentSubmissions"] as const,
   lists: (assignmentId: string) =>
     [...submissionKeys.all, assignmentId] as const,
-  detail: (assignmentId: string, userId: string) =>
+  detail: (submissionId: string) =>
+    [...submissionKeys.all, "detail", submissionId] as const,
+  userSubmission: (assignmentId: string, userId: string) =>
     [...submissionKeys.lists(assignmentId), userId] as const,
 };
 
@@ -33,19 +35,21 @@ export function useGitHubRepositories() {
 export function useAssignmentSubmissions(assignmentId: string | undefined) {
   return useQuery({
     queryKey: submissionKeys.lists(assignmentId || ""),
-    queryFn: async () => {
-      if (!assignmentId) return [];
-
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("assignment_submissions")
-        .select("*, profiles(full_name, email)")
-        .eq("assignmentId", assignmentId);
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () =>
+      assignmentId ? assignmentApi.getSubmissions(assignmentId) : [],
     enabled: !!assignmentId,
+  });
+}
+
+// Get specific submission by ID
+export function useSubmission(submissionId: string | undefined) {
+  return useQuery({
+    queryKey: submissionKeys.detail(submissionId || ""),
+    queryFn: async () => {
+      if (!submissionId) return null;
+      return assignmentApi.getSubmission(submissionId);
+    },
+    enabled: !!submissionId,
   });
 }
 
@@ -55,20 +59,10 @@ export function useUserSubmission(
   userId: string | undefined
 ) {
   return useQuery({
-    queryKey: submissionKeys.detail(assignmentId || "", userId || ""),
+    queryKey: submissionKeys.userSubmission(assignmentId || "", userId || ""),
     queryFn: async () => {
       if (!assignmentId || !userId) return null;
-
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("assignment_submissions")
-        .select("*")
-        .eq("assignmentId", assignmentId)
-        .eq("userId", userId)
-        .single();
-
-      if (error && error.code !== "PGRST116") throw error; // PGRST116 is "no rows returned" error
-      return data as AssignmentSubmission | null;
+      return assignmentApi.getUserSubmission(assignmentId, userId);
     },
     enabled: !!assignmentId && !!userId,
   });
@@ -79,33 +73,43 @@ export function useSubmitAssignment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
+    mutationFn: (
       submission: Omit<
         AssignmentSubmission,
         "id" | "submittedAt" | "updatedAt" | "feedback" | "grade"
       >
-    ) => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("assignment_submissions")
-        .upsert({
-          assignmentId: submission.assignmentId,
-          userId: submission.userId,
-          repositoryUrl: submission.repositoryUrl,
-          repositoryName: submission.repositoryName,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as AssignmentSubmission;
-    },
+    ) => assignmentApi.submitAssignment(submission),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: submissionKeys.lists(data.assignmentId),
       });
       queryClient.invalidateQueries({
-        queryKey: submissionKeys.detail(data.assignmentId, data.userId),
+        queryKey: submissionKeys.userSubmission(data.assignmentId, data.userId),
+      });
+    },
+  });
+}
+
+// Grade a submission
+export function useGradeSubmission() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      submissionId,
+      feedback,
+      grade,
+    }: {
+      submissionId: string;
+      feedback: string;
+      grade: number;
+    }) => assignmentApi.gradeSubmission(submissionId, feedback, grade),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: submissionKeys.detail(data.id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: submissionKeys.lists(data.assignmentId),
       });
     },
   });
