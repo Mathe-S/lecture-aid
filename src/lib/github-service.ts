@@ -1,4 +1,4 @@
-import { User } from "@supabase/supabase-js";
+import { Session } from "@supabase/supabase-js";
 
 interface GitHubRepo {
   id: number;
@@ -12,14 +12,14 @@ interface GitHubRepo {
 }
 
 export async function getUserRepositories(
-  user: User | null
+  session: Session | null
 ): Promise<GitHubRepo[]> {
-  if (!user) {
+  if (!session) {
     throw new Error("Not authenticated");
   }
 
-  // Get GitHub token from user metadata
-  const provider_token = user.app_metadata?.provider_token;
+  // Get GitHub token from session metadata
+  const provider_token = session?.provider_token;
 
   if (!provider_token) {
     throw new Error("No GitHub access token found");

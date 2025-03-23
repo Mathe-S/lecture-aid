@@ -20,12 +20,12 @@ export const githubKeys = {
 
 // Get user's GitHub repositories
 export function useGitHubRepositories() {
-  const { user } = useAuth();
+  const { session } = useAuth();
 
   return useQuery({
     queryKey: githubKeys.repos(),
-    queryFn: () => getUserRepositories(user),
-    enabled: !!user,
+    queryFn: () => getUserRepositories(session),
+    enabled: !!session,
   });
 }
 

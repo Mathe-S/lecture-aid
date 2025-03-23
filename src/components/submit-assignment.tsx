@@ -36,7 +36,7 @@ export function SubmitAssignment({
   assignmentId,
   assignmentTitle,
 }: SubmitAssignmentProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const userId = user?.id;
 
   const { data: repositories, isLoading: isLoadingRepos } =
@@ -51,9 +51,7 @@ export function SubmitAssignment({
     existingSubmission?.repositoryUrl || ""
   );
   const [isManualEntry, setIsManualEntry] = useState<boolean>(
-    !repositories?.some(
-      (repo) => repo.html_url === existingSubmission?.repositoryUrl
-    )
+    !!existingSubmission?.repositoryUrl
   );
 
   const handleSubmit = async () => {
@@ -151,7 +149,7 @@ export function SubmitAssignment({
             variant={isManualEntry ? "outline" : "default"}
             size="sm"
             onClick={() => setIsManualEntry(false)}
-            disabled={!user?.app_metadata?.provider_token}
+            disabled={!session?.provider_token}
           >
             <Github className="h-4 w-4 mr-2" />
             Select from GitHub
