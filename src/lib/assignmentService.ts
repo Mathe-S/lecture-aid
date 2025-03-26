@@ -122,3 +122,18 @@ export async function deleteSubmission(id: string) {
     .where(eq(assignmentSubmissions.id, id));
   return true;
 }
+
+export async function getSubmissionByUserAndAssignment(
+  assignmentId: string,
+  userId: string
+) {
+  return await db.query.assignmentSubmissions.findFirst({
+    where: (submissions) =>
+      eq(submissions.assignmentId, assignmentId) &&
+      eq(submissions.userId, userId),
+    with: {
+      profile: true,
+      assignment: true,
+    },
+  });
+}
