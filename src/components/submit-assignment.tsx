@@ -82,9 +82,23 @@ export function SubmitAssignment({
         repositoryName: repoName,
       });
 
-      toast.success("Assignment submitted successfully");
-    } catch (error) {
-      toast.error("Failed to submit assignment");
+      // Check if this is a new submission or an update
+      const actionText = existingSubmission ? "updated" : "submitted";
+      toast.success(`Assignment ${actionText} successfully`);
+    } catch (error: any) {
+      // Properly type the error for TypeScript
+      // Check if the error is a duplicate submission that was handled on the server
+      const errorMessage =
+        error?.response?.data?.error ||
+        (typeof error === "object" && error?.message) ||
+        "Failed to submit assignment";
+
+      if (errorMessage.includes("already submitted")) {
+        toast.success("Your submission has been updated");
+        return;
+      }
+
+      toast.error(errorMessage);
       console.error(error);
     }
   };

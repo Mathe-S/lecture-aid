@@ -92,6 +92,17 @@ export async function createSubmission(
       feedback: submissionData.feedback,
       grade: submissionData.grade,
     })
+    .onConflictDoUpdate({
+      target: [
+        assignmentSubmissions.userId,
+        assignmentSubmissions.assignmentId,
+      ],
+      set: {
+        repositoryUrl: submissionData.repositoryUrl,
+        repositoryName: submissionData.repositoryName,
+        updatedAt: new Date().toISOString(),
+      },
+    })
     .returning();
 
   return submission;
