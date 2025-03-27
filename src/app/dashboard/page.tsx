@@ -251,7 +251,7 @@ export default function DashboardPage() {
               </div>
             ) : submissions?.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-8">
-                You haven't submitted any assignments yet.
+                You haven&apos;t submitted any assignments yet.
               </p>
             ) : (
               <div className="space-y-4">
