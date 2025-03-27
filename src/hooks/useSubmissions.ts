@@ -68,6 +68,22 @@ export function useUserSubmission(
   });
 }
 
+// Get all submissions for a user
+export function useUserSubmissions(userId: string | undefined) {
+  return useQuery({
+    queryKey: [...submissionKeys.all, "user", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const response = await fetch(`/api/users/${userId}/submissions`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch user submissions");
+      }
+      return response.json();
+    },
+    enabled: !!userId,
+  });
+}
+
 // Submit an assignment
 export function useSubmitAssignment() {
   const queryClient = useQueryClient();

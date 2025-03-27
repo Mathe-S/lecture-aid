@@ -21,9 +21,15 @@ import {
   Edit,
   Check,
   X,
+  BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { updateUserProfileAction } from "../actions/auth";
+import { useUserSubmissions } from "@/hooks/useSubmissions";
+import Link from "next/link";
+import { format } from "date-fns";
+import { AssignmentSubmissionWithProfile } from "@/db/drizzle/schema";
 
 export default function DashboardPage() {
   const { user, role, isLoading, refreshUser } = useAuth();
@@ -32,6 +38,9 @@ export default function DashboardPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  const { data: submissions, isLoading: isLoadingSubmissions } =
+    useUserSubmissions(user?.id);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -222,6 +231,68 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              My Assignment Submissions
+            </CardTitle>
+            <CardDescription>
+              View and manage your assignment submissions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingSubmissions ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            ) : submissions?.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">
+                You haven't submitted any assignments yet.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {submissions?.map(
+                  (submission: AssignmentSubmissionWithProfile) => (
+                    <div
+                      key={submission.id}
+                      className="flex items-start justify-between p-4 rounded-lg border border-slate-200 bg-white"
+                    >
+                      <div className="space-y-1">
+                        <Link
+                          href={`/assignments/${submission.assignmentId}`}
+                          className="text-sm font-medium text-blue-600 hover:underline"
+                        >
+                          {submission.assignment.title}
+                        </Link>
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                          <span>
+                            Submitted on{" "}
+                            {submission.submittedAt
+                              ? format(new Date(submission.submittedAt), "PPP")
+                              : "Not submitted"}
+                          </span>
+                          {submission.grade !== null && (
+                            <span>• Grade: {submission.grade}</span>
+                          )}
+                        </div>
+                      </div>
+                      <a
+                        href={submission.repositoryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

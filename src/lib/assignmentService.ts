@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db from "@/db";
 import {
   assignments,
@@ -140,8 +140,21 @@ export async function getSubmissionByUserAndAssignment(
 ) {
   return await db.query.assignmentSubmissions.findFirst({
     where: (submissions) =>
-      eq(submissions.assignmentId, assignmentId) &&
-      eq(submissions.userId, userId),
+      and(
+        eq(submissions.assignmentId, assignmentId),
+        eq(submissions.userId, userId)
+      ),
+    with: {
+      profile: true,
+      assignment: true,
+    },
+  });
+}
+
+export async function getSubmissionsByUser(userId: string) {
+  return await db.query.assignmentSubmissions.findMany({
+    where: eq(assignmentSubmissions.userId, userId),
+    orderBy: (submissions, { desc }) => [desc(submissions.submittedAt)],
     with: {
       profile: true,
       assignment: true,
