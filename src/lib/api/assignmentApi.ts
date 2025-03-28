@@ -168,4 +168,15 @@ export const assignmentApi = {
     }
     return response.json();
   },
+
+  downloadSubmissionsCsv: async (assignmentId: string): Promise<Blob> => {
+    const response = await fetch(
+      `/api/assignments/${assignmentId}/submissions/download`
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to download submissions");
+    }
+    return response.blob();
+  },
 };

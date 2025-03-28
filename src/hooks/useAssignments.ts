@@ -128,3 +128,11 @@ export function useGradeSubmission() {
     },
   });
 }
+
+// Download submissions for an assignment
+export function useDownloadSubmissions() {
+  return useMutation({
+    mutationFn: (assignmentId: string) =>
+      assignmentApi.downloadSubmissionsCsv(assignmentId),
+  });
+}

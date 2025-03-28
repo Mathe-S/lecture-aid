@@ -5,7 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
-import { useCreateAssignment } from "@/hooks/useAssignments";
+import {
+  useCreateAssignment,
+  useDownloadSubmissions,
+} from "@/hooks/useAssignments";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Download, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -26,7 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -37,10 +40,15 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function AssignmentForm() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const createAssignment = useCreateAssignment();
+  const downloadSubmissions = useDownloadSubmissions();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const router = useRouter();
+  const params = useParams();
+  const assignmentId = params?.id as string;
+  const isEditMode = !!assignmentId;
+  const isLecturerOrAdmin = role === "lecturer" || role === "admin";
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -69,6 +77,33 @@ export function AssignmentForm() {
     } catch (error) {
       console.error("Assignment creation error:", error);
       toast.error("Failed to create assignment");
+    }
+  }
+
+  async function handleDownloadSubmissions() {
+    if (!assignmentId) {
+      toast.error("Assignment ID is required for download");
+      return;
+    }
+
+    try {
+      const blob = await downloadSubmissions.mutateAsync(assignmentId);
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      // Create a temporary anchor element
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `assignment_submissions_${assignmentId}.csv`;
+      // Append to the document
+      document.body.appendChild(a);
+      // Trigger a click on the element
+      a.click();
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download submissions");
     }
   }
 
@@ -150,16 +185,39 @@ export function AssignmentForm() {
           )}
         />
 
-        <Button type="submit" disabled={createAssignment.isPending}>
-          {createAssignment.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating...
-            </>
-          ) : (
-            "Create Assignment"
+        <div className="flex justify-between items-center">
+          <Button type="submit" disabled={createAssignment.isPending}>
+            {createAssignment.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Assignment"
+            )}
+          </Button>
+
+          {isEditMode && isLecturerOrAdmin && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDownloadSubmissions}
+              disabled={downloadSubmissions.isPending}
+            >
+              {downloadSubmissions.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Submissions
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </form>
     </Form>
   );

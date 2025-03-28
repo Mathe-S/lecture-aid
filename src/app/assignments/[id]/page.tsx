@@ -2,8 +2,12 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useAssignment, useDeleteAssignment } from "@/hooks/useAssignments";
-import { useAssignmentSubmissions } from "@/hooks/useSubmissions";
+import {
+  useAssignment,
+  useAssignmentSubmissions,
+  useDeleteAssignment,
+  useDownloadSubmissions,
+} from "@/hooks/useAssignments";
 import { SubmitAssignment } from "@/components/submit-assignment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +18,7 @@ import {
   Loader2,
   PenSquare,
   Trash2,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -43,6 +48,7 @@ export default function AssignmentDetailPage() {
   const { data: submissions, isLoading: isLoadingSubmissions } =
     useAssignmentSubmissions(id);
   const deleteAssignment = useDeleteAssignment();
+  const downloadSubmissions = useDownloadSubmissions();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const isAdmin = role === "admin";
@@ -58,6 +64,29 @@ export default function AssignmentDetailPage() {
       toast.error("Failed to delete assignment");
     }
   };
+
+  async function handleDownloadSubmissions() {
+    try {
+      const blob = await downloadSubmissions.mutateAsync(id);
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      // Create a temporary anchor element
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `assignment_submissions_${id}.csv`;
+      // Append to the document
+      document.body.appendChild(a);
+      // Trigger a click on the element
+      a.click();
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Submissions downloaded successfully");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download submissions");
+    }
+  }
 
   if (isLoading) {
     return (
@@ -183,7 +212,28 @@ export default function AssignmentDetailPage() {
         </div>
       ) : isLecturerOrAdmin ? (
         <div>
-          <h2 className="text-xl font-semibold mb-4">Submissions</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Submissions</h2>
+
+            <Button
+              variant="outline"
+              onClick={handleDownloadSubmissions}
+              disabled={downloadSubmissions.isPending || !submissions?.length}
+            >
+              {downloadSubmissions.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download CSV
+                </>
+              )}
+            </Button>
+          </div>
+
           {isLoadingSubmissions ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
