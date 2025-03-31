@@ -128,3 +128,42 @@ export async function setUserRole(userId: string, role: string) {
     throw error;
   }
 }
+
+/**
+ * Get all students with their profiles
+ */
+export async function getAllStudents() {
+  try {
+    // Find all users with 'student' role
+    const studentsWithRoles = await db.query.userRoles.findMany({
+      where: eq(userRoles.role, "student"),
+    });
+
+    if (!studentsWithRoles.length) {
+      return [];
+    }
+
+    // Get all user IDs
+    const userIds = studentsWithRoles.map((student) => student.id);
+
+    // Fetch user profiles separately
+    const userProfiles = await db.query.profiles.findMany({
+      where: (profiles, { inArray }) => inArray(profiles.id, userIds),
+    });
+
+    // Combine the role and profile data
+    const studentsWithProfiles = studentsWithRoles.map((student) => {
+      const profile =
+        userProfiles.find((profile) => profile.id === student.id) || null;
+      return {
+        ...student,
+        profile,
+      };
+    });
+
+    return studentsWithProfiles;
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    throw error;
+  }
+}

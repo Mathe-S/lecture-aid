@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { FileText, User } from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminPage() {
@@ -31,6 +31,12 @@ export default function AdminPage() {
         "Create and manage quizzes with single or multiple choice questions",
       icon: <FileText className="h-8 w-8 text-primary" />,
       href: "/admin/quizzes",
+    },
+    {
+      title: "Student Profiles",
+      description: "View and manage student profiles and their submissions",
+      icon: <User className="h-8 w-8 text-primary" />,
+      href: "/admin/students",
     },
     // Add other admin modules here
   ];
