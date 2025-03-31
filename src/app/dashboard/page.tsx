@@ -30,6 +30,8 @@ import { useUserSubmissions } from "@/hooks/useSubmissions";
 import Link from "next/link";
 import { format } from "date-fns";
 import { AssignmentSubmissionWithProfile } from "@/db/drizzle/schema";
+import { useGrades } from "@/hooks/useGrades";
+import { Progress } from "@/components/ui/progress";
 
 export default function DashboardPage() {
   const { user, role, isLoading, refreshUser } = useAuth();
@@ -41,6 +43,8 @@ export default function DashboardPage() {
 
   const { data: submissions, isLoading: isLoadingSubmissions } =
     useUserSubmissions(user?.id);
+
+  const { data: grades, isLoading: isLoadingGrades } = useGrades();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -231,6 +235,97 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg>
+              My Course Progress
+            </CardTitle>
+            <CardDescription>
+              Your current grades and progress in the course
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingGrades ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            ) : grades ? (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Overall Grade</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold">
+                        {grades.totalPoints}
+                      </span>
+                      <span className="text-slate-500 text-sm">
+                        / {grades.maxPossiblePoints}
+                      </span>
+                    </div>
+                  </div>
+                  <Progress
+                    value={
+                      (grades.totalPoints / grades.maxPossiblePoints) * 100
+                    }
+                    className="h-2"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 rounded-md p-4 space-y-1">
+                    <h4 className="text-sm font-medium text-slate-500">
+                      Quiz Points
+                    </h4>
+                    <div className="text-lg font-semibold">
+                      {grades.quizPoints}
+                      <span className="text-slate-400 text-sm ml-1">
+                        / {grades.maxQuizPoints || "0"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-md p-4 space-y-1">
+                    <h4 className="text-sm font-medium text-slate-500">
+                      Assignment Points
+                    </h4>
+                    <div className="text-lg font-semibold">
+                      {grades.assignmentPoints}
+                      <span className="text-slate-400 text-sm ml-1">
+                        / {grades.maxAssignmentPoints || "0"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-md p-4 space-y-1">
+                    <h4 className="text-sm font-medium text-slate-500">
+                      Extra Points
+                    </h4>
+                    <div className="text-lg font-semibold">
+                      {grades.extraPoints}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-center py-4 text-slate-500">
+                No grade data available
+              </p>
+            )}
           </CardContent>
         </Card>
 

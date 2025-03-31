@@ -9,6 +9,7 @@ import {
   profiles,
   assignments,
   assignmentSubmissions,
+  studentGrades,
 } from "./schema";
 
 export const userRolesRelations = relations(userRoles, ({ one }) => ({
@@ -27,6 +28,7 @@ export const usersInAuthRelations = relations(usersInAuth, ({ many }) => ({
   assignmentSubmissions: many(assignmentSubmissions, {
     relationName: "student",
   }),
+  grades: many(studentGrades),
 }));
 
 export const quizzesRelations = relations(quizzes, ({ one, many }) => ({
@@ -100,3 +102,10 @@ export const assignmentSubmissionsRelations = relations(
     }),
   })
 );
+
+export const studentGradesRelations = relations(studentGrades, ({ one }) => ({
+  user: one(usersInAuth, {
+    fields: [studentGrades.userId],
+    references: [usersInAuth.id],
+  }),
+}));

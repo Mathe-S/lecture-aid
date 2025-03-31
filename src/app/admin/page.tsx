@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FileText, User } from "lucide-react";
+import { FileText, User, BarChart4 } from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminPage() {
@@ -37,6 +37,12 @@ export default function AdminPage() {
       description: "View and manage student profiles and their submissions",
       icon: <User className="h-8 w-8 text-primary" />,
       href: "/admin/students",
+    },
+    {
+      title: "Grade Management",
+      description: "View and manage student grades and award extra points",
+      icon: <BarChart4 className="h-8 w-8 text-primary" />,
+      href: "/admin/grades",
     },
     // Add other admin modules here
   ];
