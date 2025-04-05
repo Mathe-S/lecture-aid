@@ -16,9 +16,9 @@ import {
   CalendarIcon,
   User,
   Loader2,
-  PenSquare,
-  Trash2,
   Download,
+  Edit,
+  Trash,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -35,7 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 
@@ -139,43 +138,23 @@ export default function AssignmentDetailPage() {
 
         {isAdmin && (
           <div className="flex gap-2">
-            <Link href={`/assignments/edit/${id}`}>
-              <Button variant="outline">
-                <PenSquare className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </Link>
-
-            <AlertDialog
-              open={showDeleteDialog}
-              onOpenChange={setShowDeleteDialog}
-            >
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+            <div className="mt-4 space-x-4 flex">
+              <Link href={`/assignments/edit/${id}`}>
+                <Button size="sm" className="pl-3">
+                  <Edit className="mr-1.5 h-4 w-4" />
+                  Edit
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this assignment? This action
-                    cannot be undone. All submissions related to this assignment
-                    will also be deleted.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {deleteAssignment.isPending ? "Deleting..." : "Delete"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              </Link>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="pl-3"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash className="mr-1.5 h-4 w-4" />
+                Delete
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -195,9 +174,27 @@ export default function AssignmentDetailPage() {
                 Due: {format(new Date(assignment.due_date), "PPP")}
               </div>
             )}
-            <div className="flex items-center">
+            <div className="flex items-center mb-2 sm:mb-0">
               <User className="mr-2 h-4 w-4" />
               Created by instructor
+            </div>
+            <div className="flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-2 h-4 w-4"
+              >
+                <circle cx="12" cy="8" r="6" />
+                <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+              </svg>
+              Points: {assignment.grade}
             </div>
           </div>
         </CardContent>
@@ -250,6 +247,58 @@ export default function AssignmentDetailPage() {
           )}
         </div>
       ) : null}
+
+      {showDeleteDialog && (
+        <DeleteAssignmentDialog
+          open={showDeleteDialog}
+          onOpenChange={(open) => setShowDeleteDialog(open)}
+          onDelete={handleDelete}
+          isDeleting={deleteAssignment.isPending}
+        />
+      )}
     </div>
+  );
+}
+
+function DeleteAssignmentDialog({
+  open,
+  onOpenChange,
+  onDelete,
+  isDeleting,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this assignment? This action cannot
+            be undone. All submissions related to this assignment will also be
+            deleted.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onDelete}
+            className="bg-destructive  hover:bg-destructive/90"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -103,12 +103,32 @@ export default function AssignmentsPage() {
                 {assignment.description && (
                   <p className="text-slate-600">{assignment.description}</p>
                 )}
-                {assignment.due_date && (
-                  <div className="flex items-center mt-2 text-sm text-slate-500">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    Due: {format(new Date(assignment.due_date), "PPP")}
+                <div className="flex flex-col sm:flex-row sm:gap-6 mt-2">
+                  {assignment.due_date && (
+                    <div className="flex items-center text-sm text-slate-500">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      Due: {format(new Date(assignment.due_date), "PPP")}
+                    </div>
+                  )}
+                  <div className="flex items-center text-sm text-slate-500 mt-1 sm:mt-0">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mr-2 h-4 w-4"
+                    >
+                      <circle cx="12" cy="8" r="6" />
+                      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+                    </svg>
+                    Points: {assignment.grade}
                   </div>
-                )}
+                </div>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Link href={`/assignments/${assignment.id}`}>

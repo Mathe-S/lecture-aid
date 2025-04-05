@@ -155,10 +155,7 @@ export default function QuizList({
                         Practice Quiz (0 points)
                       </span>
                     ) : (
-                      <>
-                        Worth: {(quiz.grade / 10).toFixed(1)} point
-                        {quiz.grade !== 10 ? "s" : ""}
-                      </>
+                      <>Worth: {quiz.grade} points</>
                     )}
                   </p>
                 </CardContent>

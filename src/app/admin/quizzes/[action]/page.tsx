@@ -191,20 +191,17 @@ export default function QuizFormPage() {
                       id="grade"
                       type="number"
                       min="0"
-                      step="0.1"
-                      value={(quiz.grade / 10).toFixed(1)}
+                      step="1"
+                      value={quiz.grade}
                       onChange={(e) => {
-                        // Convert from decimal (e.g. 1.5) to integer (15)
-                        const decimalValue = parseFloat(e.target.value) || 0;
-                        const intValue = Math.round(decimalValue * 10);
+                        const intValue = parseInt(e.target.value) || 0;
                         setQuiz({ ...quiz, grade: intValue });
                       }}
-                      placeholder="Enter grade points (e.g., 1.5)"
+                      placeholder="Enter grade points (e.g., 3)"
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       How many points this quiz is worth. Use 0 for practice
-                      quizzes that don&apos;t count towards the grade. You can
-                      use decimal values like 1.5, 2.5, etc.
+                      quizzes that don&apos;t count towards the grade.
                     </p>
                   </div>
                 </div>

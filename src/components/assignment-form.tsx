@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
 import {
   useCreateAssignment,
+  useUpdateAssignment,
   useDownloadSubmissions,
 } from "@/hooks/useAssignments";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,8 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { Assignment } from "@/db/drizzle/schema";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -40,16 +42,20 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function AssignmentForm() {
+interface AssignmentFormProps {
+  assignmentData?: Assignment;
+}
+
+export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
   const { user, role } = useAuth();
   const createAssignment = useCreateAssignment();
+  const updateAssignment = useUpdateAssignment();
   const downloadSubmissions = useDownloadSubmissions();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const router = useRouter();
-  const params = useParams();
-  const assignmentId = params?.id as string;
-  const isEditMode = !!assignmentId;
+  const isEditMode = !!assignmentData;
   const isLecturerOrAdmin = role === "lecturer" || role === "admin";
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -59,6 +65,20 @@ export function AssignmentForm() {
     },
   });
 
+  // Set form values when editing
+  useEffect(() => {
+    if (assignmentData) {
+      form.reset({
+        title: assignmentData.title,
+        description: assignmentData.description || undefined,
+        dueDate: assignmentData.due_date
+          ? new Date(assignmentData.due_date)
+          : undefined,
+        grade: assignmentData.grade,
+      });
+    }
+  }, [assignmentData, form]);
+
   async function onSubmit(values: FormValues) {
     if (!user?.id) {
       toast.error("You must be logged in to create an assignment");
@@ -66,37 +86,57 @@ export function AssignmentForm() {
     }
 
     try {
-      await createAssignment.mutateAsync({
-        title: values.title,
-        description: values.description || null,
-        due_date: values.dueDate ? values.dueDate.toISOString() : null,
-        grade: values.grade,
-        created_by: user.id,
-      });
-
-      toast.success("Assignment created successfully");
-      form.reset();
-      router.push("/assignments");
+      if (isEditMode && assignmentData) {
+        // Update existing assignment
+        await updateAssignment.mutateAsync({
+          id: assignmentData.id,
+          data: {
+            title: values.title,
+            description: values.description || null,
+            due_date: values.dueDate ? values.dueDate.toISOString() : null,
+            grade: values.grade,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+        toast.success("Assignment updated successfully");
+        router.push(`/assignments/${assignmentData.id}`);
+      } else {
+        // Create new assignment
+        await createAssignment.mutateAsync({
+          title: values.title,
+          description: values.description || null,
+          due_date: values.dueDate ? values.dueDate.toISOString() : null,
+          grade: values.grade,
+          created_by: user.id,
+        });
+        toast.success("Assignment created successfully");
+        form.reset();
+        router.push("/assignments");
+      }
     } catch (error) {
-      console.error("Assignment creation error:", error);
-      toast.error("Failed to create assignment");
+      console.error("Assignment operation error:", error);
+      toast.error(
+        isEditMode
+          ? "Failed to update assignment"
+          : "Failed to create assignment"
+      );
     }
   }
 
   async function handleDownloadSubmissions() {
-    if (!assignmentId) {
+    if (!assignmentData?.id) {
       toast.error("Assignment ID is required for download");
       return;
     }
 
     try {
-      const blob = await downloadSubmissions.mutateAsync(assignmentId);
+      const blob = await downloadSubmissions.mutateAsync(assignmentData.id);
       // Create a URL for the blob
       const url = window.URL.createObjectURL(blob);
       // Create a temporary anchor element
       const a = document.createElement("a");
       a.href = url;
-      a.download = `assignment_submissions_${assignmentId}.csv`;
+      a.download = `assignment_submissions_${assignmentData.id}.csv`;
       // Append to the document
       document.body.appendChild(a);
       // Trigger a click on the element
@@ -154,12 +194,11 @@ export function AssignmentForm() {
                 <Input
                   type="number"
                   min="0"
-                  step="0.1"
-                  placeholder="3.0"
-                  value={(field.value / 10).toFixed(1)}
+                  step="1"
+                  placeholder="3"
+                  value={field.value}
                   onChange={(e) => {
-                    const decimalValue = parseFloat(e.target.value) || 0;
-                    const intValue = Math.round(decimalValue * 10);
+                    const intValue = parseInt(e.target.value) || 0;
                     field.onChange(intValue);
                   }}
                 />
@@ -214,8 +253,20 @@ export function AssignmentForm() {
         />
 
         <div className="flex justify-between items-center">
-          <Button type="submit" disabled={createAssignment.isPending}>
-            {createAssignment.isPending ? (
+          <Button
+            type="submit"
+            disabled={createAssignment.isPending || updateAssignment.isPending}
+          >
+            {isEditMode ? (
+              updateAssignment.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Assignment"
+              )
+            ) : createAssignment.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating...
