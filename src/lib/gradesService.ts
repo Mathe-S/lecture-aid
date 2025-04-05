@@ -237,3 +237,46 @@ export async function getAllStudentGrades() {
     throw error;
   }
 }
+
+/**
+ * Recalculate grades for all students
+ */
+export async function recalculateAllGrades() {
+  try {
+    // Get all profiles (students)
+    const allProfiles = await db.query.profiles.findMany({
+      columns: {
+        id: true,
+      },
+    });
+
+    // Process in smaller batches of 10 students at a time to avoid timeouts
+    const BATCH_SIZE = 10;
+    let processedCount = 0;
+
+    for (let i = 0; i < allProfiles.length; i += BATCH_SIZE) {
+      const batch = allProfiles.slice(i, i + BATCH_SIZE);
+
+      // Process batch in parallel
+      await Promise.all(
+        batch.map((profile) =>
+          recalculateGrades(profile.id).catch((err) => {
+            // Log error but continue with other students
+            console.error(
+              `Error recalculating grades for user ${profile.id}:`,
+              err
+            );
+            return false;
+          })
+        )
+      );
+
+      processedCount += batch.length;
+    }
+
+    return { success: true, count: processedCount };
+  } catch (error) {
+    console.error("Error recalculating all grades:", error);
+    throw error;
+  }
+}

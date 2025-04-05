@@ -3,6 +3,7 @@ import {
   getAllStudentGrades,
   updateExtraPoints,
   recalculateGrades,
+  recalculateAllGrades,
 } from "@/lib/gradesService";
 import { supabaseForServer } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/userService";
@@ -61,12 +62,12 @@ export async function POST(request: NextRequest) {
     // Get request body
     const requestData = await request.json();
 
-    // Validate request
-    if (!requestData.userId) {
-      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
-    }
-
+    // Handle different actions
     if (requestData.action === "updateExtraPoints") {
+      if (!requestData.userId) {
+        return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+      }
+
       if (typeof requestData.extraPoints !== "number") {
         return NextResponse.json(
           { error: "Invalid extraPoints value" },
@@ -75,13 +76,23 @@ export async function POST(request: NextRequest) {
       }
 
       await updateExtraPoints(requestData.userId, requestData.extraPoints);
+      return NextResponse.json({ success: true });
     } else if (requestData.action === "recalculate") {
+      if (!requestData.userId) {
+        return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+      }
+
       await recalculateGrades(requestData.userId);
+      return NextResponse.json({ success: true });
+    } else if (requestData.action === "recalculateAll") {
+      const result = await recalculateAllGrades();
+      return NextResponse.json({
+        success: true,
+        message: `Recalculated grades for ${result.count} students`,
+      });
     } else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
-
-    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error updating grades:", error);
     return NextResponse.json(

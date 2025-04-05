@@ -3,7 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import RoleGuard from "@/components/RoleGuard";
-import { useAllGrades } from "@/hooks/useGrades";
+import {
+  useAllGrades,
+  useUpdateExtraPoints,
+  useRecalculateGrade,
+  useRecalculateAllGrades,
+} from "@/hooks/useGrades";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,13 +42,21 @@ import {
   User,
   Edit,
   RefreshCw,
-  BarChart4,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { gradesKeys } from "@/hooks/useGrades";
-import { toast } from "sonner";
 import { Profile } from "@/db/drizzle/schema";
 import { GradeWithProfilesType } from "@/db/drizzle/schema";
+
+// Define sort fields
+type SortField =
+  | "name"
+  | "quizPoints"
+  | "assignmentPoints"
+  | "extraPoints"
+  | "totalPoints"
+  | "progress";
+type SortDirection = "asc" | "desc";
 
 export default function AdminGradesPage() {
   const { data: allGrades, isLoading } = useAllGrades() as {
@@ -54,68 +67,114 @@ export default function AdminGradesPage() {
     useState<GradeWithProfilesType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [extraPoints, setExtraPoints] = useState<number>(0);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const queryClient = useQueryClient();
+  const [sortField, setSortField] = useState<SortField>("totalPoints");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const updateExtraPoints = async () => {
+  // Use the mutation hooks
+  const updateExtraPointsMutation = useUpdateExtraPoints();
+  const recalculateGradeMutation = useRecalculateGrade();
+  const recalculateAllGradesMutation = useRecalculateAllGrades();
+
+  const handleUpdateExtraPoints = async () => {
     if (!selectedStudent) return;
 
-    setIsUpdating(true);
-    try {
-      const response = await fetch("/api/admin/grades", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    updateExtraPointsMutation.mutate(
+      {
+        userId: selectedStudent.userId,
+        extraPoints,
+      },
+      {
+        onSuccess: () => {
+          setIsDialogOpen(false);
         },
-        body: JSON.stringify({
-          userId: selectedStudent.userId,
-          action: "updateExtraPoints",
-          extraPoints,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update extra points");
       }
+    );
+  };
 
-      await queryClient.invalidateQueries({ queryKey: gradesKeys.admin() });
-      setIsDialogOpen(false);
-      toast.success("Extra points updated successfully");
-    } catch (error) {
-      toast.error("Failed to update extra points");
-      console.error(error);
-    } finally {
-      setIsUpdating(false);
+  const handleRecalculateGrade = async (userId: string) => {
+    recalculateGradeMutation.mutate(userId);
+  };
+
+  const handleRecalculateAllGrades = async () => {
+    recalculateAllGradesMutation.mutate();
+  };
+
+  // Handle sort click
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new field and default to descending
+      setSortField(field);
+      setSortDirection("desc");
     }
   };
 
-  const recalculateGrades = async (userId: string) => {
-    setIsUpdating(true);
-    try {
-      const response = await fetch("/api/admin/grades", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          action: "recalculate",
-        }),
-      });
+  // Sort the grades
+  const sortedGrades = allGrades
+    ? [...allGrades].sort((a, b) => {
+        let comparison = 0;
 
-      if (!response.ok) {
-        throw new Error("Failed to recalculate grades");
-      }
+        // Helper function to get name
+        const getFullName = (grade: GradeWithProfilesType) =>
+          grade.user?.profiles?.[0]?.fullName || "Unknown";
 
-      await queryClient.invalidateQueries({ queryKey: gradesKeys.admin() });
-      toast.success("Grades recalculated successfully");
-    } catch (error) {
-      toast.error("Failed to recalculate grades");
-      console.error(error);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+        // Helper function for percentage calculation
+        const getProgress = (grade: GradeWithProfilesType) =>
+          ((grade.totalPoints ?? 0) / (grade.maxPossiblePoints ?? 100)) * 100;
+
+        switch (sortField) {
+          case "name":
+            comparison = getFullName(a).localeCompare(getFullName(b));
+            break;
+          case "quizPoints":
+            comparison = (a.quizPoints ?? 0) - (b.quizPoints ?? 0);
+            break;
+          case "assignmentPoints":
+            comparison = (a.assignmentPoints ?? 0) - (b.assignmentPoints ?? 0);
+            break;
+          case "extraPoints":
+            comparison = (a.extraPoints ?? 0) - (b.extraPoints ?? 0);
+            break;
+          case "totalPoints":
+            comparison = (a.totalPoints ?? 0) - (b.totalPoints ?? 0);
+            break;
+          case "progress":
+            comparison = getProgress(a) - getProgress(b);
+            break;
+        }
+
+        // Reverse for descending order
+        return sortDirection === "asc" ? comparison : -comparison;
+      })
+    : [];
+
+  // Helper component for sortable header
+  const SortableHeader = ({
+    field,
+    children,
+    className = "",
+  }: {
+    field: SortField;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <TableHead
+      className={`${className} cursor-pointer hover:bg-slate-50`}
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center justify-end gap-1">
+        {children}
+        {sortField === field &&
+          (sortDirection === "asc" ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          ))}
+      </div>
+    </TableHead>
+  );
 
   return (
     <RoleGuard
@@ -144,7 +203,22 @@ export default function AdminGradesPage() {
                   View all students&apos; grades and manage extra points
                 </CardDescription>
               </div>
-              <BarChart4 className="h-5 w-5 text-slate-400" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRecalculateAllGrades}
+                disabled={recalculateAllGradesMutation.isPending || isLoading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${
+                    recalculateAllGradesMutation.isPending ? "animate-spin" : ""
+                  }`}
+                />
+                {recalculateAllGradesMutation.isPending
+                  ? "Recalculating..."
+                  : "Recalculate All"}
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -161,27 +235,44 @@ export default function AdminGradesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead className="w-[100px] text-right">
+                      <SortableHeader field="name" className="text-left">
+                        Student
+                      </SortableHeader>
+                      <SortableHeader
+                        field="quizPoints"
+                        className="w-[100px] text-right"
+                      >
                         Quiz
-                      </TableHead>
-                      <TableHead className="w-[100px] text-right">
+                      </SortableHeader>
+                      <SortableHeader
+                        field="assignmentPoints"
+                        className="w-[100px] text-right"
+                      >
                         Assignment
-                      </TableHead>
-                      <TableHead className="w-[100px] text-right">
+                      </SortableHeader>
+                      <SortableHeader
+                        field="extraPoints"
+                        className="w-[100px] text-right"
+                      >
                         Extra
-                      </TableHead>
-                      <TableHead className="w-[100px] text-right">
+                      </SortableHeader>
+                      <SortableHeader
+                        field="totalPoints"
+                        className="w-[100px] text-right"
+                      >
                         Total
-                      </TableHead>
-                      <TableHead className="w-[150px] text-right">
+                      </SortableHeader>
+                      <SortableHeader
+                        field="progress"
+                        className="w-[150px] text-right"
+                      >
                         Progress
-                      </TableHead>
+                      </SortableHeader>
                       <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allGrades?.map((grade) => {
+                    {sortedGrades?.map((grade) => {
                       const profile = grade.user?.profiles?.[0] as
                         | Profile
                         | undefined;
@@ -254,12 +345,16 @@ export default function AdminGradesPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => recalculateGrades(grade.userId)}
-                                disabled={isUpdating}
+                                onClick={() =>
+                                  handleRecalculateGrade(grade.userId)
+                                }
+                                disabled={recalculateGradeMutation.isPending}
                               >
                                 <RefreshCw
                                   className={`h-4 w-4 ${
-                                    isUpdating ? "animate-spin" : ""
+                                    recalculateGradeMutation.isPending
+                                      ? "animate-spin"
+                                      : ""
                                   }`}
                                 />
                                 <span className="sr-only">Recalculate</span>
@@ -346,8 +441,11 @@ export default function AdminGradesPage() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={updateExtraPoints} disabled={isUpdating}>
-                {isUpdating ? (
+              <Button
+                onClick={handleUpdateExtraPoints}
+                disabled={updateExtraPointsMutation.isPending}
+              >
+                {updateExtraPointsMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Updating...
