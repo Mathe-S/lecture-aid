@@ -264,6 +264,7 @@ export const assignments = pgTable(
       mode: "string",
     }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }),
+    closed: boolean().default(false),
   },
   (table) => [
     foreignKey({

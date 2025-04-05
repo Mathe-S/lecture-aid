@@ -108,6 +108,7 @@ export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
           due_date: values.dueDate ? values.dueDate.toISOString() : null,
           grade: values.grade,
           created_by: user.id,
+          closed: false,
         });
         toast.success("Assignment created successfully");
         form.reset();

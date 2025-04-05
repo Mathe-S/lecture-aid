@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2, Lock } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,7 +97,15 @@ export default function AssignmentsPage() {
           {assignments?.map((assignment) => (
             <Card key={assignment.id}>
               <CardHeader>
-                <CardTitle>{assignment.title}</CardTitle>
+                <div className="flex justify-between items-start">
+                  <CardTitle>{assignment.title}</CardTitle>
+                  {assignment.closed && (
+                    <div className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+                      <Lock className="mr-1 h-3 w-3" />
+                      Closed
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {assignment.description && (
@@ -133,7 +141,11 @@ export default function AssignmentsPage() {
               <CardFooter className="flex justify-between">
                 <Link href={`/assignments/${assignment.id}`}>
                   <Button variant="outline">
-                    {role === "student" ? "Submit" : "View Details"}
+                    {role === "student"
+                      ? assignment.closed
+                        ? "View Details"
+                        : "Submit"
+                      : "View Details"}
                   </Button>
                 </Link>
 

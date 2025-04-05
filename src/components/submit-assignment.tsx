@@ -98,6 +98,13 @@ export function SubmitAssignment({
         return;
       }
 
+      if (errorMessage.includes("closed and no longer accepting")) {
+        toast.error(
+          "This assignment is closed and no longer accepting submissions"
+        );
+        return;
+      }
+
       toast.error(errorMessage);
       console.error(error);
     }

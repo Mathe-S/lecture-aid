@@ -136,3 +136,41 @@ export function useDownloadSubmissions() {
       assignmentApi.downloadSubmissionsCsv(assignmentId),
   });
 }
+
+// Close an assignment
+export function useCloseAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => assignmentApi.closeAssignment(id),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: assignmentKeys.details(variables),
+      });
+      queryClient.invalidateQueries({ queryKey: assignmentKeys.lists() });
+    },
+  });
+}
+
+// Upload grades JSON for an assignment
+export function useUploadGradesJson() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      assignmentId,
+      gradesData,
+    }: {
+      assignmentId: string;
+      gradesData: any;
+    }) => assignmentApi.uploadGradesJson(assignmentId, gradesData),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: assignmentKeys.details(variables.assignmentId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: assignmentKeys.submissions(variables.assignmentId),
+      });
+    },
+  });
+}

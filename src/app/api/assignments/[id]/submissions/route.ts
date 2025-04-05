@@ -3,6 +3,7 @@ import {
   createSubmission,
   getSubmissionByUserAndAssignment,
   updateSubmission,
+  getAssignmentById,
 } from "@/lib/assignmentService";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -35,6 +36,25 @@ export async function POST(
       return NextResponse.json(
         { error: "User ID is required" },
         { status: 400 }
+      );
+    }
+
+    // Check if the assignment is closed
+    const assignment = await getAssignmentById(id);
+    if (!assignment) {
+      return NextResponse.json(
+        { error: "Assignment not found" },
+        { status: 404 }
+      );
+    }
+
+    if (assignment.closed) {
+      return NextResponse.json(
+        {
+          error:
+            "This assignment is closed and no longer accepting submissions",
+        },
+        { status: 403 }
       );
     }
 

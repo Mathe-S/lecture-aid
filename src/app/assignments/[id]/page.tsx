@@ -19,6 +19,7 @@ import {
   Download,
   Edit,
   Trash,
+  Lock,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -37,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { AssignmentGrading } from "@/components/assignment-grading";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
@@ -162,6 +164,12 @@ export default function AssignmentDetailPage() {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-2xl">{assignment.title}</CardTitle>
+          {assignment.closed && (
+            <div className="mt-2 inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+              <Lock className="mr-1 h-3 w-3" />
+              Closed
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {assignment.description && (
@@ -202,33 +210,51 @@ export default function AssignmentDetailPage() {
 
       {role === "student" ? (
         <div className="max-w-2xl mx-auto">
-          <SubmitAssignment
-            assignmentId={id}
-            assignmentTitle={assignment.title}
-          />
+          {assignment.closed ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Lock className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium">Assignment Closed</h3>
+                  <p className="text-sm text-gray-500 mt-2">
+                    This assignment is no longer accepting submissions.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <SubmitAssignment
+              assignmentId={id}
+              assignmentTitle={assignment.title}
+            />
+          )}
         </div>
       ) : isLecturerOrAdmin ? (
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Submissions</h2>
 
-            <Button
-              variant="outline"
-              onClick={handleDownloadSubmissions}
-              disabled={downloadSubmissions.isPending || !submissions?.length}
-            >
-              {downloadSubmissions.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download CSV
-                </>
-              )}
-            </Button>
+            <div className="flex space-x-4">
+              {isAdmin && <AssignmentGrading assignment={assignment} />}
+
+              <Button
+                variant="outline"
+                onClick={handleDownloadSubmissions}
+                disabled={downloadSubmissions.isPending || !submissions?.length}
+              >
+                {downloadSubmissions.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download CSV
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {isLoadingSubmissions ? (

@@ -185,4 +185,37 @@ export const assignmentApi = {
     }
     return response.blob();
   },
+
+  // Close an assignment
+  closeAssignment: async (id: string): Promise<Assignment> => {
+    const response = await fetch(`/api/assignments/${id}/close`, {
+      method: "PUT",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to close assignment");
+    }
+
+    return response.json();
+  },
+
+  // Upload grades JSON for an assignment
+  uploadGradesJson: async (
+    assignmentId: string,
+    gradesData: any
+  ): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`/api/assignments/${assignmentId}/grade`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gradesData }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to upload grades");
+    }
+
+    return response.json();
+  },
 };
