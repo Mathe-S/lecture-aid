@@ -60,12 +60,23 @@ export async function calculateGrades(userId: string) {
 
     // Calculate quiz points
     let quizPoints = 0;
-    let maxQuizPoints = 0;
 
     quizResultsData.forEach((result) => {
-      quizPoints += result.score;
-      maxQuizPoints += result.totalQuestions;
+      // Only count points from closed quizzes with grade > 0
+      if (result.quiz.grade > 0 && result.quiz.closed === true) {
+        quizPoints += result.quiz.grade;
+      }
     });
+
+    // Calculate max quiz points by summing grades of all closed quizzes
+    const closedQuizzes = await db.query.quizzes.findMany({
+      where: (quizzes, { eq }) => eq(quizzes.closed, true),
+    });
+
+    const maxQuizPoints = closedQuizzes.reduce(
+      (total, quiz) => total + quiz.grade,
+      0
+    );
 
     // Get assignment submissions
     const assignmentSubmissionsData =
@@ -75,7 +86,7 @@ export async function calculateGrades(userId: string) {
 
     // Get all assignments to determine max possible points
     const allAssignments = await db.query.assignments.findMany();
-    const maxAssignmentPoints = allAssignments.length * 100; // Assuming each assignment has max 100 points
+    const maxAssignmentPoints = allAssignments.length; // Assuming each assignment has max 100 points
 
     // Calculate assignment points (only count graded assignments)
     let assignmentPoints = 0;

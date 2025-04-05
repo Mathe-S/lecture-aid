@@ -43,6 +43,7 @@ export default function QuizFormPage() {
     createdAt: "",
     createdBy: "",
     updatedAt: "",
+    closed: false,
   });
   const [questions, setQuestions] = useState<QuizQuestionWithOptions[]>([]);
   const [activeTab, setActiveTab] = useState("details");
@@ -58,6 +59,7 @@ export default function QuizFormPage() {
         createdAt: quizData.createdAt,
         createdBy: quizData.createdBy,
         updatedAt: quizData.updatedAt,
+        closed: quizData.closed,
       });
       setQuestions(quizData.quizQuestions);
     }

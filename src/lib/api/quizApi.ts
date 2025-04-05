@@ -4,6 +4,7 @@ import { QuizWithQuestionsAndOptions, Quiz } from "@/db/drizzle/schema";
 export type GetQuizResponse = QuizWithQuestionsAndOptions;
 export type CreateQuizResponse = Quiz;
 export type UpdateQuizResponse = Quiz;
+export type DeleteQuizResponse = { success: boolean };
 
 // API Error
 export interface ApiError {
@@ -72,7 +73,24 @@ export const quizApi = {
     return response.json();
   },
 
-  deleteQuiz: async (id: string): Promise<{ success: boolean }> => {
+  closeAndGradeQuiz: async (id: string): Promise<any> => {
+    const response = await fetch(`/api/quizzes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "closeAndGrade",
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to close and grade quiz");
+    }
+
+    return response.json();
+  },
+
+  deleteQuiz: async (id: string): Promise<DeleteQuizResponse> => {
     const response = await fetch(`/api/quizzes/${id}`, {
       method: "DELETE",
     });

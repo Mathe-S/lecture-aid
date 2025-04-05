@@ -56,6 +56,7 @@ export const quizzes = pgTable(
     description: text(),
     grade: integer().default(0).notNull(),
     createdBy: uuid("created_by").notNull(),
+    closed: boolean().default(false).notNull(),
     createdAt: timestamp("created_at", {
       withTimezone: true,
       mode: "string",

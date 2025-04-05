@@ -49,6 +49,14 @@ export default function TakeQuizPage() {
   const { data: quiz, isLoading, error } = useQuiz(params.id as string);
 
   useEffect(() => {
+    // If quiz is closed, redirect to the quizzes page
+    if (quiz && quiz.closed) {
+      toast.error("This quiz is no longer available");
+      router.push("/quizzes");
+    }
+  }, [quiz, router]);
+
+  useEffect(() => {
     if (quiz) {
       const initialAnswers: QuizAnswers = {};
       quiz.quizQuestions.forEach((question: QuizQuestionWithOptions) => {
@@ -86,17 +94,6 @@ export default function TakeQuizPage() {
       }
 
       return result;
-    },
-    onSuccess: () => {
-      toast.success("Quiz result saved successfully");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to save quiz result", {
-        description: error.message,
-        duration: 5000,
-      });
-
-      console.error("Error saving quiz result:", error);
     },
   });
 

@@ -7,6 +7,8 @@ import {
   quizQuestions,
   quizOptions,
   QuizWithQuestionsAndOptions,
+  quizResults,
+  studentGrades,
 } from "@/db/drizzle/schema";
 
 export async function getQuizzes() {
@@ -235,6 +237,77 @@ async function updateQuestionOptions(
 export async function deleteQuiz(id: string) {
   await db.delete(quizzes).where(eq(quizzes.id, id));
   return true;
+}
+
+export async function closeAndGradeQuiz(id: string) {
+  // First mark the quiz as closed
+  await db
+    .update(quizzes)
+    .set({
+      closed: true,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(quizzes.id, id));
+
+  // Get the quiz to check its grade value
+  const quiz = await db.query.quizzes.findFirst({
+    where: eq(quizzes.id, id),
+  });
+
+  if (!quiz) {
+    throw new Error("Quiz not found");
+  }
+
+  // If the quiz is worth 0 points, don't update any grades
+  if (quiz.grade === 0) {
+    return { success: true, gradedCount: 0 };
+  }
+
+  // Find all student results for this quiz
+  const results = await db.query.quizResults.findMany({
+    where: eq(quizResults.quizId, id),
+  });
+
+  // Get unique user IDs who took the quiz
+  const userIds = [...new Set(results.map((result) => result.userId))];
+
+  // Update student grades for each user
+  const updatePromises = userIds.map(async (userId) => {
+    // Check if the student already has a grade record
+    const existingGrade = await db.query.studentGrades.findFirst({
+      where: eq(studentGrades.userId, userId),
+    });
+
+    if (existingGrade) {
+      // Update existing record
+      return await db
+        .update(studentGrades)
+        .set({
+          quizPoints: (existingGrade.quizPoints || 0) + quiz.grade,
+          totalPoints: (existingGrade.totalPoints || 0) + quiz.grade,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(studentGrades.userId, userId));
+    } else {
+      // Create new record
+      return await db
+        .insert(studentGrades)
+        .values({
+          userId,
+          quizPoints: quiz.grade,
+          totalPoints: quiz.grade,
+        })
+        .returning();
+    }
+  });
+
+  await Promise.all(updatePromises);
+
+  return {
+    success: true,
+    gradedCount: userIds.length,
+    quizGrade: quiz.grade,
+  };
 }
 
 async function createQuestionsWithOptions(

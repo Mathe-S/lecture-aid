@@ -93,3 +93,30 @@ export function useDeleteQuiz() {
     },
   });
 }
+
+// Close and grade a quiz
+export function useCloseAndGradeQuiz() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => quizApi.closeAndGradeQuiz(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: quizKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: quizKeys.detail(data.id) });
+
+      const message =
+        data.gradedCount > 0
+          ? `Quiz closed and ${data.gradedCount} student${
+              data.gradedCount > 1 ? "s" : ""
+            } graded with ${data.quizGrade} points`
+          : "Quiz closed successfully";
+
+      toast.success(message);
+    },
+    onError: (error) => {
+      toast.error("Failed to close and grade quiz", {
+        description: error.message,
+      });
+    },
+  });
+}

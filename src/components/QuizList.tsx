@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Plus, Edit, Trash } from "lucide-react";
+import { Plus, Edit, Trash, Lock, Award, ExternalLink } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { QuizWithQuestionsAndOptions } from "@/db/drizzle/schema";
+import { Badge } from "@/components/ui/badge";
+import { useCloseAndGradeQuiz, useDeleteQuiz } from "@/hooks/useQuizzes";
 
 interface QuizListProps {
   isAdmin?: boolean;
@@ -38,7 +40,10 @@ export default function QuizList({
 }: QuizListProps) {
   const [quizzes, setQuizzes] = useState<QuizWithQuestionsAndOptions[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quizToClose, setQuizToClose] = useState<string | null>(null);
   const router = useRouter();
+  const closeAndGradeQuizMutation = useCloseAndGradeQuiz();
+  const deleteQuizMutation = useDeleteQuiz();
 
   useEffect(() => {
     async function fetchQuizzes() {
@@ -65,20 +70,26 @@ export default function QuizList({
   }, []);
 
   const handleDeleteQuiz = async (quizId: string) => {
-    try {
-      // Use the API route for deletion
-      const response = await fetch(`/api/quizzes/${quizId}`, {
-        method: "DELETE",
+    deleteQuizMutation.mutate(quizId, {
+      onSuccess: () => {
+        setQuizzes(quizzes.filter((q) => q.id !== quizId));
+      },
+    });
+  };
+
+  const handleCloseAndGradeQuiz = async () => {
+    if (quizToClose) {
+      closeAndGradeQuizMutation.mutate(quizToClose, {
+        onSuccess: () => {
+          // Update local state to reflect the change
+          setQuizzes(
+            quizzes.map((quiz) =>
+              quiz.id === quizToClose ? { ...quiz, closed: true } : quiz
+            )
+          );
+          setQuizToClose(null);
+        },
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete quiz: ${response.statusText}`);
-      }
-
-      // Only update UI if API call succeeds
-      setQuizzes(quizzes.filter((q) => q.id !== quizId));
-    } catch (error) {
-      console.error("Error deleting quiz:", error);
     }
   };
 
@@ -113,9 +124,20 @@ export default function QuizList({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {quizzes.map((quiz) => {
             return (
-              <Card key={quiz.id}>
+              <Card key={quiz.id} className={quiz.closed ? "opacity-80" : ""}>
                 <CardHeader>
-                  <CardTitle>{quiz.title}</CardTitle>
+                  <div className="flex justify-between items-start">
+                    <CardTitle>{quiz.title}</CardTitle>
+                    {quiz.closed && (
+                      <Badge
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        <Lock size={12} />
+                        Closed
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription>
                     {quiz.description
                       ? quiz.description.substring(0, 100) +
@@ -142,7 +164,7 @@ export default function QuizList({
                 </CardContent>
                 <CardFooter>
                   {isAdmin ? (
-                    <div className="flex justify-between w-full">
+                    <div className="flex flex-wrap justify-between w-full gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -151,9 +173,58 @@ export default function QuizList({
                         <Edit size={16} className="mr-2" />
                         Edit
                       </Button>
+
+                      {!quiz.closed && quiz.grade > 0 && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQuizToClose(quiz.id)}
+                              className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                            >
+                              <Award size={16} className="mr-2" />
+                              Close & Grade
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Close and grade quiz?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will close the quiz for students and award{" "}
+                                {(quiz.grade / 10).toFixed(1)} points to all
+                                students who have taken it. This action cannot
+                                be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel
+                                onClick={() => setQuizToClose(null)}
+                              >
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleCloseAndGradeQuiz}
+                                disabled={closeAndGradeQuizMutation.isPending}
+                              >
+                                {closeAndGradeQuizMutation.isPending
+                                  ? "Processing..."
+                                  : "Close & Grade"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="default" size="sm">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-500 border-red-200 hover:bg-red-50"
+                          >
                             <Trash size={16} className="mr-2" />
                             Delete
                           </Button>
@@ -173,8 +244,11 @@ export default function QuizList({
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteQuiz(quiz.id)}
+                              disabled={deleteQuizMutation.isPending}
                             >
-                              Delete
+                              {deleteQuizMutation.isPending
+                                ? "Deleting..."
+                                : "Delete"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -183,9 +257,17 @@ export default function QuizList({
                   ) : (
                     <Button
                       onClick={() => router.push(`/quizzes/${quiz.id}`)}
-                      className="w-full cursor-pointer"
+                      className="w-full cursor-pointer flex items-center gap-2"
+                      disabled={quiz.closed}
                     >
-                      Take Quiz
+                      {quiz.closed ? (
+                        <>Quiz Closed</>
+                      ) : (
+                        <>
+                          Take Quiz
+                          <ExternalLink size={16} />
+                        </>
+                      )}
                     </Button>
                   )}
                 </CardFooter>

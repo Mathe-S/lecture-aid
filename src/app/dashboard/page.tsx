@@ -292,9 +292,9 @@ export default function DashboardPage() {
                       Quiz Points
                     </h4>
                     <div className="text-lg font-semibold">
-                      {grades.quizPoints}
+                      {grades.quizPoints / 10}
                       <span className="text-slate-400 text-sm ml-1">
-                        / {grades.maxQuizPoints || "0"}
+                        / {grades.maxQuizPoints / 10 || "0"}
                       </span>
                     </div>
                   </div>

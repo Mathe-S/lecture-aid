@@ -23,17 +23,27 @@ export async function GET() {
       where: eq(userRoles.id, user.id),
     });
 
-    if (!userRole || userRole.role !== "admin") {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 }
-      );
-    }
+    // Determine if user is admin
+    const isAdmin = userRole?.role === "admin";
 
-    // Fetch all quiz results
-    const results = await db.query.quizResults.findMany({
-      orderBy: (quizResults, { desc }) => [desc(quizResults.completedAt)],
-    });
+    // If user is not admin, they can only see their own results
+    const results = isAdmin
+      ? await db.query.quizResults.findMany({
+          orderBy: (quizResults, { desc }) => [desc(quizResults.completedAt)],
+        })
+      : await db.query.quizResults.findMany({
+          where: eq(quizResults.userId, user.id),
+          orderBy: (quizResults, { desc }) => [desc(quizResults.completedAt)],
+        });
+
+    // If there are no results, return empty arrays
+    if (results.length === 0) {
+      return NextResponse.json({
+        results: [],
+        quizzes: {},
+        users: {},
+      });
+    }
 
     // Get unique quiz IDs and user IDs from the results
     const quizIds = [...new Set(results.map((result) => result.quizId))];
