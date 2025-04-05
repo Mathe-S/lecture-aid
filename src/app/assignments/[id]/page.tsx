@@ -20,6 +20,8 @@ import {
   Edit,
   Trash,
   Lock,
+  Github,
+  ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -39,18 +41,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { AssignmentGrading } from "@/components/assignment-grading";
+import { useUserSubmission } from "@/hooks/useSubmissions";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const { data: assignment, isLoading } = useAssignment(id);
   const { data: submissions, isLoading: isLoadingSubmissions } =
     useAssignmentSubmissions(id);
   const deleteAssignment = useDeleteAssignment();
   const downloadSubmissions = useDownloadSubmissions();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { data: userSubmission } = useUserSubmission(id, user?.id);
 
   const isAdmin = role === "admin";
   const isLecturerOrAdmin = role === "lecturer" || role === "admin";
@@ -212,14 +216,67 @@ export default function AssignmentDetailPage() {
         <div className="max-w-2xl mx-auto">
           {assignment.closed ? (
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Lock className="h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium">Assignment Closed</h3>
-                  <p className="text-sm text-gray-500 mt-2">
-                    This assignment is no longer accepting submissions.
-                  </p>
-                </div>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-red-500" />
+                  Assignment Closed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500 mb-4">
+                  This assignment is no longer accepting submissions.
+                </p>
+
+                {userSubmission ? (
+                  <div className="mt-4 border rounded-md p-4 bg-slate-50">
+                    <h3 className="text-md font-medium mb-2">
+                      Your Submission
+                    </h3>
+
+                    <div className="mb-3">
+                      <a
+                        href={userSubmission.repositoryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline flex items-center gap-2 text-sm"
+                      >
+                        <Github className="h-4 w-4" />
+                        {userSubmission.repositoryName ||
+                          userSubmission.repositoryUrl}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+
+                    {userSubmission.grade !== null && (
+                      <div className="mt-3 p-3 bg-white rounded border">
+                        <h4 className="font-medium text-sm mb-1">Grade</h4>
+                        <p className="text-2xl font-bold">
+                          {userSubmission.grade}{" "}
+                          <span className="text-sm font-normal text-slate-500">
+                            / {assignment.grade}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+
+                    {userSubmission.feedback && (
+                      <div className="mt-3">
+                        <h4 className="font-medium text-sm mb-1">Feedback</h4>
+                        <div className="p-3 bg-white rounded border">
+                          <p className="whitespace-pre-line text-sm">
+                            {userSubmission.feedback}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-red-500">
+                      You did not submit this assignment before it closed.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (

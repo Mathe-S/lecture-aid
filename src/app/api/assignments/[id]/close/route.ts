@@ -12,10 +12,10 @@ export async function PUT(
     // Get the current user from the auth context
     const supabase = await supabaseForServer();
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -23,7 +23,7 @@ export async function PUT(
     const { data: userRole } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (
