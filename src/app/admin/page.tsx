@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FileText, User, BarChart4 } from "lucide-react";
+import { FileText, User, BarChart4, ClipboardList } from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminPage() {
@@ -31,6 +31,12 @@ export default function AdminPage() {
         "Create and manage quizzes with single or multiple choice questions",
       icon: <FileText className="h-8 w-8 text-primary" />,
       href: "/admin/quizzes",
+    },
+    {
+      title: "Quiz Results",
+      description: "View, analyze and manage quiz submissions",
+      icon: <ClipboardList className="h-8 w-8 text-primary" />,
+      href: "/admin/results",
     },
     {
       title: "Student Profiles",

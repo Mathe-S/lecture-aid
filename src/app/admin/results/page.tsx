@@ -18,13 +18,27 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { useQuizResults } from "@/hooks/useQuizResults";
+import { Loader2, Trash2 } from "lucide-react";
+import { useQuizResults, useDeleteQuizResult } from "@/hooks/useQuizResults";
 import { QuizResult } from "@/db/drizzle/schema";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 export default function AdminQuizResultsPage() {
   const router = useRouter();
   const { data, isLoading, error } = useQuizResults();
+  const deleteResult = useDeleteQuizResult();
+  const [resultToDelete, setResultToDelete] = useState<string | null>(null);
 
   // Extract data
   const results = data?.results || [];
@@ -33,6 +47,13 @@ export default function AdminQuizResultsPage() {
 
   function handleViewDetails(resultId: string) {
     router.push(`/admin/results/${resultId}`);
+  }
+
+  function handleDeleteResult() {
+    if (resultToDelete) {
+      deleteResult.mutate(resultToDelete);
+      setResultToDelete(null);
+    }
   }
 
   return (
@@ -97,7 +118,7 @@ export default function AdminQuizResultsPage() {
                         <TableCell>
                           {new Date(result.completedAt || "").toLocaleString()}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -105,6 +126,50 @@ export default function AdminQuizResultsPage() {
                           >
                             View Details
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-500 border-red-200 hover:bg-red-50"
+                                onClick={() => setResultToDelete(result.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Delete Quiz Result
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this quiz
+                                  result? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel
+                                  onClick={() => setResultToDelete(null)}
+                                >
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={handleDeleteResult}
+                                  className="bg-red-500 hover:bg-red-600"
+                                >
+                                  {deleteResult.isPending ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    "Delete"
+                                  )}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </TableCell>
                       </TableRow>
                     );

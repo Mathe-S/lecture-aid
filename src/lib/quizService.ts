@@ -98,60 +98,67 @@ export async function updateQuiz(
     const existingQuestions = existingQuiz.quizQuestions || [];
 
     // Process each question in the updated quiz
-    for (let i = 0; i < quizData.quizQuestions.length; i++) {
-      const updatedQuestion = quizData.quizQuestions[i];
-
-      // Check if this is an existing question or a new one
-      if (updatedQuestion.id && !updatedQuestion.id.startsWith("temp-")) {
-        // This is an existing question - update it
-        const [updatedQuestionResult] = await db
-          .update(quizQuestions)
-          .set({
-            text: updatedQuestion.text,
-            orderIndex: i,
-            updatedAt: new Date().toISOString(),
-          })
-          .where(eq(quizQuestions.id, updatedQuestion.id))
-          .returning();
-
-        // Process options for this question
-        if (
-          updatedQuestion.quizOptions &&
-          updatedQuestion.quizOptions.length > 0
-        ) {
-          await updateQuestionOptions(
-            updatedQuestionResult.id,
-            updatedQuestion.quizOptions
-          );
-        }
-      } else {
-        // This is a new question - create it
-        const [createdQuestion] = await db
-          .insert(quizQuestions)
-          .values({
-            quizId: id,
-            text: updatedQuestion.text,
-            orderIndex: i,
-          })
-          .returning();
-
-        // Create options for this new question
-        if (
-          updatedQuestion.quizOptions &&
-          updatedQuestion.quizOptions.length > 0
-        ) {
-          const optionsToInsert = updatedQuestion.quizOptions.map(
-            (option, index) => ({
-              questionId: createdQuestion.id,
-              text: option.text,
-              isCorrect: option.isCorrect,
-              orderIndex: index,
+    const questionUpdatePromises = quizData.quizQuestions.map(
+      async (updatedQuestion, i) => {
+        // Check if this is an existing question or a new one
+        if (updatedQuestion.id && !updatedQuestion.id.startsWith("temp-")) {
+          // This is an existing question - update it
+          const [updatedQuestionResult] = await db
+            .update(quizQuestions)
+            .set({
+              text: updatedQuestion.text,
+              orderIndex: i,
+              updatedAt: new Date().toISOString(),
             })
-          );
-          await db.insert(quizOptions).values(optionsToInsert);
+            .where(eq(quizQuestions.id, updatedQuestion.id))
+            .returning();
+
+          // Process options for this question
+          if (
+            updatedQuestion.quizOptions &&
+            updatedQuestion.quizOptions.length > 0
+          ) {
+            await updateQuestionOptions(
+              updatedQuestionResult.id,
+              updatedQuestion.quizOptions
+            );
+          }
+
+          return updatedQuestionResult;
+        } else {
+          // This is a new question - create it
+          const [createdQuestion] = await db
+            .insert(quizQuestions)
+            .values({
+              quizId: id,
+              text: updatedQuestion.text,
+              orderIndex: i,
+            })
+            .returning();
+
+          // Create options for this new question
+          if (
+            updatedQuestion.quizOptions &&
+            updatedQuestion.quizOptions.length > 0
+          ) {
+            const optionsToInsert = updatedQuestion.quizOptions.map(
+              (option, index) => ({
+                questionId: createdQuestion.id,
+                text: option.text,
+                isCorrect: option.isCorrect,
+                orderIndex: index,
+              })
+            );
+            await db.insert(quizOptions).values(optionsToInsert);
+          }
+
+          return createdQuestion;
         }
       }
-    }
+    );
+
+    // Wait for all question updates to complete
+    await Promise.all(questionUpdatePromises);
 
     // Delete questions that were removed
     const updatedQuestionIds = quizData.quizQuestions

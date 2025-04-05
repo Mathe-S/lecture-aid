@@ -106,3 +106,13 @@ export async function getAllQuizResults() {
     users: usersMap,
   };
 }
+
+export async function deleteQuizResult(id: string) {
+  try {
+    await db.delete(quizResults).where(eq(quizResults.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting quiz result:", error);
+    throw error;
+  }
+}

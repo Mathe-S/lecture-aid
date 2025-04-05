@@ -49,7 +49,6 @@ export default function Navbar() {
     { label: "Assignments", href: "/assignments", showWhen: !!user },
     // Admin only
     { label: "Admin", href: "/admin", showWhen: role === "admin" },
-    { label: "Results", href: "/admin/results", showWhen: role === "admin" },
   ];
 
   // User menu items - used in dropdown
