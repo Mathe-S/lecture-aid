@@ -37,7 +37,10 @@ export const quizApi = {
     const response = await fetch("/api/quizzes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(quizData),
+      body: JSON.stringify({
+        ...quizData,
+        grade: quizData.grade || 0,
+      }),
     });
 
     if (!response.ok) {
@@ -55,7 +58,10 @@ export const quizApi = {
     const response = await fetch(`/api/quizzes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(quizData),
+      body: JSON.stringify({
+        ...quizData,
+        grade: quizData.grade || 0,
+      }),
     });
 
     if (!response.ok) {

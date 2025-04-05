@@ -29,6 +29,7 @@ export async function createAssignment(
       description: assignmentData.description,
       due_date: assignmentData.due_date,
       created_by: assignmentData.created_by,
+      grade: assignmentData.grade,
     })
     .returning();
 
@@ -45,6 +46,7 @@ export async function updateAssignment(
       title: assignmentData.title,
       description: assignmentData.description,
       due_date: assignmentData.due_date,
+      grade: assignmentData.grade,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(assignments.id, id))

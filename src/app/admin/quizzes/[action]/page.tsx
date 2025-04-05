@@ -39,6 +39,7 @@ export default function QuizFormPage() {
     id: "",
     title: "",
     description: "",
+    grade: 10, // Default 1.0 point
     createdAt: "",
     createdBy: "",
     updatedAt: "",
@@ -53,6 +54,7 @@ export default function QuizFormPage() {
         id: quizData.id,
         title: quizData.title,
         description: quizData.description,
+        grade: quizData.grade || 0,
         createdAt: quizData.createdAt,
         createdBy: quizData.createdBy,
         updatedAt: quizData.updatedAt,
@@ -179,6 +181,29 @@ export default function QuizFormPage() {
                       placeholder="Enter quiz description"
                       rows={4}
                     />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="grade">Grade Points</Label>
+                    <Input
+                      id="grade"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={(quiz.grade / 10).toFixed(1)}
+                      onChange={(e) => {
+                        // Convert from decimal (e.g. 1.5) to integer (15)
+                        const decimalValue = parseFloat(e.target.value) || 0;
+                        const intValue = Math.round(decimalValue * 10);
+                        setQuiz({ ...quiz, grade: intValue });
+                      }}
+                      placeholder="Enter grade points (e.g., 1.5)"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      How many points this quiz is worth. Use 0 for practice
+                      quizzes that don&apos;t count towards the grade. You can
+                      use decimal values like 1.5, 2.5, etc.
+                    </p>
                   </div>
                 </div>
               </TabsContent>

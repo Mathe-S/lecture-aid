@@ -35,6 +35,7 @@ const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   dueDate: z.date().optional(),
+  grade: z.number().min(0, "Grade must be a positive number").default(30),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,6 +55,7 @@ export function AssignmentForm() {
     defaultValues: {
       title: "",
       description: "",
+      grade: 30,
     },
   });
 
@@ -68,6 +70,7 @@ export function AssignmentForm() {
         title: values.title,
         description: values.description || null,
         due_date: values.dueDate ? values.dueDate.toISOString() : null,
+        grade: values.grade,
         created_by: user.id,
       });
 
@@ -134,6 +137,31 @@ export function AssignmentForm() {
                 <Textarea
                   placeholder="Submit your GitHub repository for Problem Set 0..."
                   {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="grade"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Grade Points</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="3.0"
+                  value={(field.value / 10).toFixed(1)}
+                  onChange={(e) => {
+                    const decimalValue = parseFloat(e.target.value) || 0;
+                    const intValue = Math.round(decimalValue * 10);
+                    field.onChange(intValue);
+                  }}
                 />
               </FormControl>
               <FormMessage />

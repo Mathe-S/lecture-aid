@@ -127,6 +127,18 @@ export default function QuizList({
                   <p className="text-sm text-muted-foreground">
                     {quiz.quizQuestions?.length || 0} questions
                   </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {quiz.grade === 0 ? (
+                      <span className="text-muted">
+                        Practice Quiz (0 points)
+                      </span>
+                    ) : (
+                      <>
+                        Worth: {(quiz.grade / 10).toFixed(1)} point
+                        {quiz.grade !== 10 ? "s" : ""}
+                      </>
+                    )}
+                  </p>
                 </CardContent>
                 <CardFooter>
                   {isAdmin ? (

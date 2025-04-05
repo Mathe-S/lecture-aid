@@ -54,6 +54,7 @@ export const quizzes = pgTable(
       .notNull(),
     title: text().notNull(),
     description: text(),
+    grade: integer().default(0).notNull(),
     createdBy: uuid("created_by").notNull(),
     createdAt: timestamp("created_at", {
       withTimezone: true,
@@ -254,6 +255,7 @@ export const assignments = pgTable(
       .notNull(),
     title: text().notNull(),
     description: text(),
+    grade: integer().default(3).notNull(),
     due_date: timestamp("due_date", { withTimezone: true, mode: "string" }),
     created_by: uuid("created_by").notNull(),
     created_at: timestamp("created_at", {

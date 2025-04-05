@@ -43,7 +43,10 @@ export const assignmentApi = {
     const response = await fetch("/api/assignments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(assignmentData),
+      body: JSON.stringify({
+        ...assignmentData,
+        grade: assignmentData.grade || 3, // Ensure grade is included
+      }),
     });
 
     if (!response.ok) {
@@ -61,7 +64,10 @@ export const assignmentApi = {
     const response = await fetch(`/api/assignments/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(assignmentData),
+      body: JSON.stringify({
+        ...assignmentData,
+        grade: assignmentData.grade !== undefined ? assignmentData.grade : 3, // Ensure grade is included for partial updates
+      }),
     });
 
     if (!response.ok) {
