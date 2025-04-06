@@ -386,7 +386,7 @@ export const studentGrades = pgTable(
     maxAssignmentPoints: integer("max_assignment_points").default(0),
     extraPoints: integer("extra_points").default(0),
     totalPoints: integer("total_points").default(0),
-    maxPossiblePoints: integer("max_possible_points").default(100),
+    maxPossiblePoints: integer("max_possible_points").default(1000),
     createdAt: timestamp("created_at", {
       withTimezone: true,
       mode: "string",

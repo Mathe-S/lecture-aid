@@ -274,13 +274,15 @@ export default function DashboardPage() {
                         {grades.totalPoints}
                       </span>
                       <span className="text-slate-500 text-sm">
-                        / {grades.maxPossiblePoints}
+                        / {grades.maxPossiblePoints || 1000}
                       </span>
                     </div>
                   </div>
                   <Progress
                     value={
-                      (grades.totalPoints / grades.maxPossiblePoints) * 100
+                      (grades.totalPoints /
+                        (grades.maxPossiblePoints || 1000)) *
+                      100
                     }
                     className="h-2"
                   />

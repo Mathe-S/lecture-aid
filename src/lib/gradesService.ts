@@ -31,6 +31,7 @@ export async function getStudentGrade(userId: string) {
             gradeData.quizPoints +
             gradeData.assignmentPoints +
             gradeData.extraPoints,
+          maxPossiblePoints: 1000,
           updatedAt: new Date().toISOString(),
         })
         .returning();
@@ -78,21 +79,31 @@ export async function calculateGrades(userId: string) {
       0
     );
 
-    // Get assignment submissions
+    // Get assignment submissions with their assignments
     const assignmentSubmissionsData =
       await db.query.assignmentSubmissions.findMany({
         where: eq(assignmentSubmissions.userId, userId),
+        with: {
+          assignment: true,
+        },
       });
 
-    // Get all assignments to determine max possible points
-    const allAssignments = await db.query.assignments.findMany();
-    const maxAssignmentPoints = allAssignments.length; // Assuming each assignment has max 100 points
+    // Get all closed assignments to determine max possible points
+    const closedAssignments = await db.query.assignments.findMany({
+      where: (assignments, { eq }) => eq(assignments.closed, true),
+    });
 
-    // Calculate assignment points (only count graded assignments)
+    // Calculate max assignment points by summing grades of all closed assignments
+    const maxAssignmentPoints = closedAssignments.reduce(
+      (total, assignment) => total + assignment.grade,
+      0
+    );
+
+    // Calculate assignment points (only count graded submissions for closed assignments)
     let assignmentPoints = 0;
 
     assignmentSubmissionsData.forEach((submission) => {
-      if (submission.grade !== null) {
+      if (submission.grade !== null && submission.assignment.closed === true) {
         assignmentPoints += submission.grade;
       }
     });
@@ -103,6 +114,7 @@ export async function calculateGrades(userId: string) {
       assignmentPoints,
       maxAssignmentPoints,
       extraPoints: 0, // Default to 0 for extra points
+      maxPossiblePoints: 1000,
     };
   } catch (error) {
     console.error("Error calculating student grades:", error);
@@ -121,6 +133,7 @@ export async function updateStudentGrades(
     assignmentPoints?: number;
     maxAssignmentPoints?: number;
     extraPoints?: number;
+    maxPossiblePoints?: number;
   }
 ) {
   try {
@@ -139,6 +152,7 @@ export async function updateStudentGrades(
       .set({
         ...gradeData,
         totalPoints,
+        maxPossiblePoints: 1000, // Always set to 1000
         updatedAt: new Date().toISOString(),
       })
       .where(eq(studentGrades.userId, userId));
@@ -205,6 +219,7 @@ export async function recalculateGrades(userId: string) {
         ...newGradeData,
         extraPoints,
         totalPoints,
+        maxPossiblePoints: 1000, // Always set to 1000
         updatedAt: new Date().toISOString(),
       })
       .where(eq(studentGrades.userId, userId));
@@ -243,38 +258,34 @@ export async function getAllStudentGrades() {
  */
 export async function recalculateAllGrades() {
   try {
-    // Get all profiles (students)
+    // Get all users with grade records
+    const allGrades = await db.query.studentGrades.findMany({
+      columns: {
+        userId: true,
+      },
+    });
+
+    // Get all students from profiles table (in case some don't have grade records yet)
     const allProfiles = await db.query.profiles.findMany({
       columns: {
         id: true,
       },
     });
 
-    // Process in smaller batches of 10 students at a time to avoid timeouts
-    const BATCH_SIZE = 10;
-    let processedCount = 0;
+    // Combine unique user IDs
+    const allUserIds = new Set([
+      ...allGrades.map((grade) => grade.userId),
+      ...allProfiles.map((profile) => profile.id),
+    ]);
 
-    for (let i = 0; i < allProfiles.length; i += BATCH_SIZE) {
-      const batch = allProfiles.slice(i, i + BATCH_SIZE);
+    // Recalculate grades for each user
+    const updatePromises = Array.from(allUserIds).map((userId) =>
+      recalculateGrades(userId)
+    );
 
-      // Process batch in parallel
-      await Promise.all(
-        batch.map((profile) =>
-          recalculateGrades(profile.id).catch((err) => {
-            // Log error but continue with other students
-            console.error(
-              `Error recalculating grades for user ${profile.id}:`,
-              err
-            );
-            return false;
-          })
-        )
-      );
+    await Promise.all(updatePromises);
 
-      processedCount += batch.length;
-    }
-
-    return { success: true, count: processedCount };
+    return { success: true, count: allUserIds.size };
   } catch (error) {
     console.error("Error recalculating all grades:", error);
     throw error;

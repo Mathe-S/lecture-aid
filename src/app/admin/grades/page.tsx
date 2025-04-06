@@ -122,7 +122,7 @@ export default function AdminGradesPage() {
 
         // Helper function for percentage calculation
         const getProgress = (grade: GradeWithProfilesType) =>
-          ((grade.totalPoints ?? 0) / (grade.maxPossiblePoints ?? 100)) * 100;
+          ((grade.totalPoints ?? 0) / (grade.maxPossiblePoints ?? 1000)) * 100;
 
         switch (sortField) {
           case "name":
@@ -278,7 +278,7 @@ export default function AdminGradesPage() {
                         | undefined;
                       const totalPercentage =
                         ((grade.totalPoints ?? 0) /
-                          (grade.maxPossiblePoints ?? 100)) *
+                          (grade.maxPossiblePoints ?? 1000)) *
                         100;
 
                       return (
@@ -315,7 +315,8 @@ export default function AdminGradesPage() {
                             {grade.extraPoints}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {grade.totalPoints}/{grade.maxPossiblePoints}
+                            {grade.totalPoints}/
+                            {grade.maxPossiblePoints || 1000}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -399,7 +400,7 @@ export default function AdminGradesPage() {
                     </div>
                     <div className="text-sm text-slate-500">
                       Current total: {selectedStudent.totalPoints || 0}/
-                      {selectedStudent.maxPossiblePoints || 100}
+                      {selectedStudent.maxPossiblePoints || 1000}
                     </div>
                   </div>
                 </div>
