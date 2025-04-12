@@ -9,10 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Save, Github, ExternalLink } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Save,
+  Github,
+  ExternalLink,
+  Eye,
+} from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { FeedbackDisplay } from "@/components/feedback-display";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function GradeSubmissionPage() {
   const params = useParams();
@@ -198,25 +207,63 @@ export default function GradeSubmissionPage() {
                   rows={6}
                 />
               </div>
-            </CardContent>
-            <CardContent className="pt-0">
-              <Button
-                onClick={handleSubmit}
-                disabled={gradeMutation.isPending}
-                className="w-full sm:w-auto"
-              >
-                {gradeMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Feedback & Grade
-                  </>
-                )}
-              </Button>
+
+              {feedback && (
+                <div className="pt-4 border-t">
+                  <Tabs defaultValue="edit">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium">Feedback Preview</h3>
+                      <TabsList>
+                        <TabsTrigger value="edit">Edit</TabsTrigger>
+                        <TabsTrigger
+                          value="preview"
+                          className="flex items-center gap-1"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Preview
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
+
+                    <TabsContent value="edit" className="m-0">
+                      <p className="text-xs text-slate-500 mb-2">
+                        This is the raw feedback text. Switch to Preview to see
+                        how it will appear to students.
+                      </p>
+                    </TabsContent>
+
+                    <TabsContent value="preview" className="m-0">
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="bg-slate-50 p-2 border-b text-xs font-medium text-slate-700">
+                          Student View
+                        </div>
+                        <div className="p-4">
+                          <FeedbackDisplay feedback={feedback} />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={gradeMutation.isPending}
+                >
+                  {gradeMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Feedback & Grade
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
