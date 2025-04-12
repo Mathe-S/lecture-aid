@@ -42,6 +42,7 @@ import {
 import { useState } from "react";
 import { AssignmentGrading } from "@/components/assignment-grading";
 import { useUserSubmission } from "@/hooks/useSubmissions";
+import { FeedbackDisplay } from "@/components/feedback-display";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
@@ -262,11 +263,7 @@ export default function AssignmentDetailPage() {
                     {userSubmission.feedback && (
                       <div className="mt-3">
                         <h4 className="font-medium text-sm mb-1">Feedback</h4>
-                        <div className="p-3 bg-white rounded border">
-                          <p className="whitespace-pre-line text-sm">
-                            {userSubmission.feedback}
-                          </p>
-                        </div>
+                        <FeedbackDisplay feedback={userSubmission.feedback} />
                       </div>
                     )}
                   </div>

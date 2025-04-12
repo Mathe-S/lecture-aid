@@ -59,13 +59,24 @@ export async function POST(
 
     // Process each student in the grades data
     for (const student of gradesData.students) {
-      if (!student.studentId || typeof student.points !== "number") {
+      // Check for either totalPoints or points to be available
+      const hasValidGrade =
+        typeof student.totalPoints === "number" ||
+        typeof student.points === "number";
+
+      if (!student.studentId || !hasValidGrade) {
         results.skipped++;
         results.errors.push(`Invalid student data: ${JSON.stringify(student)}`);
         continue;
       }
 
       try {
+        // Use totalPoints if available, otherwise fall back to points
+        const gradeValue =
+          typeof student.totalPoints === "number"
+            ? student.totalPoints
+            : student.points;
+
         // Find the profile with the matching email
         const [profileRecord] = await db
           .select()
@@ -112,6 +123,7 @@ export async function POST(
         const otherFields = { ...student };
         delete otherFields.studentId;
         delete otherFields.points;
+        delete otherFields.totalPoints; // Also remove totalPoints from other fields
         delete otherFields.notes;
         delete otherFields.similarityInfo;
 
@@ -127,7 +139,7 @@ export async function POST(
         await db
           .update(assignmentSubmissions)
           .set({
-            grade: student.points,
+            grade: gradeValue,
             feedback: feedback,
             updatedAt: new Date().toISOString(),
           })
