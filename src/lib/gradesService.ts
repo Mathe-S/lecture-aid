@@ -1,9 +1,11 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import db from "@/db";
 import {
   studentGrades,
   quizResults,
   assignmentSubmissions,
+  profiles,
+  GradeWithProfilesType,
 } from "@/db/drizzle/schema";
 
 /**
@@ -254,40 +256,64 @@ export async function getAllStudentGrades() {
 }
 
 /**
- * Recalculate grades for all students
+ * Recalculate all student grades
  */
 export async function recalculateAllGrades() {
   try {
-    // Get all users with grade records
-    const allGrades = await db.query.studentGrades.findMany({
-      columns: {
-        userId: true,
-      },
-    });
+    // Get all user IDs from the studentGrades table
+    const allUserIds = await db
+      .select({ userId: studentGrades.userId })
+      .from(studentGrades);
 
-    // Get all students from profiles table (in case some don't have grade records yet)
-    const allProfiles = await db.query.profiles.findMany({
-      columns: {
-        id: true,
-      },
-    });
-
-    // Combine unique user IDs
-    const allUserIds = new Set([
-      ...allGrades.map((grade) => grade.userId),
-      ...allProfiles.map((profile) => profile.id),
-    ]);
-
-    // Recalculate grades for each user
-    const updatePromises = Array.from(allUserIds).map((userId) =>
-      recalculateGrades(userId)
+    await Promise.all(
+      allUserIds.map(({ userId }) => recalculateGrades(userId))
     );
-
-    await Promise.all(updatePromises);
-
-    return { success: true, count: allUserIds.size };
+    console.log(
+      `Successfully recalculated grades for ${allUserIds.length} students.`
+    );
+    return { count: allUserIds.length };
   } catch (error) {
     console.error("Error recalculating all grades:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get data specifically for the public leaderboard (Top 10 by total points)
+ */
+export async function getLeaderboardData() {
+  try {
+    // Define the type for the leaderboard entry if GradeWithProfilesType isn't exactly right
+    // For simplicity, assuming GradeWithProfilesType includes what we need
+    const leaderboard = await db
+      .select({
+        userId: studentGrades.userId,
+        totalPoints: studentGrades.totalPoints,
+        // Select necessary profile fields directly to avoid over-fetching
+        profile: {
+          fullName: profiles.fullName,
+          avatarUrl: profiles.avatarUrl,
+          email: profiles.email, // Include email if needed, otherwise remove
+        },
+      })
+      .from(studentGrades)
+      .innerJoin(profiles, eq(studentGrades.userId, profiles.id))
+      .orderBy(sql`${studentGrades.totalPoints} DESC NULLS LAST`) // Order by totalPoints descending
+      .limit(10); // Limit to top 10
+
+    // Map the result to include the nested profile structure expected by the frontend
+    const formattedLeaderboard = leaderboard.map((entry) => ({
+      userId: entry.userId,
+      totalPoints: entry.totalPoints,
+      // Mimic the structure from getAllStudentGrades if necessary
+      user: {
+        profiles: [entry.profile],
+      },
+    }));
+
+    return formattedLeaderboard as GradeWithProfilesType[]; // Cast to the expected type
+  } catch (error) {
+    console.error("Error fetching leaderboard data:", error);
     throw error;
   }
 }

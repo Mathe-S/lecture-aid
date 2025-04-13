@@ -1,4 +1,7 @@
-import { StudentGradeWithUserAndProfile } from "@/db/drizzle/schema";
+import {
+  StudentGradeWithUserAndProfile,
+  GradeWithProfilesType,
+} from "@/db/drizzle/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -7,6 +10,7 @@ export const gradesKeys = {
   all: ["grades"] as const,
   user: () => [...gradesKeys.all, "user"] as const,
   admin: () => [...gradesKeys.all, "admin"] as const,
+  leaderboard: () => [...gradesKeys.all, "leaderboard"] as const,
 };
 
 // Fetch student grades
@@ -23,6 +27,15 @@ const fetchAllGrades = async (): Promise<StudentGradeWithUserAndProfile[]> => {
   const response = await fetch("/api/admin/grades");
   if (!response.ok) {
     throw new Error("Failed to fetch all grades");
+  }
+  return response.json();
+};
+
+// Fetch leaderboard data (public)
+const fetchLeaderboardData = async (): Promise<GradeWithProfilesType[]> => {
+  const response = await fetch("/api/leaderboard");
+  if (!response.ok) {
+    throw new Error("Failed to fetch leaderboard data");
   }
   return response.json();
 };
@@ -101,6 +114,14 @@ export function useAllGrades() {
   return useQuery({
     queryKey: gradesKeys.admin(),
     queryFn: fetchAllGrades,
+  });
+}
+
+// Hook for fetching leaderboard data (public)
+export function useLeaderboardData() {
+  return useQuery({
+    queryKey: gradesKeys.leaderboard(),
+    queryFn: fetchLeaderboardData,
   });
 }
 

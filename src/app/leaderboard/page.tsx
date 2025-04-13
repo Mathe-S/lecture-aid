@@ -1,6 +1,6 @@
 "use client";
 
-import { useAllGrades } from "@/hooks/useGrades";
+import { useLeaderboardData } from "@/hooks/useGrades";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Card,
@@ -22,17 +22,10 @@ const RankIcon = ({ rank }: { rank: number }) => {
 };
 
 export default function LeaderboardPage() {
-  const { data: allGrades, isLoading } = useAllGrades() as {
+  const { data: topStudents, isLoading } = useLeaderboardData() as {
     data: GradeWithProfilesType[] | undefined;
     isLoading: boolean;
   };
-
-  // Sort by totalPoints descending and take top 10
-  const topStudents = allGrades
-    ? [...allGrades]
-        .sort((a, b) => (b.totalPoints ?? 0) - (a.totalPoints ?? 0))
-        .slice(0, 10)
-    : [];
 
   return (
     <div className="container mx-auto py-10 px-4 md:px-6">
@@ -56,7 +49,7 @@ export default function LeaderboardPage() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ) : topStudents.length === 0 ? (
+            ) : !topStudents || topStudents.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
                 No student data available yet.
               </div>
