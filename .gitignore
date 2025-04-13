@@ -44,5 +44,4 @@ next-env.d.ts
 .cursor
 
 # db
-drizzle/
 db_backups/

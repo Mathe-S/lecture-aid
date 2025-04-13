@@ -1,0 +1,221 @@
+-- CREATE TABLE "chat_messages" (
+-- 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+-- 	"chat_room_id" uuid NOT NULL,
+-- 	"content" text NOT NULL,
+-- 	"user_id" uuid NOT NULL,
+-- 	"created_at" timestamp DEFAULT now() NOT NULL,
+-- 	"updated_at" timestamp DEFAULT now() NOT NULL,
+-- 	"is_edited" boolean DEFAULT false,
+-- 	"parent_message_id" uuid
+-- );
+-- --> statement-breakpoint
+-- CREATE TABLE "chat_rooms" (
+-- 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+-- 	"name" varchar(100) NOT NULL,
+-- 	"description" text,
+-- 	"created_at" timestamp DEFAULT now() NOT NULL,
+-- 	"updated_at" timestamp DEFAULT now() NOT NULL,
+-- 	"created_by" uuid NOT NULL
+-- );
+-- --> statement-breakpoint
+-- CREATE TABLE "message_reactions" (
+-- 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+-- 	"message_id" uuid NOT NULL,
+-- 	"user_id" uuid NOT NULL,
+-- 	"reaction" varchar(20) NOT NULL,
+-- 	"created_at" timestamp DEFAULT now() NOT NULL
+-- );
+-- --> statement-breakpoint
+-- CREATE TABLE "pinned_messages" (
+-- 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+-- 	"message_id" uuid NOT NULL,
+-- 	"chat_room_id" uuid NOT NULL,
+-- 	"pinned_by" uuid NOT NULL,
+-- 	"pinned_at" timestamp DEFAULT now() NOT NULL
+-- );
+-- --> statement-breakpoint
+-- CREATE TABLE "assignment_submissions" (
+-- 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+-- 	"assignment_id" uuid NOT NULL,
+-- 	"user_id" uuid NOT NULL,
+-- 	"repository_url" text NOT NULL,
+-- 	"repository_name" text,
+-- 	"feedback" text,
+-- 	"grade" integer,
+-- 	"submitted_at" timestamp with time zone DEFAULT now(),
+-- 	"updated_at" timestamp with time zone,
+-- 	CONSTRAINT "assignment_submissions_user_id_assignment_id_key" UNIQUE("user_id","assignment_id")
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "assignment_submissions" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "assignments" (
+-- 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+-- 	"title" text NOT NULL,
+-- 	"description" text,
+-- 	"grade" integer DEFAULT 3 NOT NULL,
+-- 	"due_date" timestamp with time zone,
+-- 	"created_by" uuid NOT NULL,
+-- 	"created_at" timestamp with time zone DEFAULT now(),
+-- 	"updated_at" timestamp with time zone,
+-- 	"closed" boolean DEFAULT false
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "assignments" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "profiles" (
+-- 	"id" uuid PRIMARY KEY NOT NULL,
+-- 	"email" text,
+-- 	"full_name" text,
+-- 	"avatar_url" text,
+-- 	"created_at" timestamp with time zone DEFAULT now(),
+-- 	"updated_at" timestamp with time zone DEFAULT now()
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "profiles" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "quiz_options" (
+-- 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+-- 	"question_id" uuid NOT NULL,
+-- 	"text" text NOT NULL,
+-- 	"is_correct" boolean DEFAULT false,
+-- 	"order_index" integer NOT NULL,
+-- 	"created_at" timestamp with time zone DEFAULT now(),
+-- 	"updated_at" timestamp with time zone
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "quiz_options" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "quiz_questions" (
+-- 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+-- 	"quiz_id" uuid NOT NULL,
+-- 	"text" text NOT NULL,
+-- 	"order_index" integer NOT NULL,
+-- 	"created_at" timestamp with time zone DEFAULT now(),
+-- 	"updated_at" timestamp with time zone
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "quiz_questions" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "quiz_results" (
+-- 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+-- 	"quiz_id" uuid NOT NULL,
+-- 	"user_id" uuid NOT NULL,
+-- 	"score" integer NOT NULL,
+-- 	"total_questions" integer NOT NULL,
+-- 	"answers" jsonb NOT NULL,
+-- 	"completed_at" timestamp with time zone DEFAULT now(),
+-- 	CONSTRAINT "quiz_results_quiz_id_user_id_key" UNIQUE("quiz_id","user_id")
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "quiz_results" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "quizzes" (
+-- 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+-- 	"title" text NOT NULL,
+-- 	"description" text,
+-- 	"grade" integer DEFAULT 0 NOT NULL,
+-- 	"created_by" uuid NOT NULL,
+-- 	"closed" boolean DEFAULT false NOT NULL,
+-- 	"created_at" timestamp with time zone DEFAULT now(),
+-- 	"updated_at" timestamp with time zone
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "quizzes" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "student_grades" (
+-- 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+-- 	"user_id" uuid NOT NULL,
+-- 	"quiz_points" integer DEFAULT 0,
+-- 	"max_quiz_points" integer DEFAULT 0,
+-- 	"assignment_points" integer DEFAULT 0,
+-- 	"max_assignment_points" integer DEFAULT 0,
+-- 	"extra_points" integer DEFAULT 0,
+-- 	"total_points" integer DEFAULT 0,
+-- 	"max_possible_points" integer DEFAULT 1000,
+-- 	"created_at" timestamp with time zone DEFAULT now(),
+-- 	"updated_at" timestamp with time zone
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "student_grades" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+-- CREATE TABLE "user_roles" (
+-- 	"id" uuid PRIMARY KEY NOT NULL,
+-- 	"role" text DEFAULT 'student' NOT NULL,
+-- 	"created_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+-- 	"updated_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+-- 	CONSTRAINT "role_check" CHECK (role = ANY (ARRAY['admin'::text, 'lecturer'::text, 'student'::text]))
+-- );
+-- --> statement-breakpoint
+-- CREATE TABLE "auth"."users" (
+-- 	"id" uuid PRIMARY KEY NOT NULL
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_chat_room_id_chat_rooms_id_fk" FOREIGN KEY ("chat_room_id") REFERENCES "public"."chat_rooms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_parent_message_id_chat_messages_id_fk" FOREIGN KEY ("parent_message_id") REFERENCES "public"."chat_messages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "chat_rooms" ADD CONSTRAINT "chat_rooms_created_by_profiles_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "message_reactions" ADD CONSTRAINT "message_reactions_message_id_chat_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."chat_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "message_reactions" ADD CONSTRAINT "message_reactions_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "pinned_messages" ADD CONSTRAINT "pinned_messages_message_id_chat_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."chat_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "pinned_messages" ADD CONSTRAINT "pinned_messages_chat_room_id_chat_rooms_id_fk" FOREIGN KEY ("chat_room_id") REFERENCES "public"."chat_rooms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "pinned_messages" ADD CONSTRAINT "pinned_messages_pinned_by_profiles_id_fk" FOREIGN KEY ("pinned_by") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "assignment_submissions" ADD CONSTRAINT "assignment_submissions_assignment_id_fkey" FOREIGN KEY ("assignment_id") REFERENCES "public"."assignments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "assignment_submissions" ADD CONSTRAINT "assignment_submissions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "assignments" ADD CONSTRAINT "assignments_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "profiles" ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "quiz_options" ADD CONSTRAINT "quiz_options_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "public"."quiz_questions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "quiz_questions" ADD CONSTRAINT "quiz_questions_quiz_id_fkey" FOREIGN KEY ("quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "quiz_results" ADD CONSTRAINT "quiz_results_quiz_id_fkey" FOREIGN KEY ("quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "quiz_results" ADD CONSTRAINT "quiz_results_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "student_grades" ADD CONSTRAINT "student_grades_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-- CREATE UNIQUE INDEX "message_reaction_unique" ON "message_reactions" USING btree ("message_id","user_id","reaction");--> statement-breakpoint
+-- CREATE UNIQUE INDEX "pinned_message_unique" ON "pinned_messages" USING btree ("message_id","chat_room_id");--> statement-breakpoint
+-- CREATE POLICY "Students can submit their own assignments" ON "assignment_submissions" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((user_id = auth.uid()));--> statement-breakpoint
+-- CREATE POLICY "Students can update their own submissions" ON "assignment_submissions" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ((user_id = auth.uid())) WITH CHECK ((user_id = auth.uid() AND grade IS NULL));--> statement-breakpoint
+-- CREATE POLICY "Everyone can view submissions" ON "assignment_submissions" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Lecturers and admins can grade submissions" ON "assignment_submissions" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ((
+--         EXISTS (
+--           SELECT 1 FROM user_roles 
+--           WHERE user_roles.id = auth.uid() 
+--           AND user_roles.role IN ('lecturer', 'admin')
+--         )
+--       ));--> statement-breakpoint
+-- CREATE POLICY "Everyone can view assignments" ON "assignments" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);--> statement-breakpoint
+-- CREATE POLICY "Only lecturers and admins can create assignments" ON "assignments" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((
+--         EXISTS (
+--           SELECT 1 FROM user_roles 
+--           WHERE user_roles.id = auth.uid() 
+--           AND user_roles.role IN ('lecturer', 'admin')
+--         )
+--       ));--> statement-breakpoint
+-- CREATE POLICY "Only lecturers and admins can update assignments" ON "assignments" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ((
+--         EXISTS (
+--           SELECT 1 FROM user_roles 
+--           WHERE user_roles.id = auth.uid() 
+--           AND user_roles.role IN ('lecturer', 'admin')
+--         )
+--       ));--> statement-breakpoint
+-- CREATE POLICY "Admins can view all profiles" ON "profiles" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+--    FROM user_roles
+--   WHERE ((user_roles.id = auth.uid()) AND (user_roles.role = 'admin'::text)))));--> statement-breakpoint
+-- CREATE POLICY "Users can update their own profile" ON "profiles" AS PERMISSIVE FOR UPDATE TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Users can view their own profile" ON "profiles" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Everyone can view quiz options" ON "quiz_options" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);--> statement-breakpoint
+-- CREATE POLICY "Admins can do everything" ON "quiz_options" AS PERMISSIVE FOR ALL TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Everyone can view quiz questions" ON "quiz_questions" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);--> statement-breakpoint
+-- CREATE POLICY "Admins can do everything" ON "quiz_questions" AS PERMISSIVE FOR ALL TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Users can submit their own results" ON "quiz_results" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK ((user_id = auth.uid()));--> statement-breakpoint
+-- CREATE POLICY "Users can view their own results" ON "quiz_results" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Admins can view all results" ON "quiz_results" AS PERMISSIVE FOR SELECT TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Everyone can view quizzes" ON "quizzes" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);--> statement-breakpoint
+-- CREATE POLICY "Admins can do everything" ON "quizzes" AS PERMISSIVE FOR ALL TO "authenticated";--> statement-breakpoint
+-- CREATE POLICY "Students can view their own grades" ON "student_grades" AS PERMISSIVE FOR SELECT TO "authenticated" USING ((user_id = auth.uid()));--> statement-breakpoint
+-- CREATE POLICY "Admins and lecturers can manage grades" ON "student_grades" AS PERMISSIVE FOR ALL TO "authenticated" USING ((
+--         EXISTS (
+--           SELECT 1 FROM user_roles 
+--           WHERE user_roles.id = auth.uid() 
+--           AND user_roles.role IN ('lecturer', 'admin')
+--         )
+--       ));
+
+
+
+
+-- This migration was intentionally cleared because its changes were already applied
+-- using drizzle-kit push before migrating to the migration file system.
+-- The corresponding entry was manually added to the __drizzle_migrations table.

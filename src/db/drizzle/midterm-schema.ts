@@ -46,7 +46,7 @@ export const midtermGroups = pgTable(
       as: "permissive",
       for: "insert",
       to: ["authenticated"],
-      using: sql`true`,
+      withCheck: sql`true`,
     }),
     pgPolicy("Group members can update their group", {
       as: "permissive",
