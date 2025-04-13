@@ -19,6 +19,7 @@ import {
   BookOpen,
   Shield,
   MessageSquare,
+  GitBranch,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NProgress from "nprogress";
@@ -47,6 +48,8 @@ export default function Navbar() {
     // Add Chat item
     { label: "Chat", href: "/chat", showWhen: !!user },
     { label: "Assignments", href: "/assignments", showWhen: !!user },
+    // Add Midterm item
+    { label: "Midterm", href: "/midterm", showWhen: !!user },
     // Admin only
     { label: "Admin", href: "/admin", showWhen: role === "admin" },
   ];
@@ -58,6 +61,8 @@ export default function Navbar() {
     // Add Chat item to the dropdown menu
     { label: "Chat", href: "/chat", icon: MessageSquare },
     { label: "Assignments", href: "/assignments", icon: BookOpen },
+    // Add Midterm item to the dropdown menu
+    { label: "Midterm", href: "/midterm", icon: GitBranch },
     // Admin only items
     { label: "Admin", href: "/admin", icon: Shield, adminOnly: true },
     {

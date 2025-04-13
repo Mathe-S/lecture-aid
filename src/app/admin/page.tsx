@@ -11,7 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FileText, User, BarChart4, ClipboardList } from "lucide-react";
+import {
+  FileText,
+  User,
+  BarChart4,
+  ClipboardList,
+  GitBranch,
+} from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminPage() {
@@ -49,6 +55,13 @@ export default function AdminPage() {
       description: "View and manage student grades and award extra points",
       icon: <BarChart4 className="h-8 w-8 text-primary" />,
       href: "/admin/grades",
+    },
+    {
+      title: "Midterm Projects",
+      description:
+        "Evaluate and manage student midterm projects and GitHub contributions",
+      icon: <GitBranch className="h-8 w-8 text-primary" />,
+      href: "/admin/midterm",
     },
     // Add other admin modules here
   ];

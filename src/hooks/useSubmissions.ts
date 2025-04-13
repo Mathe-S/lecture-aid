@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AssignmentSubmission } from "@/db/drizzle/schema";
-import { getUserRepositories } from "@/lib/github-service";
 import { useAuth } from "@/context/AuthContext";
 import { assignmentApi } from "@/lib/api/assignmentApi";
+import { GitHubRepo } from "@/lib/github-service";
 
 // Define query keys
 export const submissionKeys = {
@@ -26,7 +26,13 @@ export function useGitHubRepositories() {
 
   return useQuery({
     queryKey: githubKeys.repos(),
-    queryFn: () => getUserRepositories(session),
+    queryFn: async (): Promise<GitHubRepo[]> => {
+      const response = await fetch("/api/github/repos");
+      if (!response.ok) {
+        throw new Error("Failed to fetch GitHub repositories");
+      }
+      return response.json();
+    },
     enabled: !!session,
   });
 }
