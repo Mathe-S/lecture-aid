@@ -92,6 +92,40 @@ const connectRepository = async ({
   }
 };
 
+// Update an existing repository connection
+const updateRepository = async ({
+  groupId,
+  repositoryUrl,
+}: {
+  groupId: string;
+  repositoryUrl: string;
+}): Promise<void> => {
+  const response = await fetch(`/api/midterm/groups/${groupId}/sync`, {
+    method: "PUT", // Use PUT or PATCH for updates
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ repositoryUrl }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Failed to update repository");
+  }
+};
+
+// Leave a midterm group
+const leaveGroup = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/midterm/groups/${id}/leave`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Failed to leave group");
+  }
+};
+
 // Hook to fetch all midterm groups
 export function useMidtermGroups() {
   return useQuery({
@@ -202,5 +236,74 @@ export function useConnectRepository() {
   return {
     connectRepository: mutation.mutateAsync,
     isLoading: isConnecting,
+  };
+}
+
+// Hook to update a GitHub repository connection for a midterm group
+export function useUpdateRepository() {
+  const queryClient = useQueryClient();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: updateRepository,
+    onMutate: () => {
+      setIsUpdating(true);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: midtermKeys.group(variables.groupId),
+      });
+      // Also invalidate the list view if needed, though group details changing should be enough
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      toast.success("Repository updated successfully", {
+        description:
+          "Data sync has been re-initiated and may take a moment to complete.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to update repository", {
+        description: error.message,
+      });
+    },
+    onSettled: () => {
+      setIsUpdating(false);
+    },
+  });
+
+  return {
+    updateRepository: mutation.mutateAsync,
+    isLoading: isUpdating,
+  };
+}
+
+// Hook to leave a midterm group
+export function useLeaveGroup() {
+  const queryClient = useQueryClient();
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: leaveGroup,
+    onMutate: () => {
+      setIsLeaving(true);
+    },
+    onSuccess: (_data, groupId) => {
+      // Invalidate both the list of all groups and the specific group details
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.group(groupId) });
+      toast.success("Successfully left the group");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to leave group", {
+        description: error.message,
+      });
+    },
+    onSettled: () => {
+      setIsLeaving(false);
+    },
+  });
+
+  return {
+    leaveGroup: mutation.mutateAsync,
+    isLoading: isLeaving,
   };
 }

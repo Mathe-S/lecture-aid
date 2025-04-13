@@ -33,6 +33,8 @@ import {
   Github,
   Calendar,
   ExternalLink,
+  Pencil,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -40,7 +42,20 @@ import {
   useCreateMidtermGroup,
   useJoinMidtermGroup,
   useConnectRepository,
+  useUpdateRepository,
+  useLeaveGroup,
 } from "@/hooks/useMidtermGroups";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function MidtermPage() {
   const { user } = useAuth();
@@ -52,6 +67,9 @@ export default function MidtermPage() {
   const [connectingGroupId, setConnectingGroupId] = useState<string | null>(
     null
   );
+  const [updatingGroupId, setUpdatingGroupId] = useState<string | null>(null);
+  const { leaveGroup, isLoading: isLeavingGroup } = useLeaveGroup();
+  const [groupToLeave, setGroupToLeave] = useState<string | null>(null);
 
   // Use our custom hooks
   const { data: groups = [], isLoading } = useMidtermGroups();
@@ -59,6 +77,7 @@ export default function MidtermPage() {
   const { joinGroup } = useJoinMidtermGroup();
   const { connectRepository, isLoading: isConnectingRepo } =
     useConnectRepository();
+  const { updateRepository, isLoading: isUpdatingRepo } = useUpdateRepository();
 
   // Filter groups the user is a member of
   const userGroups = groups.filter((group) =>
@@ -105,6 +124,34 @@ export default function MidtermPage() {
       setConnectingGroupId(null);
     } catch (error) {
       console.error("Failed to connect repository", error);
+    }
+  };
+
+  const handleUpdateRepository = async (groupId: string) => {
+    if (!repositoryUrl.trim() || !repositoryUrl.includes("github.com")) {
+      return;
+    }
+
+    try {
+      await updateRepository({
+        groupId,
+        repositoryUrl,
+      });
+
+      setRepositoryUrl("");
+      setUpdatingGroupId(null);
+    } catch (error) {
+      console.error("Failed to update repository", error);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!groupToLeave) return;
+    try {
+      await leaveGroup(groupToLeave);
+      setGroupToLeave(null);
+    } catch (error) {
+      console.error("Failed to leave group", error);
     }
   };
 
@@ -311,16 +358,89 @@ export default function MidtermPage() {
                           Repository
                         </div>
                         {group.repositoryUrl ? (
-                          <a
-                            href={group.repositoryUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-blue-600 hover:underline"
-                          >
-                            <Github className="h-4 w-4" />
-                            {group.repositoryOwner}/{group.repositoryName}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
+                          <div className="flex items-center">
+                            <a
+                              href={group.repositoryUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-blue-600 hover:underline"
+                            >
+                              <Github className="h-4 w-4" />
+                              {group.repositoryOwner}/{group.repositoryName}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                            <Dialog
+                              open={updatingGroupId === group.id}
+                              onOpenChange={(open) => {
+                                if (open && group.repositoryUrl) {
+                                  setRepositoryUrl(group.repositoryUrl);
+                                }
+                                if (!open) setUpdatingGroupId(null);
+                              }}
+                            >
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 ml-1"
+                                  onClick={() => setUpdatingGroupId(group.id)}
+                                >
+                                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                                  <span className="sr-only">
+                                    Update Repository
+                                  </span>
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Update GitHub Repository
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Update the connected GitHub repository URL.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-2 py-4">
+                                  <Label
+                                    htmlFor={`update-repo-url-${group.id}`}
+                                  >
+                                    Repository URL
+                                  </Label>
+                                  <Input
+                                    id={`update-repo-url-${group.id}`}
+                                    placeholder="https://github.com/username/repo"
+                                    value={repositoryUrl}
+                                    onChange={(e) =>
+                                      setRepositoryUrl(e.target.value)
+                                    }
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Must be a public GitHub repository
+                                  </p>
+                                </div>
+                                <DialogFooter>
+                                  <Button
+                                    onClick={() =>
+                                      handleUpdateRepository(group.id)
+                                    }
+                                    disabled={
+                                      isUpdatingRepo ||
+                                      !repositoryUrl.includes("github.com")
+                                    }
+                                  >
+                                    {isUpdatingRepo ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      "Update Repository"
+                                    )}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">
@@ -427,7 +547,7 @@ export default function MidtermPage() {
                     </div>
                   </CardContent>
 
-                  <CardFooter className="flex justify-between">
+                  <CardFooter className="flex justify-between items-center pt-4 border-t">
                     <Button
                       variant="outline"
                       size="sm"
@@ -435,17 +555,67 @@ export default function MidtermPage() {
                     >
                       View Details
                     </Button>
-                    {group.repositoryUrl && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() =>
-                          router.push(`/midterm/visualization/${group.id}`)
-                        }
+
+                    <div className="flex items-center gap-2">
+                      {group.repositoryUrl && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() =>
+                            router.push(`/midterm/visualization/${group.id}`)
+                          }
+                        >
+                          Visualization
+                        </Button>
+                      )}
+
+                      <AlertDialog
+                        open={groupToLeave === group.id}
+                        onOpenChange={(open) => !open && setGroupToLeave(null)}
                       >
-                        Visualization
-                      </Button>
-                    )}
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setGroupToLeave(group.id)}
+                          >
+                            <LogOut className="mr-1 h-4 w-4" />
+                            Leave
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Are you sure you want to leave this group?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. You will lose access
+                              to the group details and visualization.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel
+                              onClick={() => setGroupToLeave(null)}
+                            >
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleLeaveGroup}
+                              disabled={isLeavingGroup}
+                            >
+                              {isLeavingGroup ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Leaving...
+                                </>
+                              ) : (
+                                "Leave Group"
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </CardFooter>
                 </Card>
               ))}

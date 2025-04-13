@@ -51,3 +51,55 @@ export async function POST(
     );
   }
 }
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await supabaseForServer();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const { repositoryUrl } = await request.json();
+
+    if (!repositoryUrl) {
+      return NextResponse.json(
+        { error: "Repository URL is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate that the user is a member of this group
+    const isMember = await midtermService.isGroupMember(id, session.user.id);
+    if (!isMember) {
+      return NextResponse.json(
+        { error: "You are not a member of this group" },
+        { status: 403 }
+      );
+    }
+
+    // Update the repository and sync data
+    // Re-use connectRepository, assuming it handles updates or use a specific update function if available
+    // For simplicity, we'll assume connectRepository can handle updates based on existing group state
+    await midtermService.connectRepository(id, repositoryUrl, session);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to update repository:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to update repository",
+        details: error instanceof Error ? error.message : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}

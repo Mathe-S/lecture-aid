@@ -248,7 +248,7 @@ export async function joinMidtermGroup(
 }
 
 /**
- * Leave a midterm group
+ * Leave an existing midterm group
  */
 export async function leaveMidtermGroup(
   groupId: string,
@@ -263,7 +263,6 @@ export async function leaveMidtermGroup(
           eq(midtermGroupMembers.userId, userId)
         )
       );
-
     return true;
   } catch (error) {
     console.error("Error leaving group:", error);
@@ -304,15 +303,15 @@ export async function connectRepository(
   repositoryUrl: string,
   session: Session | null
 ): Promise<void> {
-  if (!session?.provider_token) {
-    throw new Error("No GitHub access token available");
-  }
-
+  console.log("session:", session);
   // Parse GitHub repository URL to get owner and repo name
   // Format: https://github.com/owner/repo
-  const urlParts = repositoryUrl.split("/");
-  const repositoryOwner = urlParts[urlParts.length - 2];
-  const repositoryName = urlParts[urlParts.length - 1];
+  const urlParts = repositoryUrl.match(/github\.com\/([^/]+)\/([^/]+)$/);
+  if (!urlParts || urlParts.length < 3) {
+    throw new Error("Invalid GitHub repository URL format");
+  }
+  const repositoryOwner = urlParts[1];
+  const repositoryName = urlParts[2];
 
   // Update the group with repository details
   await db
