@@ -20,6 +20,10 @@ import {
   Shield,
   MessageSquare,
   GitBranch,
+  Home,
+  LayoutDashboard,
+  CheckSquare,
+  Trophy,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NProgress from "nprogress";
@@ -41,28 +45,52 @@ export default function Navbar() {
   // Navigation items - defined once and used for both desktop and mobile
   const navItems = [
     // Always visible
-    { label: "Home", href: "/", showWhen: !user },
+    { label: "Home", href: "/", showWhen: !user, icon: Home },
     // Only when logged in
-    { label: "Dashboard", href: "/dashboard", showWhen: !!user },
-    { label: "Quizzes", href: "/quizzes", showWhen: !!user },
-    // Add Chat item
-    { label: "Chat", href: "/chat", showWhen: !!user },
-    { label: "Assignments", href: "/assignments", showWhen: !!user },
-    // Add Midterm item
-    { label: "Midterm", href: "/midterm", showWhen: !!user },
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      showWhen: !!user,
+      icon: LayoutDashboard,
+    },
+    { label: "Quizzes", href: "/quizzes", showWhen: !!user, icon: CheckSquare },
+    {
+      label: "Assignments",
+      href: "/assignments",
+      showWhen: !!user,
+      icon: CheckSquare,
+    },
+    { label: "Midterm", href: "/midterm", showWhen: !!user, icon: GitBranch },
+    { label: "Chat", href: "/chat", showWhen: !!user, icon: MessageSquare },
+    {
+      label: "Leaderboard",
+      href: "/leaderboard",
+      showWhen: !!user,
+      icon: Trophy,
+    },
     // Admin only
-    { label: "Admin", href: "/admin", showWhen: role === "admin" },
+    {
+      label: "Admin",
+      href: "/admin",
+      showWhen: role === "admin",
+      icon: Shield,
+    },
   ];
 
   // User menu items - used in dropdown
   const userMenuItems = [
     { label: "Dashboard", href: "/dashboard", icon: User },
     { label: "Quizzes", href: "/quizzes", icon: BookOpen },
-    // Add Chat item to the dropdown menu
-    { label: "Chat", href: "/chat", icon: MessageSquare },
     { label: "Assignments", href: "/assignments", icon: BookOpen },
     // Add Midterm item to the dropdown menu
     { label: "Midterm", href: "/midterm", icon: GitBranch },
+    // Add Chat item to the dropdown menu
+    { label: "Chat", href: "/chat", icon: MessageSquare },
+    {
+      label: "Leaderboard",
+      href: "/leaderboard",
+      icon: Trophy,
+    },
     // Admin only items
     { label: "Admin", href: "/admin", icon: Shield, adminOnly: true },
     {
@@ -112,8 +140,9 @@ export default function Navbar() {
                   <Link
                     key={index}
                     href={item.href}
-                    className="text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium cursor-pointer"
+                    className="flex items-center text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium cursor-pointer"
                   >
+                    {item.icon && <item.icon className="mr-2 h-4 w-4" />}
                     {item.label}
                   </Link>
                 ))}
