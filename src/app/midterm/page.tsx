@@ -173,7 +173,7 @@ export default function MidtermPage() {
                   </p>
                   <p>
                     <strong>Documentation (25 points):</strong> Clean, readable
-                    code with AF/RI explanations
+                    code with AF/RI explanations if applicable
                   </p>
                   <p>
                     <strong>Git Workflow (25 points):</strong> Meaningful

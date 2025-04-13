@@ -79,6 +79,7 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
 
 export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
   creator: one(usersInAuth, {
+    relationName: "creator",
     fields: [assignments.created_by],
     references: [usersInAuth.id],
   }),
@@ -89,14 +90,17 @@ export const assignmentSubmissionsRelations = relations(
   assignmentSubmissions,
   ({ one }) => ({
     assignment: one(assignments, {
+      relationName: "assignment",
       fields: [assignmentSubmissions.assignmentId],
       references: [assignments.id],
     }),
     student: one(usersInAuth, {
+      relationName: "student",
       fields: [assignmentSubmissions.userId],
       references: [usersInAuth.id],
     }),
     profile: one(profiles, {
+      relationName: "profile",
       fields: [assignmentSubmissions.userId],
       references: [profiles.id],
     }),

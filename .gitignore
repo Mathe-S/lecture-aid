@@ -42,3 +42,7 @@ next-env.d.ts
 
 # cursor
 .cursor
+
+# db
+drizzle/
+db_backups/
