@@ -141,12 +141,16 @@ export default function MidtermPage() {
                 <ul className="list-disc pl-5 space-y-1 text-sm">
                   <li>
                     Browser Extension for creating flashcards from selected text
+                    (Can be changed according to the group)
                   </li>
-                  <li>Hand gesture detection for flashcard review</li>
+                  <li>
+                    Hand gesture detection for flashcard review (Can be changed
+                    according to the group)
+                  </li>
                   <li>Well-tested code with clear specifications</li>
                   <li>
                     Documentation with Abstract Functions and Representation
-                    Invariants
+                    Invariants.
                   </li>
                   <li>Clean Git workflow with proper commits and PRs</li>
                 </ul>
@@ -188,7 +192,7 @@ export default function MidtermPage() {
               </div>
 
               <Link
-                href="/api/midterm/assignment"
+                href="https://teams.microsoft.com/l/message/19:9p7CGZbtOZFaFMj-DSfRQ3fh66rKS3pYnxgvCemxJMQ1@thread.tacv2/1744194496683?tenantId=b5a13ba1-627c-4358-8b6f-cc09027ff3af&groupId=afe80f18-d6e8-449c-96dd-28f43aa85efa&parentMessageId=1744194496683&teamName=Introduction%20to%20Software%20Engineering%20Practical%20Course%202024-2025&channelName=General&createdTime=1744194496683"
                 target="_blank"
                 className="text-sm text-blue-600 hover:underline flex items-center"
               >

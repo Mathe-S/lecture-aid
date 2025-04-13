@@ -15,7 +15,7 @@ import {
   User,
   Calendar,
 } from "lucide-react";
-import { MidtermRepositoryMetric } from "@/db/drizzle/schema";
+import { MidtermRepositoryMetric } from "@/db/drizzle/midterm-schema";
 
 // Helper function to format dates
 function formatDate(date: Date): string {

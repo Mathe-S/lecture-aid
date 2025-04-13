@@ -6,14 +6,14 @@ import {
   midtermRepositoryMetrics,
   midtermContributions,
   midtermEvaluations,
-  profiles,
   MidtermGroup,
   MidtermGroupWithMembers,
   MidtermGroupWithDetails,
   MidtermContribution,
   MidtermEvaluation,
-  Profile,
-} from "@/db/drizzle/schema";
+} from "@/db/drizzle/midterm-schema";
+import { profiles, Profile } from "@/db/drizzle/schema";
+
 import { Session } from "@supabase/supabase-js";
 
 // Repository metrics shape for visualization

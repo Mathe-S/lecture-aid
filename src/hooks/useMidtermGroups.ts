@@ -5,7 +5,7 @@ import {
   MidtermGroup,
   MidtermGroupWithMembers,
   MidtermGroupWithDetails,
-} from "@/db/drizzle/schema";
+} from "@/db/drizzle/midterm-schema";
 
 // Query keys for midterm groups
 export const midtermKeys = {

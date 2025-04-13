@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   MidtermGroupWithMembers,
   MidtermGroupWithDetails,
-} from "@/db/drizzle/schema";
+} from "@/db/drizzle/midterm-schema";
 import { toast } from "sonner";
 
 // Mock API calls - these would be actual API calls in a production app

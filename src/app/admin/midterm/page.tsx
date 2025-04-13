@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { MidtermGroupWithMembers } from "@/db/drizzle/schema";
+import { MidtermGroupWithMembers } from "@/db/drizzle/midterm-schema";
 
 // This would come from your API
 const mockGroups: MidtermGroupWithMembers[] = [
