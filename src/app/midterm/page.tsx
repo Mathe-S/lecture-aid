@@ -35,6 +35,7 @@ import {
   ExternalLink,
   Pencil,
   LogOut,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -44,6 +45,7 @@ import {
   useConnectRepository,
   useUpdateRepository,
   useLeaveGroup,
+  useDeleteMidtermGroup,
 } from "@/hooks/useMidtermGroups";
 import {
   AlertDialog,
@@ -58,7 +60,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function MidtermPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const router = useRouter();
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
@@ -69,7 +71,10 @@ export default function MidtermPage() {
   );
   const [updatingGroupId, setUpdatingGroupId] = useState<string | null>(null);
   const { leaveGroup, isLoading: isLeavingGroup } = useLeaveGroup();
+  const { mutateAsync: deleteGroup, isPending: isDeletingGroup } =
+    useDeleteMidtermGroup();
   const [groupToLeave, setGroupToLeave] = useState<string | null>(null);
+  const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
 
   // Use our custom hooks
   const { data: groups = [], isLoading } = useMidtermGroups();
@@ -152,6 +157,16 @@ export default function MidtermPage() {
       setGroupToLeave(null);
     } catch (error) {
       console.error("Failed to leave group", error);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete) return;
+    try {
+      await deleteGroup(groupToDelete);
+      setGroupToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete group", error);
     }
   };
 
@@ -548,15 +563,16 @@ export default function MidtermPage() {
                   </CardContent>
 
                   <CardFooter className="flex justify-between items-center pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/midterm/groups/${group.id}`)}
-                    >
-                      View Details
-                    </Button>
-
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          router.push(`/midterm/groups/${group.id}`)
+                        }
+                      >
+                        View Details
+                      </Button>
                       {group.repositoryUrl && (
                         <Button
                           variant="default"
@@ -568,53 +584,113 @@ export default function MidtermPage() {
                           Visualization
                         </Button>
                       )}
+                    </div>
 
-                      <AlertDialog
-                        open={groupToLeave === group.id}
-                        onOpenChange={(open) => !open && setGroupToLeave(null)}
-                      >
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setGroupToLeave(group.id)}
-                          >
-                            <LogOut className="mr-1 h-4 w-4" />
-                            Leave
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Are you sure you want to leave this group?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. You will lose access
-                              to the group details and visualization.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel
-                              onClick={() => setGroupToLeave(null)}
+                    <div className="flex items-center gap-2">
+                      {userGroups.some((ug) => ug.id === group.id) && (
+                        <AlertDialog
+                          open={groupToLeave === group.id}
+                          onOpenChange={(open) =>
+                            !open && setGroupToLeave(null)
+                          }
+                        >
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setGroupToLeave(group.id)}
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
                             >
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleLeaveGroup}
-                              disabled={isLeavingGroup}
+                              <LogOut className="mr-1 h-4 w-4" />
+                              Leave
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Are you sure you want to leave this group?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. You will lose
+                                access to the group details and visualization.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel
+                                onClick={() => setGroupToLeave(null)}
+                              >
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleLeaveGroup}
+                                disabled={isLeavingGroup}
+                              >
+                                {isLeavingGroup ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Leaving...
+                                  </>
+                                ) : (
+                                  "Leave Group"
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+
+                      {role === "admin" && (
+                        <AlertDialog
+                          open={groupToDelete === group.id}
+                          onOpenChange={(open) =>
+                            !open && setGroupToDelete(null)
+                          }
+                        >
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setGroupToDelete(group.id)}
                             >
-                              {isLeavingGroup ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Leaving...
-                                </>
-                              ) : (
-                                "Leave Group"
-                              )}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="mr-1 h-4 w-4" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Are you sure you want to delete this group?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. All associated
+                                data (members, repository info, metrics,
+                                contributions) will be permanently deleted.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel
+                                onClick={() => setGroupToDelete(null)}
+                              >
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleDeleteGroup}
+                                disabled={isDeletingGroup}
+                                className="bg-destructive hover:bg-destructive/90"
+                              >
+                                {isDeletingGroup ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  "Delete Group"
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </CardFooter>
                 </Card>

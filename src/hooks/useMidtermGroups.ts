@@ -126,6 +126,18 @@ const leaveGroup = async (id: string): Promise<void> => {
   }
 };
 
+// Delete a midterm group
+const deleteGroupAPI = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/midterm/groups/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Failed to delete group");
+  }
+};
+
 // Hook to fetch all midterm groups
 export function useMidtermGroups() {
   return useQuery({
@@ -306,4 +318,23 @@ export function useLeaveGroup() {
     leaveGroup: mutation.mutateAsync,
     isLoading: isLeaving,
   };
+}
+
+// Hook to delete a midterm group (Admin only)
+export function useDeleteMidtermGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteGroupAPI,
+    onSuccess: () => {
+      // Invalidate the list of all groups
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      toast.success("Group deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to delete group", {
+        description: error.message,
+      });
+    },
+  });
 }
