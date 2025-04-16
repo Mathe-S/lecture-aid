@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NProgress from "nprogress";
+import { ActiveUsers } from "./ActiveUsers";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
@@ -149,7 +150,10 @@ export default function Navbar() {
             </nav>
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
+            {/* Show ActiveUsers count when logged in */}
+            {user && <ActiveUsers />}
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
