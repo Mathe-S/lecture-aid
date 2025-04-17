@@ -7,15 +7,6 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await supabaseForServer();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
 
   try {
@@ -28,8 +19,17 @@ export async function POST(
       );
     }
 
+    // Fetch session to potentially get GitHub token
+    const supabase = await supabaseForServer();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     // Validate that the user is a member of this group
-    const isMember = await midtermService.isGroupMember(id, session.user.id);
+    const isMember = await midtermService.isGroupMember(
+      id,
+      session?.user?.id ?? ""
+    );
     if (!isMember) {
       return NextResponse.json(
         { error: "You are not a member of this group" },
@@ -37,12 +37,13 @@ export async function POST(
       );
     }
 
-    // Connect the repository and sync data
+    // 1. Connect the repository (updates URL/owner/name in DB)
     await midtermService.connectRepository(id, repositoryUrl);
 
-    // Trigger the GitHub data sync and metric update
+    // 2. Trigger the GitHub data sync and metric update
     try {
-      await syncGitHubRepositoryData(id);
+      // Pass the provider_token if available
+      await syncGitHubRepositoryData(id, session?.provider_token);
       // Sync succeeded along with connect
       return NextResponse.json({
         success: true,
@@ -82,15 +83,6 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await supabaseForServer();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
 
   try {
@@ -103,8 +95,17 @@ export async function PUT(
       );
     }
 
+    // Fetch session to potentially get GitHub token
+    const supabase = await supabaseForServer();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     // Validate that the user is a member of this group
-    const isMember = await midtermService.isGroupMember(id, session.user.id);
+    const isMember = await midtermService.isGroupMember(
+      id,
+      session?.user?.id ?? ""
+    );
     if (!isMember) {
       return NextResponse.json(
         { error: "You are not a member of this group" },
@@ -112,14 +113,13 @@ export async function PUT(
       );
     }
 
-    // Update the repository and sync data
-    // Re-use connectRepository, assuming it handles updates or use a specific update function if available
-    // For simplicity, we'll assume connectRepository can handle updates based on existing group state
+    // 1. Update the repository details (effectively same as connect for this service)
     await midtermService.connectRepository(id, repositoryUrl);
 
-    // Trigger the GitHub data sync and metric update
+    // 2. Trigger the GitHub data sync and metric update
     try {
-      await syncGitHubRepositoryData(id);
+      // Pass the provider_token if available
+      await syncGitHubRepositoryData(id, session?.provider_token);
       // Sync succeeded along with update
       return NextResponse.json({
         success: true,

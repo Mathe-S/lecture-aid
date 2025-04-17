@@ -13,6 +13,7 @@ import {
   MidtermEvaluation,
 } from "@/db/drizzle/midterm-schema";
 import { profiles, Profile } from "@/db/drizzle/schema";
+import { Octokit } from "@octokit/rest";
 
 // Repository metrics shape for visualization
 export interface RepositoryVisualizationData {
@@ -374,10 +375,11 @@ export async function updateLastSync(groupId: string): Promise<boolean> {
 }
 
 /**
- * Fetches data from GitHub and updates metrics (Placeholder)
+ * Fetches data from GitHub and updates metrics
  */
 export async function syncGitHubRepositoryData(
-  groupId: string
+  groupId: string,
+  githubToken?: string | null // Add optional token parameter
 ): Promise<boolean> {
   console.log(`Starting sync for group ${groupId}`);
   const group = await getMidtermGroupById(groupId);
@@ -387,31 +389,177 @@ export async function syncGitHubRepositoryData(
     throw new Error("Group not found or repository not connected.");
   }
 
-  try {
-    // --- Placeholder for actual GitHub API fetching --- //
-    console.log(
-      `Fetching data for ${group.repositoryOwner}/${group.repositoryName}...`
+  // --- Initialize Octokit --- //
+  const tokenToUse = githubToken || process.env.GITHUB_TOKEN || null;
+  if (!tokenToUse) {
+    console.warn(
+      `No GitHub token found for sync (user provider_token or GITHUB_TOKEN env var). Proceeding with unauthenticated requests (rate limited).`
     );
-    // Example: Use Octokit or fetch directly
-    // const githubData = await fetchGitHubData(group.repositoryOwner, group.repositoryName);
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate network delay
+  }
+  const octokit = new Octokit({ auth: tokenToUse });
+  const owner = group.repositoryOwner;
+  const repo = group.repositoryName;
 
-    // --- Placeholder for processing data --- //
+  try {
+    // --- Fetch Data --- //
+    console.log(`Fetching data for ${owner}/${repo}...`);
+
+    // 1. Commits (Paginated)
+    let allCommits: any[] = [];
+    try {
+      allCommits = await octokit.paginate(octokit.repos.listCommits, {
+        owner,
+        repo,
+        per_page: 100,
+      });
+    } catch (err) {
+      console.error(`Error fetching commits for ${owner}/${repo}:`, err);
+      // Decide if this is a fatal error or if we can continue
+      // throw err; // Option: Stop sync if commits fail
+    }
+
+    // 2. Pull Requests (Paginated)
+    let allPRs: any[] = [];
+    try {
+      allPRs = await octokit.paginate(octokit.pulls.list, {
+        owner,
+        repo,
+        state: "all", // Get open, closed, and merged
+        per_page: 100,
+      });
+    } catch (err) {
+      console.error(`Error fetching PRs for ${owner}/${repo}:`, err);
+      // Handle error as needed
+    }
+
+    // 3. Branches (Paginated)
+    let allBranches: any[] = [];
+    try {
+      allBranches = await octokit.paginate(octokit.repos.listBranches, {
+        owner,
+        repo,
+        per_page: 100,
+      });
+    } catch (err) {
+      console.error(`Error fetching branches for ${owner}/${repo}:`, err);
+      // Handle error as needed
+    }
+
+    // 4. Contributors
+    let contributors: any[] = [];
+    let totalAdditions = 0;
+    let totalDeletions = 0;
+    try {
+      const { data: contributorStats } = await octokit.repos.listContributors({
+        owner,
+        repo,
+        anon: "false", // Include anonymous contributions if needed?
+      });
+      contributors = contributorStats;
+      // Sum additions/deletions from contributors if available (might be incomplete)
+      contributors.forEach((c) => {
+        c.weeks.forEach((w: { a: number; d: number }) => {
+          totalAdditions += w.a;
+          totalDeletions += w.d;
+        });
+      });
+    } catch (err) {
+      console.error(`Error fetching contributors for ${owner}/${repo}:`, err);
+      // Handle error as needed
+    }
+
+    // --- Process Data --- //
     console.log("Processing GitHub data...");
+
+    // Commit aggregation
+    const commitsByAuthor: Record<string, number> = {};
+    allCommits.forEach((commit) => {
+      const authorLogin = commit.author?.login || "unknown";
+      commitsByAuthor[authorLogin] = (commitsByAuthor[authorLogin] || 0) + 1;
+    });
+
+    // PR aggregation
+    const prsByAuthor: Record<string, number> = {};
+    let openPRs = 0;
+    let closedPRs = 0;
+    let mergedPRs = 0;
+    allPRs.forEach((pr) => {
+      const authorLogin = pr.user?.login || "unknown";
+      prsByAuthor[authorLogin] = (prsByAuthor[authorLogin] || 0) + 1;
+      if (pr.state === "open") openPRs++;
+      else if (pr.merged_at) mergedPRs++;
+      else closedPRs++;
+    });
+
     const calculatedMetrics = {
-      totalCommits: Math.floor(Math.random() * 200), // Dummy data
-      totalPullRequests: Math.floor(Math.random() * 50),
-      totalBranches: Math.floor(Math.random() * 10) + 1,
-      totalIssues: 0, // Add if needed
-      codeAdditions: Math.floor(Math.random() * 10000),
-      codeDeletions: Math.floor(Math.random() * 5000),
-      contributorsCount: group.members.length, // Simple dummy data
+      totalCommits: allCommits.length,
+      totalPullRequests: allPRs.length,
+      totalBranches: allBranches.length,
+      totalIssues: 0, // Issues need separate fetching if required
+      codeAdditions: totalAdditions, // Based on contributor stats (may be inaccurate)
+      codeDeletions: totalDeletions, // Based on contributor stats (may be inaccurate)
+      contributorsCount: contributors.length,
       detailedMetrics: {
-        /* Add more detailed structure if needed */
+        commitsByAuthor,
+        prsByAuthor,
+        openPRs,
+        closedPRs, // Includes merged and unmerged closed
+        mergedPRs,
+        branchNames: allBranches.map((b) => b.name),
+        // Add more details as needed
       },
     };
-    // TODO: Fetch actual contributor data and calculate individual contributions
-    // await updateContribution(...) for each member
+
+    // --- Update Contributions --- //
+    // Match GitHub logins to user profiles and update midtermContributions table
+    /*
+    // === Contribution Update Logic (Temporarily Commented Out) ===
+    // Needs a strategy to map contributor.login (GitHub username) to profile.id
+    for (const contributor of contributors) {
+        if (!contributor.login) continue; // Skip if no login
+
+        // Find the corresponding profile in our DB
+        // IMPORTANT: Assumes a way to link GitHub username to profile ID.
+        // const [profile] = await db.select().from(profiles).where(eq(profiles.githubUsername, contributor.login)).limit(1);
+        const profile = null; // Placeholder
+
+        if (profile) {
+            // Find if this profile is a member of the current group
+            const memberRecord = group.members.find(m => m.userId === profile.id);
+            if (memberRecord) {
+                // Aggregate specific contributions for this user
+                const userCommits = allCommits.filter(c => c.author?.login === contributor.login).length;
+                const userPRs = allPRs.filter(pr => pr.user?.login === contributor.login).length;
+                // Additions/Deletions per user
+                let userAdditions = 0;
+                let userDeletions = 0;
+                contributor.weeks.forEach((w: { a: number; d: number; }) => {
+                    userAdditions += w.a;
+                    userDeletions += w.d;
+                });
+
+                await updateContribution({
+                    groupId: groupId,
+                    userId: profile.id,
+                    githubUsername: contributor.login,
+                    commits: userCommits,
+                    pullRequests: userPRs,
+                    codeReviews: 0, // Needs separate fetching/logic
+                    additions: userAdditions,
+                    deletions: userDeletions,
+                    branchesCreated: 0, // Needs separate fetching/logic
+                    lastCommitDate: null, // Find last commit date for this user if needed
+                    contributionData: { weeks: contributor.weeks }, // Store raw week data if useful
+                });
+            } else {
+                 console.warn(`Contributor ${contributor.login} found in DB but not a member of group ${groupId}.`);
+            }
+        } else {
+            console.warn(`GitHub contributor ${contributor.login} not found or mapped in profiles table.`);
+        }
+    }
+    // === End of Commented Out Contribution Logic ===
+    */
 
     // --- Update Database --- //
     console.log("Updating database metrics...");
