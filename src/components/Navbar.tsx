@@ -28,6 +28,7 @@ import {
 import { useRouter } from "next/navigation";
 import NProgress from "nprogress";
 import { ActiveUsers } from "./ActiveUsers";
+import { AdminActiveUsersList } from "./AdminActiveUsersList";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
@@ -151,8 +152,12 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Show ActiveUsers count when logged in */}
-            {user && <ActiveUsers />}
+            {/* Show ActiveUsers count or Admin list based on role */}
+            {user && (
+              <>
+                {role === "admin" ? <AdminActiveUsersList /> : <ActiveUsers />}
+              </>
+            )}
 
             {user ? (
               <DropdownMenu>

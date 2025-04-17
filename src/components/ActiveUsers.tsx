@@ -10,6 +10,16 @@ const PRESENCE_CHANNEL = "online-users";
 // Define the possible status types for the subscribe callback
 type ChannelStatus = "SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ERROR";
 
+// Structure for the data tracked in presence
+interface PresenceInfo {
+  online_at: string;
+  user_info: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+  };
+}
+
 export function ActiveUsers() {
   const [count, setCount] = useState<number>(0);
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -31,7 +41,8 @@ export function ActiveUsers() {
     });
 
     const handleSync = () => {
-      const presenceState = channel.presenceState<{ online_at: string }>();
+      // Specify the type for presenceState
+      const presenceState = channel.presenceState<PresenceInfo>();
       const userIds = Object.keys(presenceState);
       setCount(userIds.length);
     };
@@ -42,8 +53,17 @@ export function ActiveUsers() {
       .on("presence", { event: "leave" }, handleSync) // Update count on leave
       .subscribe(async (status: ChannelStatus) => {
         if (status === "SUBSCRIBED") {
-          // User successfully joined the channel, track their presence
-          await channel.track({ online_at: new Date().toISOString() });
+          // User successfully joined the channel, track their presence with user info
+          const name = user.user_metadata?.full_name || user.email || user.id;
+          const avatar_url = user.user_metadata?.avatar_url;
+          await channel.track({
+            online_at: new Date().toISOString(),
+            user_info: {
+              id: user.id,
+              name: name,
+              avatar_url: avatar_url,
+            },
+          });
           // Initial sync after subscribing might be needed if sync event doesn't fire immediately
           handleSync();
         }
