@@ -52,7 +52,7 @@ export function AdminActiveUsersList() {
       // Map the presence state to an array of UserInfo
       // Ensure we only take the first entry if multiple presences exist for a key
       const users = Object.values(presenceState).map(
-        (presences) => presences[0].user_info
+        (presences) => presences[0] && presences[0]?.user_info
       );
       setActiveUsers(users.filter((user) => user));
     };

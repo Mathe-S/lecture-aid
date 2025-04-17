@@ -6,7 +6,6 @@ import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClientProvider } from "@/providers/QueryClientProvider";
 import { GlobalLoadingIndicator } from "@/components/ui/nprogress";
-import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,14 +34,17 @@ export default function RootLayout({
       >
         <GlobalLoadingIndicator />
         <QueryClientProvider>
-          <Analytics />
           <AuthProvider>
             <div className="flex flex-col min-h-screen">
               <Navbar />
               <main className="flex-grow">{children}</main>
               <footer className="py-6 border-t border-slate-200 bg-white">
                 <div className="container mx-auto px-4 text-center text-slate-500 text-sm">
-                  © {new Date().getFullYear()} Lecture+. All rights reserved.
+                  © {new Date().getFullYear()} Lecture+. Created by{" "}
+                  <a href="https://github.com/Mathe-S" className="underline">
+                    Mathe Sharvadze
+                  </a>
+                  . Fully open source.
                 </div>
               </footer>
             </div>

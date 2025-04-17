@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { supabaseForServer } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/userService"; // Assuming this exists
+import { syncGitHubRepositoryData } from "@/lib/midterm-service"; // Import the sync function
 // import { triggerRepositorySync } from "@/lib/github-service"; // Hypothetical service function
 
 export async function POST(
@@ -24,12 +25,11 @@ export async function POST(
   }
 
   try {
-    // TODO: Implement the actual sync logic, potentially calling a service
-    console.log(`Sync requested for group: ${groupId}`);
-    // await triggerRepositorySync(groupId);
+    // Call the actual sync logic service function
+    console.log(`Admin sync requested for group: ${groupId}`);
+    await syncGitHubRepositoryData(groupId);
 
-    // Simulate sync time
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Remove simulation: await new Promise(resolve => setTimeout(resolve, 1500));
 
     return NextResponse.json({ message: "Sync initiated successfully" });
   } catch (error) {

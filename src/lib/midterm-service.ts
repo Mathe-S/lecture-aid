@@ -14,8 +14,6 @@ import {
 } from "@/db/drizzle/midterm-schema";
 import { profiles, Profile } from "@/db/drizzle/schema";
 
-import { Session } from "@supabase/supabase-js";
-
 // Repository metrics shape for visualization
 export interface RepositoryVisualizationData {
   name: string;
@@ -138,19 +136,7 @@ export async function getMidtermGroupDetails(
         profile: m.profiles,
       })
     ),
-    metrics: metrics || {
-      id: "",
-      groupId: groupId,
-      totalCommits: 0,
-      totalPullRequests: 0,
-      totalBranches: 0,
-      totalIssues: 0,
-      codeAdditions: 0,
-      codeDeletions: 0,
-      contributorsCount: 0,
-      lastUpdated: new Date().toISOString(),
-      detailedMetrics: {},
-    },
+    metrics: metrics || null,
     contributions: contributionsJoin.map(
       (c: { midterm_contributions: any; profiles: Profile }) => ({
         ...c.midterm_contributions,
@@ -300,12 +286,9 @@ export async function updateRepositoryInfo(
  */
 export async function connectRepository(
   groupId: string,
-  repositoryUrl: string,
-  session: Session | null
+  repositoryUrl: string
 ): Promise<void> {
-  console.log("session:", session);
   // Parse GitHub repository URL to get owner and repo name
-  // Format: https://github.com/owner/repo
   const urlParts = repositoryUrl.match(/github\.com\/([^/]+)\/([^/]+)$/);
   if (!urlParts || urlParts.length < 3) {
     throw new Error("Invalid GitHub repository URL format");
@@ -313,7 +296,7 @@ export async function connectRepository(
   const repositoryOwner = urlParts[1];
   const repositoryName = urlParts[2];
 
-  // Update the group with repository details
+  // Update the group with repository details ONLY
   await db
     .update(midtermGroups)
     .set({
@@ -324,8 +307,7 @@ export async function connectRepository(
     })
     .where(eq(midtermGroups.id, groupId));
 
-  // Trigger initial sync with the repository
-  // Note: This functionality is now in github-service.ts
+  // Syncing is handled separately by specific API routes
 }
 
 /**
@@ -380,14 +362,69 @@ export async function updateRepositoryMetrics(
  * Update last sync timestamp for a group
  */
 export async function updateLastSync(groupId: string): Promise<boolean> {
-  await db
+  const result = await db
     .update(midtermGroups)
     .set({
       lastSync: new Date().toISOString(),
     })
-    .where(eq(midtermGroups.id, groupId));
+    .where(eq(midtermGroups.id, groupId))
+    .returning({ id: midtermGroups.id });
 
-  return true;
+  return result.length > 0;
+}
+
+/**
+ * Fetches data from GitHub and updates metrics (Placeholder)
+ */
+export async function syncGitHubRepositoryData(
+  groupId: string
+): Promise<boolean> {
+  console.log(`Starting sync for group ${groupId}`);
+  const group = await getMidtermGroupById(groupId);
+
+  if (!group || !group.repositoryOwner || !group.repositoryName) {
+    console.error(`Group ${groupId} not found or repository not connected.`);
+    throw new Error("Group not found or repository not connected.");
+  }
+
+  try {
+    // --- Placeholder for actual GitHub API fetching --- //
+    console.log(
+      `Fetching data for ${group.repositoryOwner}/${group.repositoryName}...`
+    );
+    // Example: Use Octokit or fetch directly
+    // const githubData = await fetchGitHubData(group.repositoryOwner, group.repositoryName);
+    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate network delay
+
+    // --- Placeholder for processing data --- //
+    console.log("Processing GitHub data...");
+    const calculatedMetrics = {
+      totalCommits: Math.floor(Math.random() * 200), // Dummy data
+      totalPullRequests: Math.floor(Math.random() * 50),
+      totalBranches: Math.floor(Math.random() * 10) + 1,
+      totalIssues: 0, // Add if needed
+      codeAdditions: Math.floor(Math.random() * 10000),
+      codeDeletions: Math.floor(Math.random() * 5000),
+      contributorsCount: group.members.length, // Simple dummy data
+      detailedMetrics: {
+        /* Add more detailed structure if needed */
+      },
+    };
+    // TODO: Fetch actual contributor data and calculate individual contributions
+    // await updateContribution(...) for each member
+
+    // --- Update Database --- //
+    console.log("Updating database metrics...");
+    await updateRepositoryMetrics(groupId, calculatedMetrics);
+    await updateLastSync(groupId);
+
+    console.log(`Sync successful for group ${groupId}`);
+    return true;
+  } catch (error) {
+    console.error(`Error during GitHub sync for group ${groupId}:`, error);
+    // Optionally update the group status to indicate sync failure
+    throw error; // Re-throw error to be caught by API route
+  }
 }
 
 /**

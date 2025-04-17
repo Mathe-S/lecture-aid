@@ -140,6 +140,7 @@ export const midtermRepositoryMetrics = pgTable(
       foreignColumns: [midtermGroups.id],
       name: "midterm_repository_metrics_group_id_fkey",
     }).onDelete("cascade"),
+    unique("midterm_repository_metrics_group_id_unique").on(table.groupId),
     pgPolicy("Everyone can view repository metrics", {
       as: "permissive",
       for: "select",

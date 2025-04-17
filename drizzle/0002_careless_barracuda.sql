@@ -1,0 +1,1 @@
+ALTER TABLE "midterm_repository_metrics" ADD CONSTRAINT "midterm_repository_metrics_group_id_unique" UNIQUE("group_id");
