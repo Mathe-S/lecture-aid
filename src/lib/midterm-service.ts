@@ -445,10 +445,46 @@ export async function syncGitHubRepositoryData(
       // Handle error as needed
     }
 
-    // 4. Contributors
-    let contributors: any[] = [];
+    // 4. Commit Activity Stats (for additions/deletions)
+    let weeklyStats: any[] = [];
     let totalAdditions = 0;
     let totalDeletions = 0;
+    try {
+      const { data: activityData } = await octokit.repos.getCommitActivityStats(
+        { owner, repo }
+      );
+
+      if (Array.isArray(activityData)) {
+        weeklyStats = activityData;
+        weeklyStats.forEach((week) => {
+          // Ensure 'a' and 'd' are numbers, default to 0 if not
+          const additions = Number.isFinite(week.a) ? week.a : 0;
+          const deletions = Number.isFinite(week.d) ? week.d : 0;
+          totalAdditions += additions;
+          totalDeletions += deletions;
+        });
+        console.log(
+          `[Sync ${groupId}] Commit activity stats processed: Additions=${totalAdditions}, Deletions=${totalDeletions}`
+        );
+      } else {
+        console.warn(
+          `[Sync ${groupId}] Commit activity stats not an array or being computed. Add/Del set to 0.`
+        );
+        totalAdditions = 0;
+        totalDeletions = 0;
+        weeklyStats = [];
+      }
+    } catch (err: any) {
+      console.error(
+        `[Sync ${groupId}] Error fetching commit activity stats. Add/Del set to 0. Error: ${err.message}`
+      );
+      totalAdditions = 0;
+      totalDeletions = 0;
+      weeklyStats = [];
+    }
+
+    // 4. Contributors
+    let contributors: any[] = [];
     try {
       const { data: contributorStats } = await octokit.repos.listContributors({
         owner,
@@ -456,16 +492,27 @@ export async function syncGitHubRepositoryData(
         anon: "false", // Include anonymous contributions if needed?
       });
       contributors = contributorStats;
-      // Sum additions/deletions from contributors if available (might be incomplete)
-      contributors.forEach((c) => {
-        c.weeks.forEach((w: { a: number; d: number }) => {
-          totalAdditions += w.a;
-          totalDeletions += w.d;
-        });
-      });
     } catch (err) {
       console.error(`Error fetching contributors for ${owner}/${repo}:`, err);
       // Handle error as needed
+    }
+
+    // 5. Languages
+    let languages: Record<string, number> = {};
+    try {
+      const { data: langData } = await octokit.repos.listLanguages({
+        owner,
+        repo,
+      });
+      languages = langData;
+      console.log(
+        `[Sync ${groupId}] Languages fetched: ${Object.keys(languages).join(
+          ", "
+        )}`
+      );
+    } catch (err) {
+      console.error(`Error fetching languages for ${owner}/${repo}:`, err);
+      // Handle error as needed, languages will remain empty
     }
 
     // --- Process Data --- //
@@ -496,8 +543,8 @@ export async function syncGitHubRepositoryData(
       totalPullRequests: allPRs.length,
       totalBranches: allBranches.length,
       totalIssues: 0, // Issues need separate fetching if required
-      codeAdditions: totalAdditions, // Based on contributor stats (may be inaccurate)
-      codeDeletions: totalDeletions, // Based on contributor stats (may be inaccurate)
+      codeAdditions: totalAdditions, // Use sum from commit activity
+      codeDeletions: totalDeletions, // Use sum from commit activity
       contributorsCount: contributors.length,
       detailedMetrics: {
         commitsByAuthor,
@@ -507,66 +554,122 @@ export async function syncGitHubRepositoryData(
         mergedPRs,
         branchNames: allBranches.map((b) => b.name),
         // Add more details as needed
+        weeklyCommitActivity: weeklyStats.map((w) => ({
+          week: w.week,
+          additions: w.a,
+          deletions: w.d,
+          commits: w.c,
+        })),
+        languages, // Add fetched languages
       },
     };
 
     // --- Update Contributions --- //
-    // Match GitHub logins to user profiles and update midtermContributions table
-    /*
-    // === Contribution Update Logic (Temporarily Commented Out) ===
-    // Needs a strategy to map contributor.login (GitHub username) to profile.id
+    console.log(`[Sync ${groupId}] Attempting to update contributor links...`);
     for (const contributor of contributors) {
-        if (!contributor.login) continue; // Skip if no login
+      if (!contributor.login) continue; // Skip if no login
 
-        // Find the corresponding profile in our DB
-        // IMPORTANT: Assumes a way to link GitHub username to profile ID.
-        // const [profile] = await db.select().from(profiles).where(eq(profiles.githubUsername, contributor.login)).limit(1);
-        const profile = null; // Placeholder
+      let profile: Profile | null = null;
 
-        if (profile) {
-            // Find if this profile is a member of the current group
-            const memberRecord = group.members.find(m => m.userId === profile.id);
-            if (memberRecord) {
-                // Aggregate specific contributions for this user
-                const userCommits = allCommits.filter(c => c.author?.login === contributor.login).length;
-                const userPRs = allPRs.filter(pr => pr.user?.login === contributor.login).length;
-                // Additions/Deletions per user
-                let userAdditions = 0;
-                let userDeletions = 0;
-                contributor.weeks.forEach((w: { a: number; d: number; }) => {
-                    userAdditions += w.a;
-                    userDeletions += w.d;
-                });
+      // Attempt to find user profile via commit email
+      try {
+        // Find the first commit by this contributor to get their email
+        const commitWithEmail = allCommits.find(
+          (c) =>
+            c.author?.login === contributor.login && c.commit?.author?.email
+        );
 
-                await updateContribution({
-                    groupId: groupId,
-                    userId: profile.id,
-                    githubUsername: contributor.login,
-                    commits: userCommits,
-                    pullRequests: userPRs,
-                    codeReviews: 0, // Needs separate fetching/logic
-                    additions: userAdditions,
-                    deletions: userDeletions,
-                    branchesCreated: 0, // Needs separate fetching/logic
-                    lastCommitDate: null, // Find last commit date for this user if needed
-                    contributionData: { weeks: contributor.weeks }, // Store raw week data if useful
-                });
-            } else {
-                 console.warn(`Contributor ${contributor.login} found in DB but not a member of group ${groupId}.`);
-            }
-        } else {
-            console.warn(`GitHub contributor ${contributor.login} not found or mapped in profiles table.`);
+        if (commitWithEmail?.commit?.author?.email) {
+          const contributorEmail = commitWithEmail.commit.author.email;
+          console.log(
+            `[Sync ${groupId}] Found email ${contributorEmail} for contributor ${contributor.login}`
+          );
+          const [foundProfile] = await db
+            .select()
+            .from(profiles)
+            .where(eq(profiles.email, contributorEmail))
+            .limit(1);
+          if (foundProfile) {
+            profile = foundProfile;
+            console.log(
+              `[Sync ${groupId}] Linked ${contributor.login} to profile ID ${profile.id} via email`
+            );
+          }
         }
+      } catch (err) {
+        console.error(
+          `[Sync ${groupId}] Error looking up profile for ${contributor.login} by email:`,
+          err
+        );
+      }
+
+      if (profile) {
+        // Find if this profile is a member of the current group
+        const memberRecord = group.members.find(
+          (m) => m.userId === profile?.id
+        );
+        if (memberRecord) {
+          // Aggregate specific contributions for this user
+          const userCommits = allCommits.filter(
+            (c) => c.author?.login === contributor.login
+          ).length;
+          const userPRs = allPRs.filter(
+            (pr) => pr.user?.login === contributor.login
+          ).length;
+          // Additions/Deletions per user from contributor stats
+          let userAdditions = 0;
+          let userDeletions = 0;
+          if (contributor.weeks && Array.isArray(contributor.weeks)) {
+            contributor.weeks.forEach((w: { a: number; d: number }) => {
+              userAdditions += Number.isFinite(w.a) ? w.a : 0; // Ensure number
+              userDeletions += Number.isFinite(w.d) ? w.d : 0; // Ensure number
+            });
+          }
+
+          try {
+            await updateContribution({
+              groupId: groupId,
+              userId: profile.id,
+              githubUsername: contributor.login, // Store the GH username still
+              commits: userCommits,
+              pullRequests: userPRs,
+              codeReviews: 0, // Needs separate fetching/logic
+              additions: userAdditions,
+              deletions: userDeletions,
+              branchesCreated: 0, // Needs separate fetching/logic
+              lastCommitDate: null, // TODO: Find last commit date for this user if needed
+              contributionData: { weeks: contributor.weeks || [] }, // Store raw week data
+            });
+            console.log(
+              `[Sync ${groupId}] Updated contribution record for profile ${profile.id} (${contributor.login})`
+            );
+          } catch (updateErr) {
+            console.error(
+              `[Sync ${groupId}] Error updating contribution for profile ${profile.id} (${contributor.login}):`,
+              updateErr
+            );
+          }
+        } else {
+          console.warn(
+            `[Sync ${groupId}] Contributor ${contributor.login} linked to profile ${profile.id} but is not a member of group ${groupId}.`
+          );
+        }
+      } else {
+        console.warn(
+          `[Sync ${groupId}] GitHub contributor ${contributor.login} could not be linked to a profile via commit email.`
+        );
+      }
     }
-    // === End of Commented Out Contribution Logic ===
-    */
+    console.log(`[Sync ${groupId}] Finished contributor link update attempts.`);
 
     // --- Update Database --- //
-    console.log("Updating database metrics...");
+    console.log(
+      `[Sync ${groupId}] Updating DB metrics: Commits=${calculatedMetrics.totalCommits}, Add=${calculatedMetrics.codeAdditions}, Del=${calculatedMetrics.codeDeletions}`
+    );
     await updateRepositoryMetrics(groupId, calculatedMetrics);
     await updateLastSync(groupId);
 
-    console.log(`Sync successful for group ${groupId}`);
+    console.log(`[Sync ${groupId}] Sync successful.`);
     return true;
   } catch (error) {
     console.error(`Error during GitHub sync for group ${groupId}:`, error);

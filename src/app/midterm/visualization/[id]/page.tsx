@@ -39,238 +39,112 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMidtermGroupDetails } from "@/hooks/useMidtermGroups";
+import { useQueryClient } from "@tanstack/react-query";
+import { midtermKeys } from "@/hooks/useMidtermGroups";
 
-// Mock data for visualization
-const mockVisualizationData: RepositoryVisualizationData = {
-  name: "flashcards-extension",
-  description: "A browser extension for flashcards with hand gesture detection",
-  url: "https://github.com/team-alpha/flashcards-extension",
-  commits: {
-    count: 86,
-    byAuthor: {
-      "jane-doe": 32,
-      "john-smith": 41,
-      "alex-jones": 13,
-    },
-    timeline: [
-      { date: "2023-04-10", count: 5 },
-      { date: "2023-04-11", count: 8 },
-      { date: "2023-04-12", count: 3 },
-      { date: "2023-04-13", count: 7 },
-      { date: "2023-04-14", count: 11 },
-      { date: "2023-04-15", count: 4 },
-      { date: "2023-04-16", count: 0 },
-      { date: "2023-04-17", count: 9 },
-      { date: "2023-04-18", count: 12 },
-      { date: "2023-04-19", count: 6 },
-      { date: "2023-04-20", count: 8 },
-      { date: "2023-04-21", count: 13 },
-    ],
-  },
-  branches: {
-    count: 6,
-    names: [
-      "main",
-      "feat/extension-popup",
-      "feat/hand-detection",
-      "feat/card-storage",
-      "fix/auth-issues",
-      "docs/readme",
-    ],
-    byCreator: {
-      "jane-doe": 2,
-      "john-smith": 3,
-      "alex-jones": 1,
-    },
-  },
-  pullRequests: {
-    count: 14,
-    open: 2,
-    closed: 1,
-    merged: 11,
-    byAuthor: {
-      "jane-doe": 5,
-      "john-smith": 7,
-      "alex-jones": 2,
-    },
-  },
-  codebase: {
-    additions: 4283,
-    deletions: 1205,
-    byLanguage: {
-      TypeScript: 65,
-      JavaScript: 20,
-      HTML: 10,
-      CSS: 5,
-    },
-  },
-  contributors: {
-    count: 3,
-    data: [
-      {
-        username: "jane-doe",
-        displayName: "Jane Doe",
-        contributions: 32,
-        avatar: "https://github.com/ghost.png",
-      },
-      {
-        username: "john-smith",
-        displayName: "John Smith",
-        contributions: 41,
-        avatar: "https://github.com/ghost.png",
-      },
-      {
-        username: "alex-jones",
-        displayName: "Alex Jones",
-        contributions: 13,
-        avatar: "https://github.com/ghost.png",
-      },
-    ],
-  },
-  activity: {
-    timeline: [
-      {
-        date: "2023-04-10",
-        commits: 5,
-        pullRequests: 1,
-        additions: 350,
-        deletions: 20,
-      },
-      {
-        date: "2023-04-11",
-        commits: 8,
-        pullRequests: 2,
-        additions: 520,
-        deletions: 150,
-      },
-      {
-        date: "2023-04-12",
-        commits: 3,
-        pullRequests: 0,
-        additions: 120,
-        deletions: 30,
-      },
-      {
-        date: "2023-04-13",
-        commits: 7,
-        pullRequests: 1,
-        additions: 480,
-        deletions: 95,
-      },
-      {
-        date: "2023-04-14",
-        commits: 11,
-        pullRequests: 2,
-        additions: 730,
-        deletions: 210,
-      },
-      {
-        date: "2023-04-15",
-        commits: 4,
-        pullRequests: 0,
-        additions: 290,
-        deletions: 40,
-      },
-      {
-        date: "2023-04-16",
-        commits: 0,
-        pullRequests: 0,
-        additions: 0,
-        deletions: 0,
-      },
-      {
-        date: "2023-04-17",
-        commits: 9,
-        pullRequests: 1,
-        additions: 410,
-        deletions: 120,
-      },
-      {
-        date: "2023-04-18",
-        commits: 12,
-        pullRequests: 3,
-        additions: 680,
-        deletions: 220,
-      },
-      {
-        date: "2023-04-19",
-        commits: 6,
-        pullRequests: 1,
-        additions: 180,
-        deletions: 60,
-      },
-      {
-        date: "2023-04-20",
-        commits: 8,
-        pullRequests: 2,
-        additions: 310,
-        deletions: 150,
-      },
-      {
-        date: "2023-04-21",
-        commits: 13,
-        pullRequests: 1,
-        additions: 213,
-        deletions: 110,
-      },
-    ],
-  },
-};
+function transformDataForVisualization(
+  group: any
+): RepositoryVisualizationData | null {
+  if (!group || !group.metrics || !group.metrics.detailedMetrics) {
+    return null;
+  }
 
-const mockGroupName = "Team Alpha";
+  const metrics = group.metrics;
+  const detailed = metrics.detailedMetrics;
+
+  const visualizationData: RepositoryVisualizationData = {
+    name: group.repositoryName || "Repository",
+    description: group.description || "",
+    url: group.repositoryUrl || "",
+    commits: {
+      count: metrics.totalCommits || 0,
+      byAuthor: detailed.commitsByAuthor || {},
+      timeline: (detailed.weeklyCommitActivity || []).map((w: any) => ({
+        date: new Date(w.week * 1000).toISOString().split("T")[0],
+        count: w.commits,
+      })),
+    },
+    branches: {
+      count: metrics.totalBranches || 0,
+      names: detailed.branchNames || [],
+      byCreator: {},
+    },
+    pullRequests: {
+      count: metrics.totalPullRequests || 0,
+      open: detailed.openPRs || 0,
+      closed: detailed.closedPRs || 0,
+      merged: detailed.mergedPRs || 0,
+      byAuthor: detailed.prsByAuthor || {},
+    },
+    codebase: {
+      additions: metrics.codeAdditions || 0,
+      deletions: metrics.codeDeletions || 0,
+      byLanguage: detailed.languages || {},
+    },
+    contributors: {
+      count: metrics.contributorsCount || 0,
+      data: (group.contributions || []).map((c: any) => ({
+        username: c.githubUsername || "unknown",
+        displayName: c.profile?.fullName || c.githubUsername || "Unknown",
+        contributions: c.commits || 0,
+        avatar: c.profile?.avatarUrl || "https://github.com/ghost.png",
+      })),
+    },
+    activity: {
+      timeline: (detailed.weeklyCommitActivity || []).map((w: any) => ({
+        date: new Date(w.week * 1000).toISOString().split("T")[0],
+        commits: w.commits || 0,
+        pullRequests: 0,
+        additions: w.additions || 0,
+        deletions: w.deletions || 0,
+      })),
+    },
+  };
+
+  return visualizationData;
+}
 
 export default function RepositoryVisualizationPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const {
+    data: group,
+    isLoading,
+    error,
+  } = useMidtermGroupDetails(id as string);
+
   const [visualizationData, setVisualizationData] =
     useState<RepositoryVisualizationData | null>(null);
-  const [groupName, setGroupName] = useState("");
-  // const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Use our hook to fetch the group details ensuring id is a string
-  // const { data: group, isLoading: isLoadingGroup } = useMidtermGroupDetails(
-  //   id as string
-  // );
-
   useEffect(() => {
-    // Simulate fetching data
-    setTimeout(() => {
-      setVisualizationData(mockVisualizationData);
-      setGroupName(mockGroupName);
-      // setGroupMembers(mockGroupMembers);
-      setLoading(false);
-    }, 1500);
-  }, [id]);
+    if (group) {
+      const transformed = transformDataForVisualization(group);
+      setVisualizationData(transformed);
+    }
+  }, [group]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate refreshing data
-    setTimeout(() => {
-      setRefreshing(false);
-      // Could update the visualization data here
-    }, 2000);
+    await queryClient.invalidateQueries({
+      queryKey: midtermKeys.group(id as string),
+    });
+    setTimeout(() => setRefreshing(false), 500);
   };
 
   const renderVisualization = useCallback(
-    (visualizationData: RepositoryVisualizationData) => {
-      // This would be replaced with actual D3.js code
-      // to render a tree visualization of the GitHub activity
+    (visData: RepositoryVisualizationData) => {
       const svg = svgRef.current;
-      if (!svg || !visualizationData) return;
+      if (!svg || !visData) return;
 
-      // Clear previous content
       while (svg.firstChild) {
         svg.removeChild(svg.firstChild);
       }
 
-      // This is a placeholder for the actual visualization code
-      // In a real implementation, this would use D3.js to create
-      // a tree-like visualization of the repository activity
-
-      // Draw the tree trunk (base repository)
       const trunk = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "rect"
@@ -279,14 +153,20 @@ export default function RepositoryVisualizationPage() {
       trunk.setAttribute("y", "400");
       trunk.setAttribute("width", "20");
       trunk.setAttribute("height", "100");
-      trunk.setAttribute("fill", "brown");
+      trunk.setAttribute("fill", "#8B4513");
       svg.appendChild(trunk);
 
-      // Draw branches for each contributor
-      const contributors = visualizationData.contributors.data;
+      const contributors = visData.contributors.data;
+      const maxContributions = Math.max(
+        1,
+        ...contributors.map((c) => c.contributions)
+      );
+
       contributors.forEach((contributor, index) => {
-        const angle = ((index - 1) * Math.PI) / 3;
-        const length = 80 + contributor.contributions;
+        const angle =
+          (Math.PI / (contributors.length + 1)) * (index + 1) - Math.PI / 2;
+        const length =
+          50 + (contributor.contributions / maxContributions) * 150;
 
         const branch = document.createElementNS(
           "http://www.w3.org/2000/svg",
@@ -296,17 +176,15 @@ export default function RepositoryVisualizationPage() {
         branch.setAttribute("y1", "400");
         branch.setAttribute("x2", `${250 + Math.cos(angle) * length}`);
         branch.setAttribute("y2", `${400 - Math.sin(angle) * length}`);
-        branch.setAttribute("stroke", "brown");
+        branch.setAttribute("stroke", "#8B4513");
         branch.setAttribute("stroke-width", "10");
         svg.appendChild(branch);
 
-        // Add leaves proportional to commits
-        const commits =
-          visualizationData.commits.byAuthor[contributor.username] || 0;
-        for (let i = 0; i < Math.min(commits, 20); i++) {
-          const leafSize = 5 + Math.random() * 10;
-          const leafDistance = 20 + Math.random() * (length - 30);
-          const leafAngle = angle + (Math.random() * 0.5 - 0.25);
+        const commits = visData.commits.byAuthor[contributor.username] || 0;
+        for (let i = 0; i < Math.min(commits, 30); i++) {
+          const leafSize = 4 + Math.random() * 6;
+          const leafDistance = 30 + Math.random() * (length - 40);
+          const leafAngle = angle + (Math.random() * 0.4 - 0.2);
 
           const leaf = document.createElementNS(
             "http://www.w3.org/2000/svg",
@@ -321,24 +199,30 @@ export default function RepositoryVisualizationPage() {
             `${400 - Math.sin(leafAngle) * leafDistance}`
           );
           leaf.setAttribute("r", `${leafSize}`);
-          leaf.setAttribute("fill", `hsl(${120 + index * 40}, 80%, 50%)`);
+          leaf.setAttribute("fill", `hsl(${100 + index * 50}, 70%, 60%)`);
+          leaf.setAttribute("opacity", "0.8");
           svg.appendChild(leaf);
         }
 
-        // Add contributor name
         const text = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "text"
         );
-        text.setAttribute("x", `${250 + Math.cos(angle) * (length + 20)}`);
-        text.setAttribute("y", `${400 - Math.sin(angle) * (length + 20)}`);
-        text.setAttribute("text-anchor", "middle");
-        text.setAttribute("fill", "black");
+        const textX = 250 + Math.cos(angle) * (length + 15);
+        const textY = 400 - Math.sin(angle) * (length + 15);
+        text.setAttribute("x", `${textX}`);
+        text.setAttribute("y", `${textY}`);
+        text.setAttribute(
+          "text-anchor",
+          Math.abs(angle) < 0.1 ? "middle" : angle < 0 ? "start" : "end"
+        );
+        text.setAttribute("dy", "0.3em");
+        text.setAttribute("fill", "#333");
+        text.setAttribute("font-size", "10px");
         text.textContent = contributor.displayName || contributor.username;
         svg.appendChild(text);
       });
 
-      // Add a title to the visualization
       const title = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "text"
@@ -346,12 +230,12 @@ export default function RepositoryVisualizationPage() {
       title.setAttribute("x", "250");
       title.setAttribute("y", "30");
       title.setAttribute("text-anchor", "middle");
-      title.setAttribute("font-size", "18");
-      title.setAttribute("font-weight", "bold");
-      title.textContent = "Repository Contribution Tree";
+      title.setAttribute("font-size", "16");
+      title.setAttribute("font-weight", "600");
+      title.textContent = `Contribution Tree: ${group?.name || "Group"}`;
       svg.appendChild(title);
     },
-    []
+    [group]
   );
 
   useEffect(() => {
@@ -360,10 +244,41 @@ export default function RepositoryVisualizationPage() {
     }
   }, [visualizationData, renderVisualization]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-10 px-4 md:px-6 text-center">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">
+          Error Loading Group Details
+        </h1>
+        <p className="text-muted-foreground mb-4">{(error as Error).message}</p>
+        <Button onClick={() => router.push("/midterm")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Midterm Projects
+        </Button>
+      </div>
+    );
+  }
+
+  if (!group) {
+    return (
+      <div className="container mx-auto py-10 px-4 md:px-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">Group Not Found</h1>
+        <p className="text-muted-foreground mb-4">
+          The group you are looking for does not exist or you may not have
+          access.
+        </p>
+        <Button onClick={() => router.push("/midterm")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Midterm Projects
+        </Button>
       </div>
     );
   }
@@ -375,14 +290,14 @@ export default function RepositoryVisualizationPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
-              onClick={() => router.push("/midterm")}
+              onClick={() => router.push(`/midterm/groups/${id}`)}
               className="pl-1"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Midterm
+              Back to Group Details
             </Button>
             <span className="text-muted-foreground">/</span>
-            <h1 className="text-2xl font-bold">{groupName} Visualization</h1>
+            <h1 className="text-2xl font-bold">{group.name} Visualization</h1>
           </div>
 
           <TooltipProvider>
@@ -392,9 +307,9 @@ export default function RepositoryVisualizationPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleRefresh}
-                  disabled={refreshing}
+                  disabled={refreshing || isLoading}
                 >
-                  {refreshing ? (
+                  {refreshing || isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <RefreshCw className="h-4 w-4" />
@@ -403,13 +318,22 @@ export default function RepositoryVisualizationPage() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Sync latest data from GitHub</p>
+                <p>Refetch latest data from database</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
 
-        {visualizationData && (
+        {!visualizationData ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Loading Visualization Data...</CardTitle>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
@@ -423,10 +347,12 @@ export default function RepositoryVisualizationPage() {
                   <div className="text-3xl font-bold">
                     {visualizationData.commits.count}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Latest activity:{" "}
-                    {visualizationData.activity.timeline.slice(-1)[0].date}
-                  </div>
+                  {visualizationData.commits.timeline.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Latest activity:{" "}
+                      {visualizationData.commits.timeline.slice(-1)[0].date}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -440,10 +366,6 @@ export default function RepositoryVisualizationPage() {
                 <CardContent>
                   <div className="text-3xl font-bold">
                     {visualizationData.branches.count}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {Object.keys(visualizationData.branches.byCreator).length}{" "}
-                    contributors
                   </div>
                 </CardContent>
               </Card>
@@ -479,15 +401,17 @@ export default function RepositoryVisualizationPage() {
                 </CardTitle>
                 <CardDescription>
                   {visualizationData.description}
-                  <a
-                    href={visualizationData.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 inline-flex items-center text-blue-600 hover:underline"
-                  >
-                    View on GitHub
-                    <ExternalLink className="h-3 w-3 ml-1" />
-                  </a>
+                  {visualizationData.url && (
+                    <a
+                      href={visualizationData.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 inline-flex items-center text-blue-600 hover:underline"
+                    >
+                      View on GitHub
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </a>
+                  )}
                 </CardDescription>
               </CardHeader>
 
@@ -502,21 +426,20 @@ export default function RepositoryVisualizationPage() {
                   </TabsList>
 
                   <TabsContent value="tree" className="space-y-4">
-                    <div className="aspect-video w-full rounded-md border bg-white p-4 flex items-center justify-center">
+                    <div className="aspect-video w-full rounded-md border bg-white p-4 flex items-center justify-center overflow-hidden">
                       <svg
                         ref={svgRef}
                         width="100%"
                         height="100%"
                         viewBox="0 0 500 500"
+                        preserveAspectRatio="xMidYMid meet"
                         className="max-w-full max-h-[500px]"
                       />
                     </div>
-
                     <div className="text-sm text-center text-muted-foreground">
                       <p>
-                        The tree visualization shows contributions by each team
-                        member. Branches represent team members, and leaves
-                        represent commits.
+                        Contribution tree visualization (placeholder). Branch
+                        size reflects total commits.
                       </p>
                     </div>
                   </TabsContent>
@@ -547,32 +470,57 @@ export default function RepositoryVisualizationPage() {
                         </Select>
                       </div>
 
-                      <div className="h-64 relative">
-                        {/* This would be a real chart in production */}
-                        <div className="absolute inset-0 flex items-end">
-                          {visualizationData.activity.timeline.map((day, i) => (
-                            <div
-                              key={i}
-                              className="flex-1 mx-0.5"
-                              style={{ height: `${(day.commits / 15) * 100}%` }}
-                            >
+                      <div className="h-64 relative bg-slate-50 rounded">
+                        <div className="absolute inset-0 flex items-end p-2">
+                          {visualizationData.activity.timeline.map((day, i) => {
+                            const maxVal = Math.max(
+                              1,
+                              ...visualizationData.activity.timeline.map(
+                                (d) => d.commits
+                              )
+                            );
+                            const heightPercent = (day.commits / maxVal) * 100;
+                            return (
                               <div
-                                className="w-full bg-blue-500 rounded-t-sm"
-                                style={{ height: "100%" }}
-                              />
-                            </div>
-                          ))}
+                                key={i}
+                                className="flex-1 mx-0.5 flex flex-col justify-end items-center group relative"
+                              >
+                                <TooltipProvider delayDuration={100}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div
+                                        className="w-full bg-blue-400 hover:bg-blue-600 transition-colors rounded-t-sm"
+                                        style={{ height: `${heightPercent}%` }}
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{day.date}</p>
+                                      <p>Commits: {day.commits}</p>
+                                      <p>Additions: {day.additions}</p>
+                                      <p>Deletions: {day.deletions}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
-                      <div className="flex justify-between mt-2 text-xs text-slate-500">
-                        {visualizationData.activity.timeline
-                          .filter((_, i) => i % 3 === 0)
-                          .map((day, i) => (
-                            <div key={i}>
-                              {day.date.split("-").slice(1).join("/")}
-                            </div>
-                          ))}
+                      <div className="flex justify-between mt-2 text-xs text-slate-500 px-2">
+                        {visualizationData.activity.timeline.length > 0 && (
+                          <span>
+                            {visualizationData.activity.timeline[0].date}
+                          </span>
+                        )}
+                        {visualizationData.activity.timeline.length > 0 && (
+                          <span>
+                            {
+                              visualizationData.activity.timeline.slice(-1)[0]
+                                .date
+                            }
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -705,33 +653,30 @@ export default function RepositoryVisualizationPage() {
                             <CardTitle className="text-lg">Languages</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            {visualizationData.codebase.byLanguage && (
-                              <div className="space-y-3">
+                            {visualizationData.codebase.byLanguage &&
+                            Object.keys(visualizationData.codebase.byLanguage)
+                              .length > 0 ? (
+                              <ul className="space-y-2">
                                 {Object.entries(
                                   visualizationData.codebase.byLanguage
-                                ).map(([lang, percentage], i) => (
-                                  <div key={i}>
-                                    <div className="flex justify-between text-sm mb-1">
+                                )
+                                  .sort(([, a], [, b]) => b - a)
+                                  .map(([lang, bytes]) => (
+                                    <li
+                                      key={lang}
+                                      className="flex justify-between items-center text-sm"
+                                    >
                                       <span>{lang}</span>
-                                      <span>{percentage}%</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full ${
-                                          i === 0
-                                            ? "bg-blue-500"
-                                            : i === 1
-                                            ? "bg-yellow-500"
-                                            : i === 2
-                                            ? "bg-green-500"
-                                            : "bg-purple-500"
-                                        }`}
-                                        style={{ width: `${percentage}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                                      <span className="font-mono">
+                                        {bytes.toLocaleString()} bytes
+                                      </span>
+                                    </li>
+                                  ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                No language data available.
+                              </p>
                             )}
                           </CardContent>
                         </Card>
@@ -758,6 +703,44 @@ export default function RepositoryVisualizationPage() {
                         </Card>
                       </div>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="languages">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Languages</CardTitle>
+                        <CardDescription>
+                          Breakdown by language (bytes)
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {visualizationData.codebase.byLanguage &&
+                        Object.keys(visualizationData.codebase.byLanguage)
+                          .length > 0 ? (
+                          <ul className="space-y-2">
+                            {Object.entries(
+                              visualizationData.codebase.byLanguage
+                            )
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([lang, bytes]) => (
+                                <li
+                                  key={lang}
+                                  className="flex justify-between items-center text-sm"
+                                >
+                                  <span>{lang}</span>
+                                  <span className="font-mono">
+                                    {bytes.toLocaleString()} bytes
+                                  </span>
+                                </li>
+                              ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No language data available.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
                   </TabsContent>
                 </Tabs>
               </CardContent>
