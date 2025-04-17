@@ -30,7 +30,6 @@ interface PresenceInfo {
 
 export function AdminActiveUsersList() {
   const [activeUsers, setActiveUsers] = useState<UserInfo[]>([]);
-  console.log("🚀 ~ AdminActiveUsersList ~ activeUsers:", activeUsers);
   const { user, isLoading: isAuthLoading } = useAuth(); // We still need user for tracking self
   const supabase = createClient();
 

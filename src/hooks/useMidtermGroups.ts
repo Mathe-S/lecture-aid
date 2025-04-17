@@ -138,6 +138,31 @@ const deleteGroupAPI = async (id: string): Promise<void> => {
   }
 };
 
+// Update group name/description
+const updateGroupAPI = async ({
+  groupId,
+  name,
+  description,
+}: {
+  groupId: string;
+  name: string;
+  description?: string;
+}): Promise<MidtermGroup> => {
+  const response = await fetch(`/api/midterm/groups/${groupId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name, description }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Failed to update group");
+  }
+  return response.json();
+};
+
 // Hook to fetch all midterm groups
 export function useMidtermGroups() {
   return useQuery({
@@ -337,4 +362,38 @@ export function useDeleteMidtermGroup() {
       });
     },
   });
+}
+
+// Hook to update a midterm group (Admin/Owner)
+export function useUpdateMidtermGroup() {
+  const queryClient = useQueryClient();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: updateGroupAPI,
+    onMutate: () => {
+      setIsUpdating(true);
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate list and specific group
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      queryClient.invalidateQueries({
+        queryKey: midtermKeys.group(variables.groupId),
+      });
+      toast.success("Group updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to update group", {
+        description: error.message,
+      });
+    },
+    onSettled: () => {
+      setIsUpdating(false);
+    },
+  });
+
+  return {
+    updateGroup: mutation.mutateAsync,
+    isLoading: isUpdating,
+  };
 }

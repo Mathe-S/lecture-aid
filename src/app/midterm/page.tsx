@@ -46,6 +46,7 @@ import {
   useUpdateRepository,
   useLeaveGroup,
   useDeleteMidtermGroup,
+  useUpdateMidtermGroup,
 } from "@/hooks/useMidtermGroups";
 import {
   AlertDialog,
@@ -58,6 +59,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { MidtermGroupWithMembers } from "@/db/drizzle/midterm-schema";
 
 export default function MidtermPage() {
   const { user, role } = useAuth();
@@ -70,21 +72,24 @@ export default function MidtermPage() {
     null
   );
   const [updatingGroupId, setUpdatingGroupId] = useState<string | null>(null);
+  const [groupToEdit, setGroupToEdit] =
+    useState<MidtermGroupWithMembers | null>(null);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [editGroupDescription, setEditGroupDescription] = useState("");
   const { leaveGroup, isLoading: isLeavingGroup } = useLeaveGroup();
   const { mutateAsync: deleteGroup, isPending: isDeletingGroup } =
     useDeleteMidtermGroup();
   const [groupToLeave, setGroupToLeave] = useState<string | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
 
-  // Use our custom hooks
   const { data: groups = [], isLoading } = useMidtermGroups();
   const { createGroup, isLoading: isCreatingGroup } = useCreateMidtermGroup();
   const { joinGroup } = useJoinMidtermGroup();
   const { connectRepository, isLoading: isConnectingRepo } =
     useConnectRepository();
   const { updateRepository, isLoading: isUpdatingRepo } = useUpdateRepository();
+  const { updateGroup, isLoading: isUpdatingGroup } = useUpdateMidtermGroup();
 
-  // Filter groups the user is a member of
   const userGroups = groups.filter((group) =>
     group.members.some((member) => member.userId === user?.id)
   );
@@ -111,6 +116,26 @@ export default function MidtermPage() {
       await joinGroup(groupId);
     } catch (error) {
       console.error("Failed to join group", error);
+    }
+  };
+
+  const handleEditGroupClick = (group: MidtermGroupWithMembers) => {
+    setGroupToEdit(group);
+    setEditGroupName(group.name);
+    setEditGroupDescription(group.description || "");
+  };
+
+  const handleSaveGroupUpdate = async () => {
+    if (!groupToEdit || !editGroupName.trim()) return;
+    try {
+      await updateGroup({
+        groupId: groupToEdit.id,
+        name: editGroupName,
+        description: editGroupDescription,
+      });
+      setGroupToEdit(null);
+    } catch (error) {
+      console.error("Failed to update group", error);
     }
   };
 
@@ -354,347 +379,382 @@ export default function MidtermPage() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {userGroups.map((group) => (
-                <Card key={group.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <GitBranch className="h-5 w-5 text-blue-500" />
-                      {group.name}
-                    </CardTitle>
-                    <CardDescription>
-                      {group.description || "No description provided"}
-                    </CardDescription>
-                  </CardHeader>
+              {userGroups.map((group) => {
+                const isOwner = group.members.some(
+                  (member) =>
+                    member.userId === user?.id && member.role === "owner"
+                );
+                const canModify = role === "admin" || isOwner;
 
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="text-sm font-medium text-muted-foreground">
-                          Repository
-                        </div>
-                        {group.repositoryUrl ? (
-                          <div className="flex items-center">
-                            <a
-                              href={group.repositoryUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-blue-600 hover:underline"
-                            >
-                              <Github className="h-4 w-4" />
-                              {group.repositoryOwner}/{group.repositoryName}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                            <Dialog
-                              open={updatingGroupId === group.id}
-                              onOpenChange={(open) => {
-                                if (open && group.repositoryUrl) {
-                                  setRepositoryUrl(group.repositoryUrl);
-                                }
-                                if (!open) setUpdatingGroupId(null);
-                              }}
-                            >
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 ml-1"
-                                  onClick={() => setUpdatingGroupId(group.id)}
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                                  <span className="sr-only">
-                                    Update Repository
-                                  </span>
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>
-                                    Update GitHub Repository
-                                  </DialogTitle>
-                                  <DialogDescription>
-                                    Update the connected GitHub repository URL.
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-2 py-4">
-                                  <Label
-                                    htmlFor={`update-repo-url-${group.id}`}
-                                  >
-                                    Repository URL
-                                  </Label>
-                                  <Input
-                                    id={`update-repo-url-${group.id}`}
-                                    placeholder="https://github.com/username/repo"
-                                    value={repositoryUrl}
-                                    onChange={(e) =>
-                                      setRepositoryUrl(e.target.value)
-                                    }
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    Must be a public GitHub repository
-                                  </p>
-                                </div>
-                                <DialogFooter>
-                                  <Button
-                                    onClick={() =>
-                                      handleUpdateRepository(group.id)
-                                    }
-                                    disabled={
-                                      isUpdatingRepo ||
-                                      !repositoryUrl.includes("github.com")
-                                    }
-                                  >
-                                    {isUpdatingRepo ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Updating...
-                                      </>
-                                    ) : (
-                                      "Update Repository"
-                                    )}
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
+                return (
+                  <Dialog key={group.id}>
+                    <Card>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-grow">
+                            <CardTitle className="flex items-center gap-2">
+                              <GitBranch className="h-5 w-5 text-blue-500" />
+                              {group.name}
+                            </CardTitle>
+                            <CardDescription>
+                              {group.description || "No description provided"}
+                            </CardDescription>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">
-                              No repository connected
-                            </span>
+                          {canModify && (
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 flex-shrink-0 ml-2"
+                                onClick={() => handleEditGroupClick(group)}
+                              >
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                                <span className="sr-only">Edit Group</span>
+                              </Button>
+                            </DialogTrigger>
+                          )}
+                        </div>
+                      </CardHeader>
 
-                            <Dialog
-                              open={connectingGroupId === group.id}
-                              onOpenChange={(open) =>
-                                !open && setConnectingGroupId(null)
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex flex-col gap-1">
+                            <div className="text-sm font-medium text-muted-foreground">
+                              Repository
+                            </div>
+                            {group.repositoryUrl ? (
+                              <div className="flex items-center">
+                                <a
+                                  href={group.repositoryUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                                >
+                                  <Github className="h-4 w-4" />
+                                  {group.repositoryOwner}/{group.repositoryName}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                                <Dialog
+                                  open={updatingGroupId === group.id}
+                                  onOpenChange={(open) => {
+                                    if (open && group.repositoryUrl) {
+                                      setRepositoryUrl(group.repositoryUrl);
+                                    }
+                                    if (!open) setUpdatingGroupId(null);
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 ml-1"
+                                      onClick={() =>
+                                        setUpdatingGroupId(group.id)
+                                      }
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground" />
+                                      <span className="sr-only">
+                                        Update Repository
+                                      </span>
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>
+                                        Update GitHub Repository
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        Update the connected GitHub repository
+                                        URL.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-2 py-4">
+                                      <Label
+                                        htmlFor={`update-repo-url-${group.id}`}
+                                      >
+                                        Repository URL
+                                      </Label>
+                                      <Input
+                                        id={`update-repo-url-${group.id}`}
+                                        placeholder="https://github.com/username/repo"
+                                        value={repositoryUrl}
+                                        onChange={(e) =>
+                                          setRepositoryUrl(e.target.value)
+                                        }
+                                      />
+                                      <p className="text-xs text-muted-foreground">
+                                        Must be a public GitHub repository
+                                      </p>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button
+                                        onClick={() =>
+                                          handleUpdateRepository(group.id)
+                                        }
+                                        disabled={
+                                          isUpdatingRepo ||
+                                          !repositoryUrl.includes("github.com")
+                                        }
+                                      >
+                                        {isUpdatingRepo ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Updating...
+                                          </>
+                                        ) : (
+                                          "Update Repository"
+                                        )}
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">
+                                  No repository connected
+                                </span>
+
+                                <Dialog
+                                  open={connectingGroupId === group.id}
+                                  onOpenChange={(open) =>
+                                    !open && setConnectingGroupId(null)
+                                  }
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        setConnectingGroupId(group.id)
+                                      }
+                                    >
+                                      Connect
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>
+                                        Connect GitHub Repository
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        Connect your GitHub repository to track
+                                        progress and visualize contributions.
+                                      </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-2 py-4">
+                                      <Label htmlFor="repo-url">
+                                        Repository URL
+                                      </Label>
+                                      <Input
+                                        id="repo-url"
+                                        placeholder="https://github.com/username/repo"
+                                        value={repositoryUrl}
+                                        onChange={(e) =>
+                                          setRepositoryUrl(e.target.value)
+                                        }
+                                      />
+                                      <p className="text-xs text-muted-foreground">
+                                        Must be a public GitHub repository
+                                      </p>
+                                    </div>
+
+                                    <DialogFooter>
+                                      <Button
+                                        onClick={() =>
+                                          handleConnectRepository(group.id)
+                                        }
+                                        disabled={
+                                          isConnectingRepo ||
+                                          !repositoryUrl.includes("github.com")
+                                        }
+                                      >
+                                        {isConnectingRepo ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Connecting...
+                                          </>
+                                        ) : (
+                                          "Connect Repository"
+                                        )}
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <div className="text-sm font-medium text-muted-foreground mb-2">
+                              Members ({group.members.length})
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {group.members.map((member) => (
+                                <div
+                                  key={member.id}
+                                  className="flex items-center justify-between"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-800">
+                                      {member.profile.fullName
+                                        ?.split(" ")
+                                        .map((n) => n[0])
+                                        .join("")}
+                                    </div>
+                                    <span className="text-sm">
+                                      {member.profile.fullName}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs px-2 py-0.5 bg-slate-100 rounded-full">
+                                    {member.role}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+
+                      <CardFooter className="flex justify-between items-center pt-4 border-t">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              router.push(`/midterm/groups/${group.id}`)
+                            }
+                          >
+                            View Details
+                          </Button>
+                          {group.repositoryUrl && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() =>
+                                router.push(
+                                  `/midterm/visualization/${group.id}`
+                                )
                               }
                             >
-                              <DialogTrigger asChild>
+                              Visualization
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {userGroups.some((ug) => ug.id === group.id) && (
+                            <AlertDialog
+                              open={groupToLeave === group.id}
+                              onOpenChange={(open) =>
+                                !open && setGroupToLeave(null)
+                              }
+                            >
+                              <AlertDialogTrigger asChild>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setConnectingGroupId(group.id)}
+                                  onClick={() => setGroupToLeave(group.id)}
+                                  className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
                                 >
-                                  Connect
+                                  <LogOut className="mr-1 h-4 w-4" />
+                                  Leave
                                 </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>
-                                    Connect GitHub Repository
-                                  </DialogTitle>
-                                  <DialogDescription>
-                                    Connect your GitHub repository to track
-                                    progress and visualize contributions.
-                                  </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-2 py-4">
-                                  <Label htmlFor="repo-url">
-                                    Repository URL
-                                  </Label>
-                                  <Input
-                                    id="repo-url"
-                                    placeholder="https://github.com/username/repo"
-                                    value={repositoryUrl}
-                                    onChange={(e) =>
-                                      setRepositoryUrl(e.target.value)
-                                    }
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    Must be a public GitHub repository
-                                  </p>
-                                </div>
-
-                                <DialogFooter>
-                                  <Button
-                                    onClick={() =>
-                                      handleConnectRepository(group.id)
-                                    }
-                                    disabled={
-                                      isConnectingRepo ||
-                                      !repositoryUrl.includes("github.com")
-                                    }
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Are you sure you want to leave this group?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. You will lose
+                                    access to the group details and
+                                    visualization.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel
+                                    onClick={() => setGroupToLeave(null)}
                                   >
-                                    {isConnectingRepo ? (
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={handleLeaveGroup}
+                                    disabled={isLeavingGroup}
+                                  >
+                                    {isLeavingGroup ? (
                                       <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Connecting...
+                                        Leaving...
                                       </>
                                     ) : (
-                                      "Connect Repository"
+                                      "Leave Group"
                                     )}
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                          </div>
-                        )}
-                      </div>
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
 
-                      <div>
-                        <div className="text-sm font-medium text-muted-foreground mb-2">
-                          Members ({group.members.length})
+                          {canModify && (
+                            <AlertDialog
+                              open={groupToDelete === group.id}
+                              onOpenChange={(open) =>
+                                !open && setGroupToDelete(null)
+                              }
+                            >
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => setGroupToDelete(group.id)}
+                                >
+                                  <Trash2 className="mr-1 h-4 w-4" />
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Are you sure you want to delete this group?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. All associated
+                                    data (members, repository info, metrics,
+                                    contributions) will be permanently deleted.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel
+                                    onClick={() => setGroupToDelete(null)}
+                                  >
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={handleDeleteGroup}
+                                    disabled={isDeletingGroup}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    {isDeletingGroup ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Deleting...
+                                      </>
+                                    ) : (
+                                      "Delete Group"
+                                    )}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </div>
-                        <div className="flex flex-col gap-2">
-                          {group.members.map((member) => (
-                            <div
-                              key={member.id}
-                              className="flex items-center justify-between"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-800">
-                                  {member.profile.fullName
-                                    ?.split(" ")
-                                    .map((n) => n[0])
-                                    .join("")}
-                                </div>
-                                <span className="text-sm">
-                                  {member.profile.fullName}
-                                </span>
-                              </div>
-                              <span className="text-xs px-2 py-0.5 bg-slate-100 rounded-full">
-                                {member.role}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="flex justify-between items-center pt-4 border-t">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          router.push(`/midterm/groups/${group.id}`)
-                        }
-                      >
-                        View Details
-                      </Button>
-                      {group.repositoryUrl && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() =>
-                            router.push(`/midterm/visualization/${group.id}`)
-                          }
-                        >
-                          Visualization
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {userGroups.some((ug) => ug.id === group.id) && (
-                        <AlertDialog
-                          open={groupToLeave === group.id}
-                          onOpenChange={(open) =>
-                            !open && setGroupToLeave(null)
-                          }
-                        >
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setGroupToLeave(group.id)}
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
-                            >
-                              <LogOut className="mr-1 h-4 w-4" />
-                              Leave
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Are you sure you want to leave this group?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. You will lose
-                                access to the group details and visualization.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel
-                                onClick={() => setGroupToLeave(null)}
-                              >
-                                Cancel
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={handleLeaveGroup}
-                                disabled={isLeavingGroup}
-                              >
-                                {isLeavingGroup ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Leaving...
-                                  </>
-                                ) : (
-                                  "Leave Group"
-                                )}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-
-                      {role === "admin" && (
-                        <AlertDialog
-                          open={groupToDelete === group.id}
-                          onOpenChange={(open) =>
-                            !open && setGroupToDelete(null)
-                          }
-                        >
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => setGroupToDelete(group.id)}
-                            >
-                              <Trash2 className="mr-1 h-4 w-4" />
-                              Delete
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Are you sure you want to delete this group?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. All associated
-                                data (members, repository info, metrics,
-                                contributions) will be permanently deleted.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel
-                                onClick={() => setGroupToDelete(null)}
-                              >
-                                Cancel
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={handleDeleteGroup}
-                                disabled={isDeletingGroup}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                {isDeletingGroup ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Deleting...
-                                  </>
-                                ) : (
-                                  "Delete Group"
-                                )}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </div>
-                  </CardFooter>
-                </Card>
-              ))}
+                      </CardFooter>
+                    </Card>
+                  </Dialog>
+                );
+              })}
             </div>
           )}
         </div>
@@ -755,6 +815,61 @@ export default function MidtermPage() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={!!groupToEdit}
+        onOpenChange={(open) => {
+          if (!open) setGroupToEdit(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Group: {groupToEdit?.name}</DialogTitle>
+            <DialogDescription>
+              Update the name and description for this group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Group Name</Label>
+              <Input
+                id="edit-name"
+                placeholder="e.g., Team Awesome"
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description (Optional)</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Briefly describe your project approach"
+                value={editGroupDescription}
+                onChange={(e) => setEditGroupDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGroupToEdit(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveGroupUpdate}
+              disabled={!editGroupName.trim() || isUpdatingGroup}
+            >
+              {isUpdatingGroup ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
