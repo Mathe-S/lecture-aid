@@ -99,15 +99,15 @@ export async function DELETE(
 // PUT handler for updating group name/description
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const groupId = params.id;
+  const { id: groupId } = await params;
   const supabase = await supabaseForServer();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -126,8 +126,10 @@ export async function PUT(
     if (!groupDetails) {
       return NextResponse.json({ error: "Group not found" }, { status: 404 });
     }
-    const memberInfo = groupDetails.members.find((m) => m.userId === user.id);
-    const isAdmin = user.app_metadata?.role === "admin"; // Adjust role check
+    const memberInfo = groupDetails.members.find(
+      (m) => m.userId === session.user.id
+    );
+    const isAdmin = session.user.app_metadata?.role === "admin"; // Adjust role check
     const isOwner = memberInfo?.role === "owner";
 
     if (!isAdmin && !isOwner) {

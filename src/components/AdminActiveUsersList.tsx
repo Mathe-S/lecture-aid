@@ -80,7 +80,7 @@ export function AdminActiveUsersList() {
     return () => {
       channel.unsubscribe();
     };
-  }, [user, isAuthLoading]); // Removed supabase dependency
+  }, [user, isAuthLoading, supabase]);
 
   // Don't render trigger if auth is loading or user is not logged in (shouldn't happen for Admin, but safe)
   if (isAuthLoading || !user) {

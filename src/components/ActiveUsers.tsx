@@ -75,7 +75,7 @@ export function ActiveUsers() {
     };
     // Depend on user.id to re-subscribe if the user changes (though typically handled by AuthProvider unmounting/remounting)
     // Depend on isAuthLoading to trigger effect when auth state resolves
-  }, [user, isAuthLoading]);
+  }, [user, isAuthLoading, supabase]);
 
   // Don't render if auth is loading or user is not logged in
   if (isAuthLoading || !user) {
