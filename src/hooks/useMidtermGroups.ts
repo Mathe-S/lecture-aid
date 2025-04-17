@@ -5,6 +5,7 @@ import {
   MidtermGroup,
   MidtermGroupWithMembers,
   MidtermGroupWithDetails,
+  MidtermEvaluation,
 } from "@/db/drizzle/midterm-schema";
 
 // Query keys for midterm groups
@@ -12,6 +13,9 @@ export const midtermKeys = {
   all: ["midterm"] as const,
   groups: () => [...midtermKeys.all, "groups"] as const,
   group: (id: string) => [...midtermKeys.groups(), id] as const,
+  evaluations: () => [...midtermKeys.all, "evaluations"] as const,
+  evaluation: (groupId: string, userId: string) =>
+    [...midtermKeys.evaluations(), groupId, userId] as const,
 };
 
 // Fetch all midterm groups
@@ -161,6 +165,61 @@ const updateGroupAPI = async ({
     throw new Error(data.error || "Failed to update group");
   }
   return response.json();
+};
+
+// Save/Update an evaluation (Admin)
+const saveEvaluationAPI = async (data: {
+  groupId: string;
+  userId: string;
+  scores: {
+    specScore: number;
+    testScore: number;
+    implementationScore: number;
+    documentationScore: number;
+    gitWorkflowScore: number;
+  };
+  feedback: string;
+}): Promise<MidtermEvaluation> => {
+  const response = await fetch(`/api/admin/midterm/evaluations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to save evaluation");
+  }
+  return response.json();
+};
+
+// Fetch a specific evaluation (Admin)
+const fetchEvaluationAPI = async ({
+  groupId,
+  userId,
+}: {
+  groupId: string;
+  userId: string;
+}): Promise<MidtermEvaluation | null> => {
+  const response = await fetch(
+    `/api/admin/midterm/evaluations?groupId=${groupId}&userId=${userId}`
+  );
+  if (!response.ok) {
+    if (response.status === 404) return null; // Evaluation might not exist yet
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to fetch evaluation");
+  }
+  return response.json();
+};
+
+// Trigger repository sync (Admin)
+const syncRepositoryAPI = async (groupId: string): Promise<void> => {
+  const response = await fetch(`/api/admin/midterm/groups/${groupId}/sync`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to sync repository");
+  }
 };
 
 // Hook to fetch all midterm groups
@@ -396,4 +455,55 @@ export function useUpdateMidtermGroup() {
     updateGroup: mutation.mutateAsync,
     isLoading: isUpdating,
   };
+}
+
+// Hook to save/update an evaluation (Admin)
+export function useSaveEvaluation() {
+  const queryClient = useQueryClient();
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: saveEvaluationAPI,
+    onSuccess: (data, variables) => {
+      toast.success("Evaluation saved successfully!");
+      // Invalidate the specific evaluation query
+      queryClient.invalidateQueries({
+        queryKey: midtermKeys.evaluation(variables.groupId, variables.userId),
+      });
+      // Optionally invalidate group details if evaluation affects it
+      // queryClient.invalidateQueries({ queryKey: midtermKeys.group(variables.groupId) });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to save evaluation", { description: error.message });
+    },
+  });
+  return { saveEvaluation: mutateAsync, isSaving: isPending };
+}
+
+// Hook to fetch a specific evaluation (usually triggered manually/lazily)
+export function useEvaluation(groupId?: string, userId?: string) {
+  return useQuery({
+    queryKey: midtermKeys.evaluation(groupId!, userId!),
+    queryFn: () => fetchEvaluationAPI({ groupId: groupId!, userId: userId! }),
+    enabled: !!groupId && !!userId, // Only run when both IDs are provided
+    retry: false, // Don't retry if it fails (e.g., 404)
+  });
+}
+
+// Hook to trigger repository sync (Admin)
+export function useSyncRepository() {
+  const queryClient = useQueryClient();
+  const { mutate, isPending } = useMutation({
+    mutationFn: syncRepositoryAPI,
+    onSuccess: (data, groupId) => {
+      toast.success("Repository sync initiated.", {
+        description: "Data update may take a few moments.",
+      });
+      // Invalidate group details to reflect potential updates after sync
+      queryClient.invalidateQueries({ queryKey: midtermKeys.group(groupId) });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() }); // Also list potentially?
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to initiate sync", { description: error.message });
+    },
+  });
+  return { syncRepository: mutate, isSyncing: isPending };
 }

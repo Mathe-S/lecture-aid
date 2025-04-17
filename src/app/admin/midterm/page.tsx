@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,239 +40,133 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { MidtermGroupWithMembers } from "@/db/drizzle/midterm-schema";
+import {
+  useMidtermGroups,
+  useSaveEvaluation,
+  useEvaluation,
+  useSyncRepository,
+} from "@/hooks/useMidtermGroups";
 
-// This would come from your API
-const mockGroups: MidtermGroupWithMembers[] = [
-  {
-    id: "1",
-    name: "Team Alpha",
-    description:
-      "Building a flashcard extension with ML-powered gesture recognition",
-    repositoryUrl: "https://github.com/team-alpha/flashcards-extension",
-    repositoryOwner: "team-alpha",
-    repositoryName: "flashcards-extension",
-    createdAt: "2023-04-10T12:00:00Z",
-    updatedAt: "2023-04-10T12:00:00Z",
-    lastSync: null,
-    members: [
-      {
-        id: "m1",
-        groupId: "1",
-        userId: "u1",
-        role: "owner",
-        joinedAt: "2023-04-10T12:00:00Z",
-        profile: {
-          id: "u1",
-          fullName: "Jane Doe",
-          email: "jane@example.com",
-          avatarUrl: null,
-          createdAt: "2023-01-01T00:00:00Z",
-          updatedAt: "2023-01-01T00:00:00Z",
-        },
-      },
-      {
-        id: "m2",
-        groupId: "1",
-        userId: "u2",
-        role: "member",
-        joinedAt: "2023-04-10T12:05:00Z",
-        profile: {
-          id: "u2",
-          fullName: "John Smith",
-          email: "john@example.com",
-          avatarUrl: null,
-          createdAt: "2023-01-01T00:00:00Z",
-          updatedAt: "2023-01-01T00:00:00Z",
-        },
-      },
-    ],
-  },
-  {
-    id: "2",
-    name: "Team Beta",
-    description:
-      "Creating an innovative browser extension for flashcards with gesture controls",
-    repositoryUrl: null,
-    repositoryOwner: null,
-    repositoryName: null,
-    createdAt: "2023-04-11T09:30:00Z",
-    updatedAt: "2023-04-11T09:30:00Z",
-    lastSync: null,
-    members: [
-      {
-        id: "m3",
-        groupId: "2",
-        userId: "u3",
-        role: "owner",
-        joinedAt: "2023-04-11T09:30:00Z",
-        profile: {
-          id: "u3",
-          fullName: "Alex Johnson",
-          email: "alex@example.com",
-          avatarUrl: null,
-          createdAt: "2023-01-01T00:00:00Z",
-          updatedAt: "2023-01-01T00:00:00Z",
-        },
-      },
-    ],
-  },
-];
-
-// Mock evaluations
-const mockEvaluations = {
-  u1: {
-    userId: "u1",
-    specScore: 40,
-    testScore: 45,
-    implementationScore: 90,
-    documentationScore: 20,
-    gitWorkflowScore: 23,
-    totalScore: 218,
-    feedback:
-      "Good work on implementation, but documentation needs improvement",
-  },
-  u2: {
-    userId: "u2",
-    specScore: 35,
-    testScore: 40,
-    implementationScore: 85,
-    documentationScore: 15,
-    gitWorkflowScore: 20,
-    totalScore: 195,
-    feedback: "Good implementation, low documentation scores",
-  },
+// Default evaluation state
+const defaultEvaluationState = {
+  specScore: 0,
+  testScore: 0,
+  implementationScore: 0,
+  documentationScore: 0,
+  gitWorkflowScore: 0,
+  feedback: "",
 };
 
 export default function MidtermAdminPage() {
   const { role } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [groups, setGroups] = useState<MidtermGroupWithMembers[]>([]);
   const [selectedGroup, setSelectedGroup] =
     useState<MidtermGroupWithMembers | null>(null);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [evaluation, setEvaluation] = useState({
-    specScore: 0,
-    testScore: 0,
-    implementationScore: 0,
-    documentationScore: 0,
-    gitWorkflowScore: 0,
-    feedback: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncingRepo, setIsSyncingRepo] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [evaluation, setEvaluation] = useState(defaultEvaluationState);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // --- Fetching Data ---
+  const { data: groups = [], isLoading: isLoadingGroups } = useMidtermGroups();
+  const { saveEvaluation, isSaving: isSubmitting } = useSaveEvaluation();
+  const { syncRepository, isSyncing: isSyncingRepo } = useSyncRepository();
+
+  // Fetch specific evaluation when dialog opens and selection is made
+  const { data: existingEvaluation, isLoading: isLoadingEvaluation } =
+    useEvaluation(selectedGroup?.id, selectedUser?.id);
+
+  // Effect to redirect non-admins
   useEffect(() => {
-    // Replace with actual API call
-    if (role === "admin") {
-      setGroups(mockGroups);
-      setLoading(false);
-    } else {
-      // Redirect non-admins
+    if (role && role !== "admin") {
+      toast.error("Access Denied", {
+        description: "You must be an admin to view this page.",
+      });
       router.push("/dashboard");
     }
   }, [role, router]);
 
-  const handleSyncRepository = async (groupId: string) => {
-    setIsSyncingRepo(true);
-
-    try {
-      console.log(
-        "Syncing repository for group:",
-        groupId,
-        "now it simulates the API call"
-      );
-      // This would be an actual API call
-      // await syncRepositoryData(groupId, user);
-
-      // Simulate API response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      toast.success("Repository data synced successfully");
-    } catch (error) {
-      console.error("Failed to sync repository:", error);
-      toast.error("Failed to sync repository data");
-    } finally {
-      setIsSyncingRepo(false);
+  // Effect to populate form when existing evaluation loads
+  useEffect(() => {
+    if (existingEvaluation) {
+      setEvaluation({
+        specScore: existingEvaluation.specScore ?? 0,
+        testScore: existingEvaluation.testScore ?? 0,
+        implementationScore: existingEvaluation.implementationScore ?? 0,
+        documentationScore: existingEvaluation.documentationScore ?? 0,
+        gitWorkflowScore: existingEvaluation.gitWorkflowScore ?? 0,
+        feedback: existingEvaluation.feedback ?? "",
+      });
+    } else if (!isLoadingEvaluation && selectedUser && selectedGroup) {
+      // Reset form if evaluation not found after attempting fetch (and user/group selected)
+      setEvaluation(defaultEvaluationState);
     }
+  }, [existingEvaluation, isLoadingEvaluation, selectedUser, selectedGroup]);
+
+  // --- Handlers ---
+  const handleSyncRepository = (groupId: string) => {
+    syncRepository(groupId);
   };
 
-  const openEvaluationDialog = (
-    group: MidtermGroupWithMembers,
-    userId: string
-  ) => {
-    setSelectedGroup(group);
-    setSelectedUser(userId);
-
-    // Check if evaluation exists already
-    const existingEval = (mockEvaluations as any)[userId];
-    if (existingEval) {
-      setEvaluation({
-        specScore: existingEval.specScore,
-        testScore: existingEval.testScore,
-        implementationScore: existingEval.implementationScore,
-        documentationScore: existingEval.documentationScore,
-        gitWorkflowScore: existingEval.gitWorkflowScore,
-        feedback: existingEval.feedback,
+  const openEvaluationDialog = useCallback(
+    (
+      group: MidtermGroupWithMembers,
+      member: { userId: string; profile: { fullName: string | null } }
+    ) => {
+      setSelectedGroup(group);
+      setSelectedUser({
+        id: member.userId,
+        name: member.profile.fullName ?? "Unknown User",
       });
-    } else {
-      // Reset form for new evaluation
-      setEvaluation({
-        specScore: 0,
-        testScore: 0,
-        implementationScore: 0,
-        documentationScore: 0,
-        gitWorkflowScore: 0,
-        feedback: "",
-      });
-    }
-
-    setDialogOpen(true);
-  };
+      setEvaluation(defaultEvaluationState); // Reset form immediately
+      setDialogOpen(true);
+    },
+    []
+  );
 
   const handleSubmitEvaluation = async () => {
     if (!selectedGroup || !selectedUser) return;
 
-    setIsSubmitting(true);
-
     try {
-      // Calculate total score
-      const totalScore =
-        evaluation.specScore +
-        evaluation.testScore +
-        evaluation.implementationScore +
-        evaluation.documentationScore +
-        evaluation.gitWorkflowScore;
-
-      console.log("Total score:", totalScore);
-
-      // This would be an actual API call
-      // await saveEvaluation(
-      //   selectedGroup.id,
-      //   selectedUser,
-      //   user.id,
-      //   { ...evaluation },
-      //   evaluation.feedback
-      // );
-
-      // Simulate API response
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast.success("Evaluation saved successfully");
+      await saveEvaluation({
+        groupId: selectedGroup.id,
+        userId: selectedUser.id,
+        scores: {
+          specScore: evaluation.specScore,
+          testScore: evaluation.testScore,
+          implementationScore: evaluation.implementationScore,
+          documentationScore: evaluation.documentationScore,
+          gitWorkflowScore: evaluation.gitWorkflowScore,
+        },
+        feedback: evaluation.feedback,
+      });
       setDialogOpen(false);
     } catch (error) {
-      console.error("Failed to save evaluation:", error);
-      toast.error("Failed to save evaluation");
-    } finally {
-      setIsSubmitting(false);
+      // Error toast is handled by the hook
+      console.error("Failed to save evaluation from component:", error);
     }
   };
 
-  if (loading) {
+  // Loading state combines initial role check and group fetching
+  const isLoading = !role || isLoadingGroups;
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  // Ensure admin role after loading
+  if (role !== "admin") {
+    // This should ideally not be reached due to the redirect effect,
+    // but serves as a fallback render.
+    return (
+      <div className="container mx-auto py-10 px-4 md:px-6">
+        <p>Redirecting...</p>
       </div>
     );
   }
@@ -289,7 +183,6 @@ export default function MidtermAdminPage() {
               Evaluate and manage student midterm projects
             </p>
           </div>
-
           <Link href="/midterm">
             <Button variant="outline">View Student Area</Button>
           </Link>
@@ -299,7 +192,7 @@ export default function MidtermAdminPage() {
           <CardHeader>
             <CardTitle>Project Groups</CardTitle>
             <CardDescription>
-              All groups working on midterm projects
+              All groups working on midterm projects ({groups.length})
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -307,7 +200,7 @@ export default function MidtermAdminPage() {
               {groups.length === 0 ? (
                 <div className="text-center py-6">
                   <p className="text-muted-foreground">
-                    No project groups found
+                    No project groups found.
                   </p>
                 </div>
               ) : (
@@ -327,12 +220,11 @@ export default function MidtermAdminPage() {
                         <TableCell className="font-medium">
                           <div className="flex flex-col">
                             <span>{group.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {group.description?.substring(0, 60)}
-                              {group.description &&
-                              group.description.length > 60
-                                ? "..."
-                                : ""}
+                            <span
+                              className="text-xs text-muted-foreground truncate w-48"
+                              title={group.description ?? ""}
+                            >
+                              {group.description || "No description"}
                             </span>
                           </div>
                         </TableCell>
@@ -343,15 +235,18 @@ export default function MidtermAdminPage() {
                                 key={member.id}
                                 className="flex items-center justify-between"
                               >
-                                <span className="text-sm">
-                                  {member.profile.fullName}
+                                <span
+                                  className="text-sm truncate"
+                                  title={member.profile.fullName ?? ""}
+                                >
+                                  {member.profile.fullName ?? "Unknown User"}
                                 </span>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-7 w-7 p-0"
+                                  className="h-7 w-7 p-0 ml-2 flex-shrink-0"
                                   onClick={() =>
-                                    openEvaluationDialog(group, member.userId)
+                                    openEvaluationDialog(group, member)
                                   }
                                 >
                                   <Star className="h-4 w-4" />
@@ -367,21 +262,24 @@ export default function MidtermAdminPage() {
                               href={group.repositoryUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center text-blue-600 hover:underline"
+                              className="flex items-center text-blue-600 hover:underline truncate"
+                              title={group.repositoryUrl}
                             >
-                              <GitBranch className="h-4 w-4 mr-1" />
-                              {group.repositoryName}
-                              <ExternalLink className="h-3 w-3 ml-1" />
+                              <GitBranch className="h-4 w-4 mr-1 flex-shrink-0" />
+                              <span className="truncate">
+                                {group.repositoryOwner}/{group.repositoryName}
+                              </span>
+                              <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
                             </a>
                           ) : (
                             <span className="text-muted-foreground text-sm">
-                              No repository
+                              N/A
                             </span>
                           )}
                         </TableCell>
                         <TableCell>
                           {group.lastSync ? (
-                            <span className="text-sm">
+                            <span className="text-sm whitespace-nowrap">
                               {new Date(group.lastSync).toLocaleString()}
                             </span>
                           ) : (
@@ -396,13 +294,18 @@ export default function MidtermAdminPage() {
                             variant="outline"
                             onClick={() => handleSyncRepository(group.id)}
                             disabled={!group.repositoryUrl || isSyncingRepo}
+                            title={
+                              !group.repositoryUrl
+                                ? "Connect repository first"
+                                : "Sync repository data"
+                            }
                           >
                             {isSyncingRepo ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-1" />
                             ) : (
                               <RefreshCw className="h-4 w-4 mr-1" />
                             )}
-                            Sync Data
+                            Sync
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -420,145 +323,149 @@ export default function MidtermAdminPage() {
           <DialogHeader>
             <DialogTitle>Evaluate Student</DialogTitle>
             <DialogDescription>
-              {selectedGroup && selectedUser && (
+              {selectedUser && selectedGroup && (
                 <>
-                  Evaluating{" "}
-                  {
-                    selectedGroup.members.find((m) => m.userId === selectedUser)
-                      ?.profile.fullName
-                  }{" "}
-                  from {selectedGroup.name}
+                  Evaluating <strong>{selectedUser.name}</strong> from group{" "}
+                  <strong>{selectedGroup.name}</strong>
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="spec-score">Specification (out of 50)</Label>
-              <Input
-                id="spec-score"
-                type="number"
-                min="0"
-                max="50"
-                value={evaluation.specScore}
-                onChange={(e) =>
-                  setEvaluation({
-                    ...evaluation,
-                    specScore: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
+          {isLoadingEvaluation ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin" />
             </div>
+          ) : (
+            <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="space-y-2">
+                <Label htmlFor="spec-score">Specification (0-50)</Label>
+                <Input
+                  id="spec-score"
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={evaluation.specScore}
+                  onChange={(e) =>
+                    setEvaluation({
+                      ...evaluation,
+                      specScore: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="test-score">Testing (out of 50)</Label>
-              <Input
-                id="test-score"
-                type="number"
-                min="0"
-                max="50"
-                value={evaluation.testScore}
-                onChange={(e) =>
-                  setEvaluation({
-                    ...evaluation,
-                    testScore: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
+              <div className="space-y-2">
+                <Label htmlFor="test-score">Testing (0-50)</Label>
+                <Input
+                  id="test-score"
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={evaluation.testScore}
+                  onChange={(e) =>
+                    setEvaluation({
+                      ...evaluation,
+                      testScore: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="implementation-score">
+                  Implementation (0-100)
+                </Label>
+                <Input
+                  id="implementation-score"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={evaluation.implementationScore}
+                  onChange={(e) =>
+                    setEvaluation({
+                      ...evaluation,
+                      implementationScore: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="documentation-score">
+                  Documentation (0-25)
+                </Label>
+                <Input
+                  id="documentation-score"
+                  type="number"
+                  min="0"
+                  max="25"
+                  value={evaluation.documentationScore}
+                  onChange={(e) =>
+                    setEvaluation({
+                      ...evaluation,
+                      documentationScore: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="git-workflow-score">Git Workflow (0-25)</Label>
+                <Input
+                  id="git-workflow-score"
+                  type="number"
+                  min="0"
+                  max="25"
+                  value={evaluation.gitWorkflowScore}
+                  onChange={(e) =>
+                    setEvaluation({
+                      ...evaluation,
+                      gitWorkflowScore: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="feedback">Feedback</Label>
+                <Textarea
+                  id="feedback"
+                  rows={4}
+                  placeholder="Provide feedback on the student's work"
+                  value={evaluation.feedback}
+                  onChange={(e) =>
+                    setEvaluation({ ...evaluation, feedback: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="rounded-md bg-slate-50 p-3 mt-4">
+                <p className="text-sm font-medium">
+                  Total Score:{" "}
+                  {(evaluation.specScore || 0) +
+                    (evaluation.testScore || 0) +
+                    (evaluation.implementationScore || 0) +
+                    (evaluation.documentationScore || 0) +
+                    (evaluation.gitWorkflowScore || 0)}{" "}
+                  / 250
+                </p>
+              </div>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="implementation-score">
-                Implementation (out of 100)
-              </Label>
-              <Input
-                id="implementation-score"
-                type="number"
-                min="0"
-                max="100"
-                value={evaluation.implementationScore}
-                onChange={(e) =>
-                  setEvaluation({
-                    ...evaluation,
-                    implementationScore: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="documentation-score">
-                Documentation (out of 25)
-              </Label>
-              <Input
-                id="documentation-score"
-                type="number"
-                min="0"
-                max="25"
-                value={evaluation.documentationScore}
-                onChange={(e) =>
-                  setEvaluation({
-                    ...evaluation,
-                    documentationScore: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="git-workflow-score">
-                Git Workflow (out of 25)
-              </Label>
-              <Input
-                id="git-workflow-score"
-                type="number"
-                min="0"
-                max="25"
-                value={evaluation.gitWorkflowScore}
-                onChange={(e) =>
-                  setEvaluation({
-                    ...evaluation,
-                    gitWorkflowScore: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="feedback">Feedback</Label>
-              <Textarea
-                id="feedback"
-                rows={4}
-                placeholder="Provide feedback on the student's work"
-                value={evaluation.feedback}
-                onChange={(e) =>
-                  setEvaluation({
-                    ...evaluation,
-                    feedback: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div className="rounded-md bg-slate-50 p-3">
-              <p className="text-sm font-medium">
-                Total Score:{" "}
-                {evaluation.specScore +
-                  evaluation.testScore +
-                  evaluation.implementationScore +
-                  evaluation.documentationScore +
-                  evaluation.gitWorkflowScore}{" "}
-                / 250
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+          <DialogFooter className="pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSubmitEvaluation} disabled={isSubmitting}>
+            <Button
+              onClick={handleSubmitEvaluation}
+              disabled={isSubmitting || isLoadingEvaluation}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
