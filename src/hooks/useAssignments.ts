@@ -174,3 +174,33 @@ export function useUploadGradesJson() {
     },
   });
 }
+
+// Upload single student grade JSON for an assignment
+export function useUploadSingleGradeJson() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      assignmentId,
+      studentId, // This is the student's email
+      gradesData,
+    }: {
+      assignmentId: string;
+      studentId: string;
+      gradesData: any;
+    }) =>
+      assignmentApi.uploadSingleGradeJson(assignmentId, studentId, gradesData),
+    onSuccess: (_, variables) => {
+      // Invalidate queries related to the assignment and its submissions
+      queryClient.invalidateQueries({
+        queryKey: assignmentKeys.details(variables.assignmentId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: assignmentKeys.submissions(variables.assignmentId),
+      });
+      // Optionally, if you have a query for a specific submission by user email/ID,
+      // you might invalidate that too, though invalidating the whole list
+      // often covers it.
+    },
+  });
+}

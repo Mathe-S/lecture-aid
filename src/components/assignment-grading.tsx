@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   useCloseAssignment,
   useUploadGradesJson,
+  useUploadSingleGradeJson,
 } from "@/hooks/useAssignments";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, Upload, Lock } from "lucide-react";
+import { Loader2, Upload, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -31,9 +32,22 @@ export function AssignmentGrading({ assignment }: AssignmentGradingProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState<string>("");
 
   const closeAssignment = useCloseAssignment();
   const uploadGradesJson = useUploadGradesJson();
+  const uploadSingleGradeJson = useUploadSingleGradeJson();
+
+  useEffect(() => {
+    if (!isGradingOpen) {
+      setSelectedFile(null);
+      setFileError(null);
+      setStudentId("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [isGradingOpen]);
 
   const handleClose = async () => {
     try {
@@ -79,22 +93,33 @@ export function AssignmentGrading({ assignment }: AssignmentGradingProps) {
         return;
       }
 
-      await uploadGradesJson.mutateAsync({
-        assignmentId: assignment.id,
-        gradesData,
-      });
-
-      toast.success("Grades uploaded successfully");
-      setIsGradingOpen(false);
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      if (studentId.trim()) {
+        await uploadSingleGradeJson.mutateAsync({
+          assignmentId: assignment.id,
+          studentId: studentId.trim(),
+          gradesData,
+        });
+        toast.success(`Grade uploaded successfully for ${studentId.trim()}`);
+      } else {
+        await uploadGradesJson.mutateAsync({
+          assignmentId: assignment.id,
+          gradesData,
+        });
+        toast.success("Bulk grades uploaded successfully");
       }
-    } catch (error) {
+
+      setIsGradingOpen(false);
+    } catch (error: any) {
       console.error("Error uploading grades:", error);
-      toast.error("Failed to upload grades");
+      const errorMessage = error?.message || "Failed to upload grades";
+      toast.error(errorMessage);
+      setFileError(errorMessage);
     }
   };
+
+  const isUploading =
+    uploadGradesJson.isPending || uploadSingleGradeJson.isPending;
+  const isButtonDisabled = !selectedFile || isUploading;
 
   return (
     <div className="flex space-x-2">
@@ -127,11 +152,23 @@ export function AssignmentGrading({ assignment }: AssignmentGradingProps) {
           <DialogHeader>
             <DialogTitle>Upload Grading JSON</DialogTitle>
             <DialogDescription>
-              Upload a JSON file with grading data for this assignment. This
-              will apply grades to all student submissions.
+              Upload a JSON file containing student grades. Leave the
+              &quot;Student Email&quot; field empty to apply grades in bulk, or
+              enter a specific email to grade only that student.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="student-id">Student Email (Optional)</Label>
+              <Input
+                id="student-id"
+                type="email"
+                placeholder="student@example.com"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                disabled={isUploading}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="grade-file">Grading JSON File</Label>
               <Input
@@ -140,6 +177,7 @@ export function AssignmentGrading({ assignment }: AssignmentGradingProps) {
                 accept=".json,application/json"
                 ref={fileInputRef}
                 onChange={handleFileChange}
+                disabled={isUploading}
               />
               {fileError && <p className="text-sm text-red-500">{fileError}</p>}
               {selectedFile && (
@@ -169,19 +207,26 @@ export function AssignmentGrading({ assignment }: AssignmentGradingProps) {
           </div>
           <DialogFooter className="sm:justify-between">
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isUploading}>
+                Cancel
+              </Button>
             </DialogClose>
-            <Button
-              onClick={handleUpload}
-              disabled={!selectedFile || uploadGradesJson.isPending}
-            >
-              {uploadGradesJson.isPending ? (
+            <Button onClick={handleUpload} disabled={isButtonDisabled}>
+              {isUploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Uploading...
                 </>
+              ) : studentId.trim() ? (
+                <>
+                  <User className="mr-2 h-4 w-4" />
+                  Grade Single Student
+                </>
               ) : (
-                "Upload and Apply Grades"
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Bulk Grades
+                </>
               )}
             </Button>
           </DialogFooter>

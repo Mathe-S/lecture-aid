@@ -218,4 +218,29 @@ export const assignmentApi = {
 
     return response.json();
   },
+
+  // Upload grades JSON for a single student
+  uploadSingleGradeJson: async (
+    assignmentId: string,
+    studentId: string, // This should be the student's email
+    gradesData: any
+  ): Promise<{ success: boolean; message: string }> => {
+    // The gradesData should still contain the 'students' array,
+    // but the backend will only process the one matching studentId.
+    const response = await fetch(
+      `/api/assignments/${assignmentId}/grade/${encodeURIComponent(studentId)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gradesData }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to upload single student grade");
+    }
+
+    return response.json();
+  },
 };
