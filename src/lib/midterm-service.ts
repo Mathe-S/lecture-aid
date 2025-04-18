@@ -1,5 +1,5 @@
 import db from "@/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import {
   midtermGroups,
   midtermGroupMembers,
@@ -197,46 +197,86 @@ async function isGroupOwner(groupId: string, userId: string): Promise<boolean> {
 }
 
 /**
- * Get all midterm groups with their members AND task progress
+ * Get all midterm groups with their members AND task progress (OPTIMIZED)
  */
 export async function getMidtermGroupsWithProgress(): Promise<
   MidtermGroupWithProgress[]
 > {
+  // 1. Fetch all base groups
   const groups = await db
     .select()
     .from(midtermGroups)
     .orderBy(midtermGroups.createdAt);
 
-  const groupsWithDetails: MidtermGroupWithProgress[] = [];
-
-  for (const group of groups) {
-    // Get members
-    const members = await db
-      .select()
-      .from(midtermGroupMembers)
-      .where(eq(midtermGroupMembers.groupId, group.id))
-      .innerJoin(profiles, eq(midtermGroupMembers.userId, profiles.id));
-
-    // Get task counts
-    const taskCounts = await db
-      .select({
-        total: sql<number>`count(*)`.mapWith(Number),
-        checked: sql<number>`count(*) filter (where is_checked = true)`.mapWith(
-          Number
-        ),
-      })
-      .from(midtermTasks)
-      .where(eq(midtermTasks.groupId, group.id));
-
-    groupsWithDetails.push({
-      ...group,
-      members: members.map((m) => ({
-        ...m.midterm_group_members,
-        profile: m.profiles,
-      })),
-      taskProgress: taskCounts[0] || { total: 0, checked: 0 },
-    });
+  if (groups.length === 0) {
+    return []; // No groups, return early
   }
+
+  const groupIds = groups.map((g) => g.id);
+
+  // 2. Fetch all relevant members and their profiles in one query
+  const allMembers = await db
+    .select({
+      member: midtermGroupMembers, // Select the whole member table
+      profile: profiles, // Select the whole profile table
+    })
+    .from(midtermGroupMembers)
+    .innerJoin(profiles, eq(midtermGroupMembers.userId, profiles.id))
+    .where(inArray(midtermGroupMembers.groupId, groupIds)); // Filter by fetched group IDs
+
+  // 3. Fetch all task counts grouped by groupId in one query
+  const allTaskCounts = await db
+    .select({
+      groupId: midtermTasks.groupId,
+      total: sql<number>`count(*)`.mapWith(Number).as("total_tasks"),
+      checked:
+        sql<number>`count(*) filter (where ${midtermTasks.isChecked} = true)`
+          .mapWith(Number)
+          .as("checked_tasks"),
+    })
+    .from(midtermTasks)
+    .where(inArray(midtermTasks.groupId, groupIds)) // Filter by fetched group IDs
+    .groupBy(midtermTasks.groupId);
+
+  // 4. Combine the data efficiently using Maps for quick lookups
+
+  // Map members to their groupId
+  const membersByGroupId = new Map<string, (typeof allMembers)[0][]>();
+  allMembers.forEach((m) => {
+    const existing = membersByGroupId.get(m.member.groupId) || [];
+    existing.push(m);
+    membersByGroupId.set(m.member.groupId, existing);
+  });
+
+  // Map task counts to their groupId
+  const taskCountsByGroupId = new Map<
+    string,
+    { total: number; checked: number }
+  >();
+  allTaskCounts.forEach((tc) => {
+    taskCountsByGroupId.set(tc.groupId, {
+      total: tc.total,
+      checked: tc.checked,
+    });
+  });
+
+  // Construct the final result
+  const groupsWithDetails: MidtermGroupWithProgress[] = groups.map((group) => {
+    const membersForGroup = membersByGroupId.get(group.id) || [];
+    const taskProgressForGroup = taskCountsByGroupId.get(group.id) || {
+      total: 0,
+      checked: 0,
+    };
+
+    return {
+      ...group,
+      members: membersForGroup.map((m) => ({
+        ...m.member, // Spread member data
+        profile: m.profile, // Assign profile data
+      })),
+      taskProgress: taskProgressForGroup,
+    };
+  });
 
   return groupsWithDetails;
 }

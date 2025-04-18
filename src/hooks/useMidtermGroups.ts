@@ -8,11 +8,12 @@ import {
 import {
   MidtermGroup,
   MidtermGroupWithDetails,
-  MidtermGroupWithProgress,
+  MidtermGroupWithMembers,
   MidtermTask,
   MidtermEvaluation,
 } from "@/db/drizzle/midterm-schema";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 // Consistent query key structure
 export const midtermKeys = {
@@ -26,7 +27,7 @@ export const midtermKeys = {
 
 // --- Helper Fetch Functions (Similar to original pattern) ---
 
-const fetchGroups = async (): Promise<MidtermGroupWithProgress[]> => {
+const fetchGroups = async (): Promise<MidtermGroupWithMembers[]> => {
   const response = await fetch("/api/midterm/groups"); // Target the API route
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -51,7 +52,7 @@ const fetchGroupDetails = async (
 
 // Fetch all groups (with progress)
 export function useMidtermGroups(): UseQueryResult<
-  MidtermGroupWithProgress[],
+  MidtermGroupWithMembers[],
   Error
 > {
   return useQuery({
@@ -73,19 +74,18 @@ export function useMidtermGroupDetails(
 
 // --- Mutations ---
 
-// Create Group
+// Create Group (Ensure it returns the created group)
 export function useCreateMidtermGroup(): UseMutationResult<
-  MidtermGroup,
+  MidtermGroup, // Expecting the created group object back
   Error,
   { name: string; description?: string },
   unknown
 > {
   const queryClient = useQueryClient();
-  // Remove useAuth here unless needed for optimistic updates (unlikely for create)
 
   return useMutation({
-    // This mutationFn assumes a POST /api/midterm/groups endpoint handles creation
-    mutationFn: async ({ name, description }) => {
+    mutationFn: async ({ name, description }): Promise<MidtermGroup> => {
+      // Return MidtermGroup
       const response = await fetch("/api/midterm/groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,27 +95,34 @@ export function useCreateMidtermGroup(): UseMutationResult<
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to create group");
       }
-      return response.json();
+      return response.json(); // Assume API returns the created group
     },
     onSuccess: () => {
+      // Invalidate the list to refetch
       queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      // Optionally, add the new group to the cache immediately if desired
+      // queryClient.setQueryData<MidtermGroupWithMembers[]>(midtermKeys.groups(), (old) =>
+      //   old ? [...old, { ...createdGroup, members: [/* construct owner member */] }] : [/* new group */]
+      // );
+    },
+    onError: (error) => {
+      toast.error(`Failed to create group: ${error.message}`);
     },
   });
 }
 
-// Join Group
+// Join Group with Optimistic Update
 export function useJoinMidtermGroup(): UseMutationResult<
   boolean,
   Error,
   string, // groupId
-  unknown
+  { previousGroups?: MidtermGroupWithMembers[] } // Context type
 > {
   const queryClient = useQueryClient();
-  // Remove useAuth here, API route handles user ID
+  const { user } = useAuth();
 
   return useMutation({
-    // Assumes POST /api/midterm/groups/[id]/join
-    mutationFn: async (groupId) => {
+    mutationFn: async (groupId): Promise<boolean> => {
       const response = await fetch(`/api/midterm/groups/${groupId}/join`, {
         method: "POST",
       });
@@ -123,10 +130,85 @@ export function useJoinMidtermGroup(): UseMutationResult<
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to join group");
       }
-      // Assuming API returns 200 OK on success, maybe no body needed or boolean?
-      return response.ok; // Or handle specific success response
+      return response.ok;
     },
-    onSuccess: (data, groupId) => {
+    onMutate: async (groupId) => {
+      if (!user) {
+        console.warn("User not available for optimistic join update.");
+        return {};
+      }
+      const queryKey = midtermKeys.groups();
+      await queryClient.cancelQueries({ queryKey });
+      const previousGroups =
+        queryClient.getQueryData<MidtermGroupWithMembers[]>(queryKey);
+
+      if (previousGroups && user) {
+        queryClient.setQueryData<MidtermGroupWithMembers[]>(
+          queryKey,
+          (oldData) => {
+            if (!oldData) return [];
+            return oldData.map((group) => {
+              if (
+                group.id === groupId &&
+                !group.members?.some((m) => m.userId === user.id)
+              ) {
+                const now = new Date().toISOString();
+                // Construct the full new member object matching the expected type
+                const newMember = {
+                  profile: {
+                    // Fields expected by Profile type
+                    id: user.id,
+                    createdAt: now, // Assume profile created now for optimistic update
+                    updatedAt: now,
+                    email: user.email ?? null,
+                    fullName:
+                      user.user_metadata?.full_name ??
+                      user.email ??
+                      "New Member",
+                    avatarUrl: user.user_metadata?.avatar_url ?? null, // Use avatarUrl field name if that's what Profile type expects
+                  },
+                  // Fields expected by MidtermGroupMember base type
+                  id: `optimistic-${Date.now()}`,
+                  groupId: group.id,
+                  userId: user.id,
+                  role: "member",
+                  joinedAt: now,
+                  // Add other potential base fields if necessary (e.g., createdAt/updatedAt for the *membership* itself)
+                  // These might differ from the profile's timestamps
+                  // Assuming membership also has createdAt/updatedAt, using 'now' for optimism
+                  // createdAt: now,
+                  // updatedAt: now,
+                };
+
+                // Cast to the specific member type expected in MidtermGroupWithMembers if necessary
+                // e.g., const typedNewMember = newMember as ExpectedMemberType;
+                // This might require importing the specific type from your schema
+
+                const updatedMembers = [...(group.members || []), newMember];
+
+                return {
+                  ...group,
+                  members: updatedMembers,
+                };
+              }
+              return group;
+            });
+          }
+        );
+      } else {
+        console.warn(
+          "Previous group data not found or user not available, skipping optimistic join update."
+        );
+      }
+      return { previousGroups };
+    },
+    onError: (err, groupId, context) => {
+      toast.error(`Failed to join group: ${err.message}`);
+      if (context?.previousGroups) {
+        queryClient.setQueryData(midtermKeys.groups(), context.previousGroups);
+      }
+    },
+    onSettled: (data, error, groupId) => {
       queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
       queryClient.invalidateQueries({ queryKey: midtermKeys.group(groupId) });
     },
@@ -230,18 +312,18 @@ export function useUpdateMidtermGroup(): UseMutationResult<
   });
 }
 
-// Leave Group
-// Assumes DELETE /api/midterm/groups/[id]/leave
+// Leave Group with Optimistic Update
 export function useLeaveGroup(): UseMutationResult<
   boolean,
   Error,
   string, // groupId
-  unknown
+  { previousGroups?: MidtermGroupWithMembers[] } // Context type
 > {
   const queryClient = useQueryClient();
-  // Remove useAuth, API handles user
+  const { user } = useAuth(); // Get user context
+
   return useMutation({
-    mutationFn: async (groupId) => {
+    mutationFn: async (groupId): Promise<boolean> => {
       const response = await fetch(`/api/midterm/groups/${groupId}/leave`, {
         method: "DELETE",
       });
@@ -251,9 +333,52 @@ export function useLeaveGroup(): UseMutationResult<
       }
       return response.ok;
     },
-    onSuccess: (data, groupId) => {
+    onMutate: async (groupId) => {
+      if (!user) {
+        console.warn("User not available for optimistic leave update.");
+        return {}; // Skip optimistic update if user isn't loaded
+        // Or: throw new Error("User not authenticated for optimistic update.");
+      }
+      const queryKey = midtermKeys.groups();
+      await queryClient.cancelQueries({ queryKey });
+      const previousGroups =
+        queryClient.getQueryData<MidtermGroupWithMembers[]>(queryKey);
+
+      if (previousGroups && user) {
+        // Check user again
+        queryClient.setQueryData<MidtermGroupWithMembers[]>(
+          queryKey,
+          (oldData) => {
+            if (!oldData) return [];
+            return oldData.map((group) => {
+              if (group.id === groupId) {
+                return {
+                  ...group,
+                  members: (group.members || []).filter(
+                    (member) => member.userId !== user.id
+                  ),
+                };
+              }
+              return group;
+            });
+          }
+        );
+      } else {
+        console.warn(
+          "Previous group data not found or user not available, skipping optimistic leave update."
+        );
+      }
+      return { previousGroups };
+    },
+    onError: (err, groupId, context) => {
+      toast.error(`Failed to leave group: ${err.message}`);
+      if (context?.previousGroups) {
+        queryClient.setQueryData(midtermKeys.groups(), context.previousGroups);
+      }
+    },
+    onSettled: (data, error, groupId) => {
       queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-      queryClient.removeQueries({ queryKey: midtermKeys.group(groupId) });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.group(groupId) });
     },
   });
 }
@@ -264,11 +389,12 @@ export function useDeleteMidtermGroup(): UseMutationResult<
   boolean,
   Error,
   string, // groupId
-  unknown
+  { previousGroups?: MidtermGroupWithMembers[] } // Optimistic context
 > {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async (groupId) => {
+    mutationFn: async (groupId): Promise<boolean> => {
       const response = await fetch(`/api/midterm/groups/${groupId}`, {
         method: "DELETE",
       });
@@ -278,9 +404,35 @@ export function useDeleteMidtermGroup(): UseMutationResult<
       }
       return response.ok;
     },
-    onSuccess: (data, groupId) => {
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+    onMutate: async (groupId) => {
+      const queryKey = midtermKeys.groups();
+      await queryClient.cancelQueries({ queryKey });
+      const previousGroups =
+        queryClient.getQueryData<MidtermGroupWithMembers[]>(queryKey);
+
+      if (previousGroups) {
+        queryClient.setQueryData<MidtermGroupWithMembers[]>(
+          queryKey,
+          (old) => old?.filter((g) => g.id !== groupId) ?? []
+        );
+      } else {
+        console.warn(
+          "Previous group data not found, skipping optimistic delete update."
+        );
+      }
+      return { previousGroups };
+    },
+    onError: (err, groupId, context) => {
+      toast.error(`Failed to delete group: ${err.message}`);
+      if (context?.previousGroups) {
+        queryClient.setQueryData(midtermKeys.groups(), context.previousGroups);
+      }
+    },
+    onSettled: (data, error, groupId) => {
+      // Remove the specific group query if it exists
       queryClient.removeQueries({ queryKey: midtermKeys.group(groupId) });
+      // Invalidate the list
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
     },
   });
 }
