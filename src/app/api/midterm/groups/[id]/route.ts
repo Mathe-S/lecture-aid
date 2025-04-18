@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseForServer } from "@/utils/supabase/server";
 import * as midtermService from "@/lib/midterm-service";
 import { getUserRole } from "@/lib/userService";
-import { getMidtermGroupById } from "@/lib/midterm-service";
 
 export async function GET(
   request: NextRequest,
@@ -20,7 +19,7 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const group = await midtermService.getMidtermGroupDetails(id);
+    const group = await midtermService.getMidtermGroupDetailsWithTasks(id);
 
     if (!group) {
       return NextResponse.json({ error: "Group not found" }, { status: 404 });
@@ -54,7 +53,9 @@ export async function DELETE(
   const role = await getUserRole(session.user.id);
 
   try {
-    const groupDetails = await midtermService.getMidtermGroupDetails(groupId);
+    const groupDetails = await midtermService.getMidtermGroupDetailsWithTasks(
+      groupId
+    );
 
     if (!groupDetails) {
       return NextResponse.json({ error: "Group not found" }, { status: 404 });
@@ -122,14 +123,17 @@ export async function PUT(
     }
 
     // Authorization Check: Admin or Owner
-    const groupDetails = await getMidtermGroupById(groupId);
+    const groupDetails = await midtermService.getMidtermGroupDetailsWithTasks(
+      groupId
+    );
     if (!groupDetails) {
       return NextResponse.json({ error: "Group not found" }, { status: 404 });
     }
     const memberInfo = groupDetails.members.find(
       (m) => m.userId === session.user.id
     );
-    const isAdmin = session.user.app_metadata?.role === "admin"; // Adjust role check
+    const role = await getUserRole(session.user.id);
+    const isAdmin = role === "admin";
     const isOwner = memberInfo?.role === "owner";
 
     if (!isAdmin && !isOwner) {

@@ -13,7 +13,7 @@ export async function GET() {
   }
 
   try {
-    const groups = await midtermService.getMidtermGroups();
+    const groups = await midtermService.getMidtermGroupsWithProgress();
     return NextResponse.json(groups);
   } catch (error) {
     console.error("Failed to fetch midterm groups:", error);

@@ -1,14 +1,20 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type UseQueryResult,
+  type UseMutationResult,
+} from "@tanstack/react-query";
 import {
   MidtermGroup,
-  MidtermGroupWithMembers,
   MidtermGroupWithDetails,
+  MidtermGroupWithProgress,
+  MidtermTask,
   MidtermEvaluation,
 } from "@/db/drizzle/midterm-schema";
+import { toast } from "sonner";
 
-// Query keys for midterm groups
+// Consistent query key structure
 export const midtermKeys = {
   all: ["midterm"] as const,
   groups: () => [...midtermKeys.all, "groups"] as const,
@@ -18,450 +24,400 @@ export const midtermKeys = {
     [...midtermKeys.evaluations(), groupId, userId] as const,
 };
 
-// Fetch all midterm groups
-const fetchGroups = async (): Promise<MidtermGroupWithMembers[]> => {
-  const response = await fetch("/api/midterm/groups");
+// --- Helper Fetch Functions (Similar to original pattern) ---
+
+const fetchGroups = async (): Promise<MidtermGroupWithProgress[]> => {
+  const response = await fetch("/api/midterm/groups"); // Target the API route
   if (!response.ok) {
-    throw new Error("Failed to fetch groups");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to fetch groups");
   }
   return response.json();
 };
 
-// Fetch a single midterm group with details
 const fetchGroupDetails = async (
-  id: string
-): Promise<MidtermGroupWithDetails> => {
-  const response = await fetch(`/api/midterm/groups/${id}`);
+  groupId: string
+): Promise<MidtermGroupWithDetails | null> => {
+  const response = await fetch(`/api/midterm/groups/${groupId}`); // Target the API route
   if (!response.ok) {
-    throw new Error("Failed to fetch group details");
+    if (response.status === 404) return null;
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to fetch group details");
   }
   return response.json();
 };
 
-// Create a new midterm group
-const createGroup = async ({
-  name,
-  description,
-}: {
-  name: string;
-  description?: string;
-}): Promise<MidtermGroup> => {
-  const response = await fetch("/api/midterm/groups", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name, description }),
-  });
+// --- React Query Hooks ---
 
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error || "Failed to create group");
-  }
-
-  return response.json();
-};
-
-// Join an existing midterm group
-const joinGroup = async (id: string): Promise<void> => {
-  const response = await fetch(`/api/midterm/groups/${id}/join`, {
-    method: "POST",
-  });
-
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error || "Failed to join group");
-  }
-};
-
-// Connect a GitHub repository to a midterm group
-const connectRepository = async ({
-  groupId,
-  repositoryUrl,
-}: {
-  groupId: string;
-  repositoryUrl: string;
-}): Promise<void> => {
-  const response = await fetch(`/api/midterm/groups/${groupId}/sync`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ repositoryUrl }),
-  });
-
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error || "Failed to connect repository");
-  }
-};
-
-// Update an existing repository connection
-const updateRepository = async ({
-  groupId,
-  repositoryUrl,
-}: {
-  groupId: string;
-  repositoryUrl: string;
-}): Promise<void> => {
-  const response = await fetch(`/api/midterm/groups/${groupId}/sync`, {
-    method: "PUT", // Use PUT or PATCH for updates
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ repositoryUrl }),
-  });
-
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error || "Failed to update repository");
-  }
-};
-
-// Leave a midterm group
-const leaveGroup = async (id: string): Promise<void> => {
-  const response = await fetch(`/api/midterm/groups/${id}/leave`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error || "Failed to leave group");
-  }
-};
-
-// Delete a midterm group
-const deleteGroupAPI = async (id: string): Promise<void> => {
-  const response = await fetch(`/api/midterm/groups/${id}`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error || "Failed to delete group");
-  }
-};
-
-// Update group name/description
-const updateGroupAPI = async ({
-  groupId,
-  name,
-  description,
-}: {
-  groupId: string;
-  name: string;
-  description?: string;
-}): Promise<MidtermGroup> => {
-  const response = await fetch(`/api/midterm/groups/${groupId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name, description }),
-  });
-
-  if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data.error || "Failed to update group");
-  }
-  return response.json();
-};
-
-// Save/Update an evaluation (Admin)
-const saveEvaluationAPI = async (data: {
-  groupId: string;
-  userId: string;
-  scores: {
-    specScore: number;
-    testScore: number;
-    implementationScore: number;
-    documentationScore: number;
-    gitWorkflowScore: number;
-  };
-  feedback: string;
-}): Promise<MidtermEvaluation> => {
-  const response = await fetch(`/api/admin/midterm/evaluations`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to save evaluation");
-  }
-  return response.json();
-};
-
-// Fetch a specific evaluation (Admin)
-const fetchEvaluationAPI = async ({
-  groupId,
-  userId,
-}: {
-  groupId: string;
-  userId: string;
-}): Promise<MidtermEvaluation | null> => {
-  const response = await fetch(
-    `/api/admin/midterm/evaluations?groupId=${groupId}&userId=${userId}`
-  );
-  if (!response.ok) {
-    if (response.status === 404) return null; // Evaluation might not exist yet
-    const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to fetch evaluation");
-  }
-  return response.json();
-};
-
-// Trigger repository sync (Admin)
-const syncRepositoryAPI = async (groupId: string): Promise<void> => {
-  const response = await fetch(`/api/admin/midterm/groups/${groupId}/sync`, {
-    method: "POST",
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to sync repository");
-  }
-};
-
-// Hook to fetch all midterm groups
-export function useMidtermGroups() {
+// Fetch all groups (with progress)
+export function useMidtermGroups(): UseQueryResult<
+  MidtermGroupWithProgress[],
+  Error
+> {
   return useQuery({
     queryKey: midtermKeys.groups(),
-    queryFn: fetchGroups,
+    queryFn: fetchGroups, // Use the fetch helper
   });
 }
 
-// Hook to fetch a single midterm group with details
-export function useMidtermGroupDetails(id: string) {
+// Fetch single group details (with tasks)
+export function useMidtermGroupDetails(
+  groupId: string | null
+): UseQueryResult<MidtermGroupWithDetails | null, Error> {
   return useQuery({
-    queryKey: midtermKeys.group(id),
-    queryFn: () => fetchGroupDetails(id),
-    enabled: !!id,
+    queryKey: midtermKeys.group(groupId!), // Use the function
+    queryFn: () => fetchGroupDetails(groupId!), // Use the fetch helper
+    enabled: !!groupId,
   });
 }
 
-// Hook to create a new midterm group
-export function useCreateMidtermGroup() {
+// --- Mutations ---
+
+// Create Group
+export function useCreateMidtermGroup(): UseMutationResult<
+  MidtermGroup,
+  Error,
+  { name: string; description?: string },
+  unknown
+> {
   const queryClient = useQueryClient();
-  const [isCreating, setIsCreating] = useState(false);
-
-  const mutation = useMutation({
-    mutationFn: createGroup,
-    onMutate: () => {
-      setIsCreating(true);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-      toast.success("Group created successfully");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to create group", {
-        description: error.message,
-      });
-    },
-    onSettled: () => {
-      setIsCreating(false);
-    },
-  });
-
-  return {
-    createGroup: mutation.mutateAsync,
-    isLoading: isCreating,
-  };
-}
-
-// Hook to join a midterm group
-export function useJoinMidtermGroup() {
-  const queryClient = useQueryClient();
-  const [isJoining, setIsJoining] = useState(false);
-
-  const mutation = useMutation({
-    mutationFn: joinGroup,
-    onMutate: () => {
-      setIsJoining(true);
-    },
-    onSuccess: (_data, groupId) => {
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-      queryClient.invalidateQueries({ queryKey: midtermKeys.group(groupId) });
-      toast.success("Joined group successfully");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to join group", {
-        description: error.message,
-      });
-    },
-    onSettled: () => {
-      setIsJoining(false);
-    },
-  });
-
-  return {
-    joinGroup: mutation.mutateAsync,
-    isLoading: isJoining,
-  };
-}
-
-// Hook to connect a GitHub repository to a midterm group
-export function useConnectRepository() {
-  const queryClient = useQueryClient();
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  const mutation = useMutation({
-    mutationFn: connectRepository,
-    onMutate: () => {
-      setIsConnecting(true);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: midtermKeys.group(variables.groupId),
-      });
-      toast.success("Repository connected successfully", {
-        description:
-          "Data sync has been initiated and may take a moment to complete.",
-      });
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to connect repository", {
-        description: error.message,
-      });
-    },
-    onSettled: () => {
-      setIsConnecting(false);
-    },
-  });
-
-  return {
-    connectRepository: mutation.mutateAsync,
-    isLoading: isConnecting,
-  };
-}
-
-// Hook to update a GitHub repository connection for a midterm group
-export function useUpdateRepository() {
-  const queryClient = useQueryClient();
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  const mutation = useMutation({
-    mutationFn: updateRepository,
-    onMutate: () => {
-      setIsUpdating(true);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: midtermKeys.group(variables.groupId),
-      });
-      // Also invalidate the list view if needed, though group details changing should be enough
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-      toast.success("Repository updated successfully", {
-        description:
-          "Data sync has been re-initiated and may take a moment to complete.",
-      });
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to update repository", {
-        description: error.message,
-      });
-    },
-    onSettled: () => {
-      setIsUpdating(false);
-    },
-  });
-
-  return {
-    updateRepository: mutation.mutateAsync,
-    isLoading: isUpdating,
-  };
-}
-
-// Hook to leave a midterm group
-export function useLeaveGroup() {
-  const queryClient = useQueryClient();
-  const [isLeaving, setIsLeaving] = useState(false);
-
-  const mutation = useMutation({
-    mutationFn: leaveGroup,
-    onMutate: () => {
-      setIsLeaving(true);
-    },
-    onSuccess: (_data, groupId) => {
-      // Invalidate both the list of all groups and the specific group details
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-      queryClient.invalidateQueries({ queryKey: midtermKeys.group(groupId) });
-      toast.success("Successfully left the group");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to leave group", {
-        description: error.message,
-      });
-    },
-    onSettled: () => {
-      setIsLeaving(false);
-    },
-  });
-
-  return {
-    leaveGroup: mutation.mutateAsync,
-    isLoading: isLeaving,
-  };
-}
-
-// Hook to delete a midterm group (Admin only)
-export function useDeleteMidtermGroup() {
-  const queryClient = useQueryClient();
+  // Remove useAuth here unless needed for optimistic updates (unlikely for create)
 
   return useMutation({
-    mutationFn: deleteGroupAPI,
-    onSuccess: () => {
-      // Invalidate the list of all groups
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-      toast.success("Group deleted successfully");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to delete group", {
-        description: error.message,
+    // This mutationFn assumes a POST /api/midterm/groups endpoint handles creation
+    mutationFn: async ({ name, description }) => {
+      const response = await fetch("/api/midterm/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
       });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to create group");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
     },
   });
 }
 
-// Hook to update a midterm group (Admin/Owner)
-export function useUpdateMidtermGroup() {
+// Join Group
+export function useJoinMidtermGroup(): UseMutationResult<
+  boolean,
+  Error,
+  string, // groupId
+  unknown
+> {
   const queryClient = useQueryClient();
-  const [isUpdating, setIsUpdating] = useState(false);
+  // Remove useAuth here, API route handles user ID
 
-  const mutation = useMutation({
-    mutationFn: updateGroupAPI,
-    onMutate: () => {
-      setIsUpdating(true);
+  return useMutation({
+    // Assumes POST /api/midterm/groups/[id]/join
+    mutationFn: async (groupId) => {
+      const response = await fetch(`/api/midterm/groups/${groupId}/join`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to join group");
+      }
+      // Assuming API returns 200 OK on success, maybe no body needed or boolean?
+      return response.ok; // Or handle specific success response
+    },
+    onSuccess: (data, groupId) => {
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.group(groupId) });
+    },
+  });
+}
+
+// Connect Repository
+// This likely needs adjustment - the mutation currently calls apiConnectRepository directly
+// Should probably call an API endpoint e.g., POST /api/midterm/groups/[id]/connect
+export function useConnectRepository(): UseMutationResult<
+  void,
+  Error,
+  { groupId: string; repositoryUrl: string },
+  unknown
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupId, repositoryUrl }) => {
+      const response = await fetch(`/api/midterm/groups/${groupId}/connect`, {
+        // Changed endpoint
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repositoryUrl }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to connect repository");
+      }
+      // No return needed for void
     },
     onSuccess: (data, variables) => {
-      // Invalidate list and specific group
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
       queryClient.invalidateQueries({
         queryKey: midtermKeys.group(variables.groupId),
       });
-      toast.success("Group updated successfully");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to update group", {
-        description: error.message,
-      });
-    },
-    onSettled: () => {
-      setIsUpdating(false);
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
     },
   });
-
-  return {
-    updateGroup: mutation.mutateAsync,
-    isLoading: isUpdating,
-  };
 }
 
-// Hook to save/update an evaluation (Admin)
-export function useSaveEvaluation() {
+// Update Repository
+// Similar to connect, should call an API endpoint e.g., PUT /api/midterm/groups/[id]/connect
+export function useUpdateRepository(): UseMutationResult<
+  MidtermGroup | null, // API might return updated group or just success
+  Error,
+  { groupId: string; repositoryUrl: string },
+  unknown
+> {
   const queryClient = useQueryClient();
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: saveEvaluationAPI,
+  return useMutation({
+    mutationFn: async ({ groupId, repositoryUrl }) => {
+      const response = await fetch(`/api/midterm/groups/${groupId}/connect`, {
+        // Changed endpoint
+        method: "PUT", // Use PUT for update
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repositoryUrl }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update repository");
+      }
+      return response.json(); // Assuming API returns updated group
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: midtermKeys.group(variables.groupId),
+      });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+    },
+  });
+}
+
+// Update Group Details (Name/Description)
+// Assumes PUT /api/midterm/groups/[id]
+export function useUpdateMidtermGroup(): UseMutationResult<
+  MidtermGroup | null,
+  Error,
+  { groupId: string; name?: string; description?: string },
+  unknown
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupId, name, description }) => {
+      const response = await fetch(`/api/midterm/groups/${groupId}`, {
+        // Changed endpoint
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update group details");
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: midtermKeys.group(variables.groupId),
+      });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+    },
+  });
+}
+
+// Leave Group
+// Assumes DELETE /api/midterm/groups/[id]/leave
+export function useLeaveGroup(): UseMutationResult<
+  boolean,
+  Error,
+  string, // groupId
+  unknown
+> {
+  const queryClient = useQueryClient();
+  // Remove useAuth, API handles user
+  return useMutation({
+    mutationFn: async (groupId) => {
+      const response = await fetch(`/api/midterm/groups/${groupId}/leave`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to leave group");
+      }
+      return response.ok;
+    },
+    onSuccess: (data, groupId) => {
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      queryClient.removeQueries({ queryKey: midtermKeys.group(groupId) });
+    },
+  });
+}
+
+// Delete Group
+// Assumes DELETE /api/midterm/groups/[id]
+export function useDeleteMidtermGroup(): UseMutationResult<
+  boolean,
+  Error,
+  string, // groupId
+  unknown
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId) => {
+      const response = await fetch(`/api/midterm/groups/${groupId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete group");
+      }
+      return response.ok;
+    },
+    onSuccess: (data, groupId) => {
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+      queryClient.removeQueries({ queryKey: midtermKeys.group(groupId) });
+    },
+  });
+}
+
+// Upload TODO List (This one was already correct, using fetch)
+export function useUploadTodo(): UseMutationResult<
+  { message: string; taskCount: number },
+  Error,
+  { groupId: string; markdownContent: string },
+  unknown
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupId, markdownContent }) => {
+      const response = await fetch(`/api/midterm/groups/${groupId}/todo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain",
+        },
+        body: markdownContent,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to upload TODO list");
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: midtermKeys.group(variables.groupId),
+      });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+    },
+  });
+}
+
+// Update Task Status (This one was already correct, using fetch)
+export function useUpdateTaskStatus(): UseMutationResult<
+  MidtermTask,
+  Error,
+  { taskId: string; isChecked: boolean; groupId: string },
+  { previousGroupData?: MidtermGroupWithDetails | null }
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, isChecked }) => {
+      const response = await fetch(`/api/midterm/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isChecked }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update task status");
+      }
+      return response.json();
+    },
+    onMutate: async (newTaskData) => {
+      await queryClient.cancelQueries({
+        queryKey: midtermKeys.group(newTaskData.groupId),
+      });
+      const previousGroupData =
+        queryClient.getQueryData<MidtermGroupWithDetails | null>(
+          midtermKeys.group(newTaskData.groupId)
+        );
+
+      queryClient.setQueryData<MidtermGroupWithDetails | undefined>(
+        midtermKeys.group(newTaskData.groupId),
+        (old) => {
+          if (!old || !old.tasks) return old;
+          return {
+            ...old,
+            tasks: old.tasks.map((task) =>
+              task.id === newTaskData.taskId
+                ? { ...task, isChecked: newTaskData.isChecked }
+                : task
+            ),
+          };
+        }
+      );
+      return { previousGroupData };
+    },
+    onError: (err, newTaskData, context) => {
+      if (context?.previousGroupData !== undefined) {
+        queryClient.setQueryData(
+          midtermKeys.group(newTaskData.groupId),
+          context.previousGroupData
+        );
+      }
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: midtermKeys.group(variables.groupId),
+      });
+      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
+    },
+  });
+}
+
+// --- Admin Hooks ---
+
+// Hook to save/update an evaluation (Admin)
+// Assumes POST /api/admin/midterm/evaluations
+export function useSaveEvaluation(): UseMutationResult<
+  MidtermEvaluation, // Assuming API returns the saved/updated evaluation
+  Error,
+  {
+    // Input variables type
+    groupId: string;
+    userId: string;
+    scores: {
+      specScore: number;
+      testScore: number;
+      implementationScore: number;
+      documentationScore: number;
+      gitWorkflowScore: number;
+    };
+    feedback: string;
+  },
+  unknown // Context type
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (evaluationData) => {
+      const response = await fetch(`/api/admin/midterm/evaluations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(evaluationData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to save evaluation");
+      }
+      return response.json();
+    },
     onSuccess: (data, variables) => {
       toast.success("Evaluation saved successfully!");
       // Invalidate the specific evaluation query
@@ -475,24 +431,56 @@ export function useSaveEvaluation() {
       toast.error("Failed to save evaluation", { description: error.message });
     },
   });
-  return { saveEvaluation: mutateAsync, isSaving: isPending };
 }
 
-// Hook to fetch a specific evaluation (usually triggered manually/lazily)
-export function useEvaluation(groupId?: string, userId?: string) {
+// Hook to fetch a specific evaluation (Admin)
+// Assumes GET /api/admin/midterm/evaluations?groupId=...&userId=...
+export function useEvaluation(
+  groupId?: string,
+  userId?: string
+): UseQueryResult<MidtermEvaluation | null, Error> {
   return useQuery({
     queryKey: midtermKeys.evaluation(groupId!, userId!),
-    queryFn: () => fetchEvaluationAPI({ groupId: groupId!, userId: userId! }),
+    queryFn: async () => {
+      if (!groupId || !userId) return null; // Don't fetch if IDs are missing
+      const response = await fetch(
+        `/api/admin/midterm/evaluations?groupId=${groupId}&userId=${userId}`
+      );
+      if (!response.ok) {
+        if (response.status === 404) return null; // Evaluation might not exist yet
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch evaluation");
+      }
+      return response.json();
+    },
     enabled: !!groupId && !!userId, // Only run when both IDs are provided
     retry: false, // Don't retry if it fails (e.g., 404)
   });
 }
 
 // Hook to trigger repository sync (Admin)
-export function useSyncRepository() {
+// Assumes POST /api/admin/midterm/groups/[id]/sync
+export function useSyncRepository(): UseMutationResult<
+  void, // Assuming API returns no body on success
+  Error,
+  string, // groupId
+  unknown
+> {
   const queryClient = useQueryClient();
-  const { mutate, isPending } = useMutation({
-    mutationFn: syncRepositoryAPI,
+  return useMutation({
+    mutationFn: async (groupId) => {
+      const response = await fetch(
+        `/api/admin/midterm/groups/${groupId}/sync`,
+        {
+          method: "POST",
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to initiate sync");
+      }
+      // No return needed for void
+    },
     onSuccess: (data, groupId) => {
       toast.success("Repository sync initiated.", {
         description: "Data update may take a few moments.",
@@ -505,5 +493,4 @@ export function useSyncRepository() {
       toast.error("Failed to initiate sync", { description: error.message });
     },
   });
-  return { syncRepository: mutate, isSyncing: isPending };
 }

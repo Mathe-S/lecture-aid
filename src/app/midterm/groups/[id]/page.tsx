@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
   useMidtermGroupDetails,
   useConnectRepository,
   useUpdateRepository,
   useLeaveGroup,
+  useUploadTodo,
 } from "@/hooks/useMidtermGroups";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,9 +49,13 @@ import {
   Users,
   Pencil,
   LogOut,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { MidtermTodoList } from "@/components/midterm/MidtermTodoList";
+import { Progress } from "@/components/ui/progress";
 
 export default function GroupDetailPage() {
   const params = useParams();
@@ -61,11 +66,16 @@ export default function GroupDetailPage() {
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: group, isLoading } = useMidtermGroupDetails(id as string);
-  const { connectRepository, isLoading: isConnecting } = useConnectRepository();
-  const { updateRepository, isLoading: isUpdating } = useUpdateRepository();
-  const { leaveGroup, isLoading: isLeaving } = useLeaveGroup();
+  const { data: group, isLoading: isLoadingGroup } = useMidtermGroupDetails(id);
+  const { mutateAsync: connectRepository, isPending: isConnecting } =
+    useConnectRepository();
+  const { mutateAsync: updateRepository, isPending: isUpdating } =
+    useUpdateRepository();
+  const { mutateAsync: leaveGroup, isPending: isLeaving } = useLeaveGroup();
+  const { mutateAsync: uploadTodo, isPending: isUploadingTodo } =
+    useUploadTodo();
 
   const handleConnectRepository = async () => {
     if (!repositoryUrl.trim() || !repositoryUrl.includes("github.com")) {
@@ -117,7 +127,67 @@ export default function GroupDetailPage() {
     (member) => member.userId === user?.id
   );
 
-  if (isLoading) {
+  // Check if the current user is the owner of this group
+  const isOwner = !!group?.members.find(
+    (member) => member.userId === user?.id && member.role === "owner"
+  );
+
+  // Calculate task progress
+  const totalTasks = group?.tasks?.length ?? 0;
+  const completedTasks =
+    group?.tasks?.filter((task) => task.isChecked).length ?? 0;
+  const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  // Handler for file selection and upload
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || !id) {
+      return;
+    }
+
+    if (file.type !== "text/markdown" && !file.name.endsWith(".md")) {
+      toast.error("Invalid file type", {
+        description: "Please upload a Markdown file (.md).",
+      });
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const markdownContent = e.target?.result as string;
+      if (markdownContent) {
+        try {
+          const result = await uploadTodo({
+            groupId: id,
+            markdownContent: markdownContent,
+          });
+          toast.success("TODO list uploaded successfully", {
+            description: `Processed ${result.taskCount} tasks.`,
+          });
+        } catch (error: any) {
+          console.error("Failed to upload TODO list", error);
+          toast.error("Failed to upload TODO list", {
+            description: error.message,
+          });
+        }
+      }
+      // Reset file input after processing
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.onerror = (e) => {
+      console.error("File reading error", e);
+      toast.error("Error reading file");
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
+
+  if (isLoadingGroup) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -337,7 +407,7 @@ export default function GroupDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -398,6 +468,51 @@ export default function GroupDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* TODO UPLOAD SECTION - OWNER ONLY */}
+            {isOwner && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Project TODO List</CardTitle>
+                  <CardDescription>
+                    Upload your team&apos;s `todo.md` file to track progress.
+                    Uploading will replace the existing list.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept=".md,text/markdown"
+                    className="hidden"
+                    id="todo-upload-input"
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingTodo}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {isUploadingTodo ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
+                    {group?.tasks?.length ? "Replace" : "Upload"} todo.md
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* TODO LIST DISPLAY */}
+            {group?.tasks && (
+              <MidtermTodoList
+                tasks={group.tasks}
+                groupId={id}
+                canEdit={isMember}
+              />
+            )}
 
             {group.metrics && (
               <div className="mt-6">
@@ -460,6 +575,20 @@ export default function GroupDetailPage() {
                   <CardDescription>
                     Activity from GitHub repository
                   </CardDescription>
+                  {/* Add Progress Bar here if tasks exist */}
+                  {totalTasks > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Task Progress
+                        </span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {completedTasks} / {totalTasks}
+                        </span>
+                      </div>
+                      <Progress value={taskProgress} className="h-2" />
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">

@@ -36,6 +36,7 @@ import {
   Pencil,
   LogOut,
   Trash2,
+  ListChecks,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -60,6 +61,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { MidtermGroupWithMembers } from "@/db/drizzle/midterm-schema";
+import { Progress } from "@/components/ui/progress";
 
 export default function MidtermPage() {
   const { user, role } = useAuth();
@@ -76,19 +78,24 @@ export default function MidtermPage() {
     useState<MidtermGroupWithMembers | null>(null);
   const [editGroupName, setEditGroupName] = useState("");
   const [editGroupDescription, setEditGroupDescription] = useState("");
-  const { leaveGroup, isLoading: isLeavingGroup } = useLeaveGroup();
-  const { mutateAsync: deleteGroup, isPending: isDeletingGroup } =
-    useDeleteMidtermGroup();
   const [groupToLeave, setGroupToLeave] = useState<string | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
 
   const { data: groups = [], isLoading } = useMidtermGroups();
-  const { createGroup, isLoading: isCreatingGroup } = useCreateMidtermGroup();
-  const { joinGroup } = useJoinMidtermGroup();
-  const { connectRepository, isLoading: isConnectingRepo } =
+  const { mutateAsync: createGroup, isPending: isCreatingGroup } =
+    useCreateMidtermGroup();
+  const { mutateAsync: joinGroup, isPending: isJoiningGroup } =
+    useJoinMidtermGroup();
+  const { mutateAsync: connectRepository, isPending: isConnectingRepo } =
     useConnectRepository();
-  const { updateRepository, isLoading: isUpdatingRepo } = useUpdateRepository();
-  const { updateGroup, isLoading: isUpdatingGroup } = useUpdateMidtermGroup();
+  const { mutateAsync: updateRepository, isPending: isUpdatingRepo } =
+    useUpdateRepository();
+  const { mutateAsync: updateGroup, isPending: isUpdatingGroup } =
+    useUpdateMidtermGroup();
+  const { mutateAsync: leaveGroup, isPending: isLeavingGroup } =
+    useLeaveGroup();
+  const { mutateAsync: deleteGroup, isPending: isDeletingGroup } =
+    useDeleteMidtermGroup();
 
   const userGroups = groups.filter((group) =>
     group.members.some((member) => member.userId === user?.id)
@@ -386,6 +393,12 @@ export default function MidtermPage() {
                 );
                 const canModify = role === "admin" || isOwner;
 
+                // Calculate progress for this specific group
+                const totalTasks = group.taskProgress?.total ?? 0;
+                const completedTasks = group.taskProgress?.checked ?? 0;
+                const progressPercent =
+                  totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
                 return (
                   <Dialog key={group.id}>
                     <Card>
@@ -414,6 +427,25 @@ export default function MidtermPage() {
                             </DialogTrigger>
                           )}
                         </div>
+                        {/* Add progress display */}
+                        {totalTasks > 0 && (
+                          <div className="mt-2 pt-2 border-t">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span className="flex items-center gap-1.5">
+                                <ListChecks className="h-3 w-3" />
+                                Task Progress
+                              </span>
+                              <span>
+                                {completedTasks} / {totalTasks} (
+                                {progressPercent.toFixed(0)}%)
+                              </span>
+                            </div>
+                            <Progress
+                              value={progressPercent}
+                              className="h-1.5"
+                            />
+                          </div>
+                        )}
                       </CardHeader>
 
                       <CardContent>
@@ -780,37 +812,63 @@ export default function MidtermPage() {
                   (group) =>
                     !group.members.some((member) => member.userId === user?.id)
                 )
-                .map((group) => (
-                  <Card key={group.id}>
-                    <CardHeader>
-                      <CardTitle>{group.name}</CardTitle>
-                      <CardDescription>
-                        {group.description || "No description provided"}
-                      </CardDescription>
-                    </CardHeader>
+                .map((group) => {
+                  // Calculate progress for available groups too
+                  const totalTasks = group.taskProgress?.total ?? 0;
+                  console.log("🚀 ~ .map ~ group:", group);
+                  const completedTasks = group.taskProgress?.checked ?? 0;
+                  const progressPercent =
+                    totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
-                    <CardContent>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {group.members.length} member
-                          {group.members.length !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                    </CardContent>
+                  return (
+                    <Card key={group.id}>
+                      <CardHeader>
+                        <CardTitle>{group.name}</CardTitle>
+                        <CardDescription>
+                          {group.description || "No description provided"}
+                        </CardDescription>
+                        {/* Add progress display */}
+                        {totalTasks > 0 && (
+                          <div className="mt-2 pt-2 border-t">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span className="flex items-center gap-1">
+                                <ListChecks className="h-3 w-3" />
+                                Progress
+                              </span>
+                              <span>{progressPercent.toFixed(0)}%</span>
+                            </div>
+                            <Progress
+                              value={progressPercent}
+                              className="h-1.5"
+                            />
+                          </div>
+                        )}
+                      </CardHeader>
 
-                    <CardFooter>
-                      <Button
-                        onClick={() => handleJoinGroup(group.id)}
-                        className="w-full"
-                        variant="outline"
-                      >
-                        <GitFork className="mr-2 h-4 w-4" />
-                        Join Group
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                      <CardContent>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {group.members.length} member
+                            {group.members.length !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </CardContent>
+
+                      <CardFooter>
+                        <Button
+                          onClick={() => handleJoinGroup(group.id)}
+                          className="w-full"
+                          variant="outline"
+                          disabled={isJoiningGroup}
+                        >
+                          <GitFork className="mr-2 h-4 w-4" />
+                          Join Group
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
             </div>
           )}
         </div>

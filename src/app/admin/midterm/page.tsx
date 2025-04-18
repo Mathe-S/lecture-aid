@@ -71,8 +71,10 @@ export default function MidtermAdminPage() {
 
   // --- Fetching Data ---
   const { data: groups = [], isLoading: isLoadingGroups } = useMidtermGroups();
-  const { saveEvaluation, isSaving: isSubmitting } = useSaveEvaluation();
-  const { syncRepository, isSyncing: isSyncingRepo } = useSyncRepository();
+  const { mutate: saveEvaluation, isPending: isSubmitting } =
+    useSaveEvaluation();
+  const { mutate: syncRepository, isPending: isSyncingRepo } =
+    useSyncRepository();
 
   // Fetch specific evaluation when dialog opens and selection is made
   const { data: existingEvaluation, isLoading: isLoadingEvaluation } =
