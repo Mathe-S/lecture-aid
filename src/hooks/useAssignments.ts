@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Assignment, AssignmentSubmission } from "@/db/drizzle/schema";
 import { assignmentApi } from "@/lib/api/assignmentApi";
+import { toast } from "sonner";
 
 // Define query keys
 export const assignmentKeys = {
@@ -68,7 +69,42 @@ export function useDeleteAssignment() {
 
   return useMutation({
     mutationFn: (id: string) => assignmentApi.deleteAssignment(id),
-    onSuccess: () => {
+    // Optimistic Update Logic
+    onMutate: async (assignmentIdToDelete: string) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: assignmentKeys.lists() });
+
+      // Snapshot the previous value
+      const previousAssignments = queryClient.getQueryData<Assignment[]>(
+        assignmentKeys.lists()
+      );
+
+      // Optimistically remove the assignment from the list
+      if (previousAssignments) {
+        queryClient.setQueryData<Assignment[]>(
+          assignmentKeys.lists(),
+          previousAssignments.filter(
+            (assignment) => assignment.id !== assignmentIdToDelete
+          )
+        );
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousAssignments };
+    },
+    // If the mutation fails, use the context returned from onMutate to roll back
+    onError: (err, _variables, context) => {
+      console.error("Error deleting assignment:", err);
+      toast.error("Failed to delete assignment. Restoring list.");
+      if (context?.previousAssignments) {
+        queryClient.setQueryData<Assignment[]>(
+          assignmentKeys.lists(),
+          context.previousAssignments
+        );
+      }
+    },
+    // Always refetch after error or success:
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: assignmentKeys.lists() });
     },
   });

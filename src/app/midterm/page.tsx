@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -62,10 +62,37 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MidtermGroupWithMembers } from "@/db/drizzle/midterm-schema";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
+// --- Loading Skeleton Component ---
+function GroupsLoadingSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <Skeleton className="h-6 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-full" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-4 w-1/4" />
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="h-10 w-full" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// --- Main Midterm Page Component ---
 export default function MidtermPage() {
   const { user, role } = useAuth();
   const router = useRouter();
+
+  // --- State Variables ---
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [repositoryUrl, setRepositoryUrl] = useState("");
@@ -81,7 +108,10 @@ export default function MidtermPage() {
   const [groupToLeave, setGroupToLeave] = useState<string | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
 
-  const { data: groups = [], isLoading } = useMidtermGroups();
+  // --- Hooks ---
+  // Call useMidtermGroups ONCE - Suspense will handle its loading state
+  const { data: groups = [], refetch: refetchGroups } = useMidtermGroups();
+
   const { mutateAsync: createGroup, isPending: isCreatingGroup } =
     useCreateMidtermGroup();
   const { mutateAsync: joinGroup, isPending: isJoiningGroup } =
@@ -97,23 +127,31 @@ export default function MidtermPage() {
   const { mutateAsync: deleteGroup, isPending: isDeletingGroup } =
     useDeleteMidtermGroup();
 
+  // --- Derived State ---
   const userGroups = groups.filter((group) =>
     group.members.some((member) => member.userId === user?.id)
   );
+  const availableGroups = groups.filter(
+    (group) => !group.members.some((member) => member.userId === user?.id)
+  );
 
+  // --- Handlers ---
   const handleCreateGroup = async () => {
-    if (!newGroupName.trim()) return;
-
+    if (!newGroupName.trim()) return toast.error("Group name cannot be empty.");
     try {
       await createGroup({
         name: newGroupName,
         description: newGroupDescription || undefined,
       });
-
+      toast.success("Group created successfully!");
       setNewGroupName("");
       setNewGroupDescription("");
       setShowCreateDialog(false);
-    } catch (error) {
+      refetchGroups(); // Refetch to show the new group immediately
+    } catch (error: any) {
+      toast.error(
+        `Failed to create group: ${error?.message || "Unknown error"}`
+      );
       console.error("Failed to create group", error);
     }
   };
@@ -121,7 +159,10 @@ export default function MidtermPage() {
   const handleJoinGroup = async (groupId: string) => {
     try {
       await joinGroup(groupId);
-    } catch (error) {
+      toast.success("Successfully joined group!");
+      refetchGroups();
+    } catch (error: any) {
+      toast.error(`Failed to join group: ${error?.message || "Unknown error"}`);
       console.error("Failed to join group", error);
     }
   };
@@ -133,51 +174,57 @@ export default function MidtermPage() {
   };
 
   const handleSaveGroupUpdate = async () => {
-    if (!groupToEdit || !editGroupName.trim()) return;
+    if (!groupToEdit || !editGroupName.trim())
+      return toast.error("Group name cannot be empty.");
     try {
       await updateGroup({
         groupId: groupToEdit.id,
         name: editGroupName,
         description: editGroupDescription,
       });
+      toast.success("Group updated successfully!");
       setGroupToEdit(null);
-    } catch (error) {
+      refetchGroups();
+    } catch (error: any) {
+      toast.error(
+        `Failed to update group: ${error?.message || "Unknown error"}`
+      );
       console.error("Failed to update group", error);
     }
   };
 
   const handleConnectRepository = async (groupId: string) => {
     if (!repositoryUrl.trim() || !repositoryUrl.includes("github.com")) {
-      return;
+      return toast.error("Please enter a valid GitHub repository URL.");
     }
-
     try {
-      await connectRepository({
-        groupId,
-        repositoryUrl,
-      });
-
+      await connectRepository({ groupId, repositoryUrl });
+      toast.success("Repository connected successfully!");
       setRepositoryUrl("");
       setConnectingGroupId(null);
-    } catch (error) {
+      refetchGroups();
+    } catch (error: any) {
+      toast.error(
+        `Failed to connect repository: ${error?.message || "Unknown error"}`
+      );
       console.error("Failed to connect repository", error);
     }
   };
 
   const handleUpdateRepository = async (groupId: string) => {
     if (!repositoryUrl.trim() || !repositoryUrl.includes("github.com")) {
-      return;
+      return toast.error("Please enter a valid GitHub repository URL.");
     }
-
     try {
-      await updateRepository({
-        groupId,
-        repositoryUrl,
-      });
-
+      await updateRepository({ groupId, repositoryUrl });
+      toast.success("Repository updated successfully!");
       setRepositoryUrl("");
       setUpdatingGroupId(null);
-    } catch (error) {
+      refetchGroups();
+    } catch (error: any) {
+      toast.error(
+        `Failed to update repository: ${error?.message || "Unknown error"}`
+      );
       console.error("Failed to update repository", error);
     }
   };
@@ -186,8 +233,13 @@ export default function MidtermPage() {
     if (!groupToLeave) return;
     try {
       await leaveGroup(groupToLeave);
+      toast.success("Successfully left the group.");
       setGroupToLeave(null);
-    } catch (error) {
+      refetchGroups();
+    } catch (error: any) {
+      toast.error(
+        `Failed to leave group: ${error?.message || "Unknown error"}`
+      );
       console.error("Failed to leave group", error);
     }
   };
@@ -196,23 +248,22 @@ export default function MidtermPage() {
     if (!groupToDelete) return;
     try {
       await deleteGroup(groupToDelete);
+      toast.success("Group deleted successfully.");
       setGroupToDelete(null);
-    } catch (error) {
+      refetchGroups();
+    } catch (error: any) {
+      toast.error(
+        `Failed to delete group: ${error?.message || "Unknown error"}`
+      );
       console.error("Failed to delete group", error);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
+  // --- Render Logic ---
   return (
     <main className="container mx-auto py-10 px-4 md:px-6">
-      <div className="space-y-6">
+      <div className="space-y-8">
+        {/* Static Header */}
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Midterm Project</h1>
           <p className="text-muted-foreground">
@@ -221,6 +272,7 @@ export default function MidtermPage() {
           </p>
         </div>
 
+        {/* Static Project Overview Card */}
         <Card>
           <CardHeader>
             <CardTitle>Project Overview</CardTitle>
@@ -249,34 +301,30 @@ export default function MidtermPage() {
                   <li>Clean Git workflow with proper commits and PRs</li>
                 </ul>
               </div>
-
               <div className="flex-1 space-y-2">
                 <h3 className="text-lg font-semibold">Grading (250 points)</h3>
                 <div className="space-y-1 text-sm">
                   <p>
                     <strong>Specification (50 points):</strong> Clear
-                    descriptions of what your code does
+                    descriptions
                   </p>
                   <p>
-                    <strong>Testing (50 points):</strong> Comprehensive test
-                    suite to verify functionality
+                    <strong>Testing (50 points):</strong> Comprehensive tests
                   </p>
                   <p>
                     <strong>Implementation (100 points):</strong> Working code
-                    that meets requirements
                   </p>
                   <p>
-                    <strong>Documentation (25 points):</strong> Clean, readable
-                    code with AF/RI explanations if applicable
+                    <strong>Documentation (25 points):</strong> Readable
+                    code/docs
                   </p>
                   <p>
                     <strong>Git Workflow (25 points):</strong> Meaningful
-                    commits, branches, and pull requests
+                    commits/PRs
                   </p>
                 </div>
               </div>
             </div>
-
             <div className="flex items-center justify-between border-t pt-4">
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -284,28 +332,25 @@ export default function MidtermPage() {
                   3 weeks (April 10 - May 1)
                 </span>
               </div>
-
               <Link
                 href="https://teams.microsoft.com/l/message/19:9p7CGZbtOZFaFMj-DSfRQ3fh66rKS3pYnxgvCemxJMQ1@thread.tacv2/1744194496683?tenantId=b5a13ba1-627c-4358-8b6f-cc09027ff3af&groupId=afe80f18-d6e8-449c-96dd-28f43aa85efa&parentMessageId=1744194496683&teamName=Introduction%20to%20Software%20Engineering%20Practical%20Course%202024-2025&channelName=General&createdTime=1744194496683"
                 target="_blank"
                 className="text-sm text-blue-600 hover:underline flex items-center"
               >
-                <ExternalLink className="h-3 w-3 mr-1" />
-                View Full Assignment
+                <ExternalLink className="h-3 w-3 mr-1" /> View Full Assignment
               </Link>
             </div>
           </CardContent>
         </Card>
 
+        {/* Your Groups Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Your Project Groups</h2>
-
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
                 <Button className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create New Group
+                  <Plus className="h-4 w-4" /> Create New Group
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -316,7 +361,6 @@ export default function MidtermPage() {
                     automatically added as the owner.
                   </DialogDescription>
                 </DialogHeader>
-
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Group Name</Label>
@@ -327,7 +371,6 @@ export default function MidtermPage() {
                       onChange={(e) => setNewGroupName(e.target.value)}
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="description">Description (Optional)</Label>
                     <Textarea
@@ -339,7 +382,6 @@ export default function MidtermPage() {
                     />
                   </div>
                 </div>
-
                 <DialogFooter>
                   <Button
                     variant="outline"
@@ -353,7 +395,7 @@ export default function MidtermPage() {
                   >
                     {isCreatingGroup ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
                         Creating...
                       </>
                     ) : (
@@ -365,75 +407,75 @@ export default function MidtermPage() {
             </Dialog>
           </div>
 
-          {userGroups.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-medium">No Groups Yet</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  You haven&apos;t created or joined any project groups yet.
-                  Create a new group or join an existing one.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => setShowCreateDialog(true)}
-                >
-                  Create Your First Group
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {userGroups.map((group) => {
-                const isOwner = group.members.some(
-                  (member) =>
-                    member.userId === user?.id && member.role === "owner"
-                );
-                const canModify = role === "admin" || isOwner;
+          {/* Wrap the list rendering logic in Suspense */}
+          <Suspense
+            fallback={
+              <GroupsLoadingSkeleton
+                count={userGroups.length > 0 ? userGroups.length : 1}
+              />
+            }
+          >
+            {userGroups.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-medium">No Groups Yet</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    You haven&apos;t created or joined any project groups yet.
+                  </p>
+                  <Button
+                    className="mt-4"
+                    onClick={() => setShowCreateDialog(true)}
+                  >
+                    Create Your First Group
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {userGroups.map((group) => {
+                  const isOwner = group.members.some(
+                    (member) =>
+                      member.userId === user?.id && member.role === "owner"
+                  );
+                  const canModify = role === "admin" || isOwner;
+                  const totalTasks = group.taskProgress?.total ?? 0;
+                  const completedTasks = group.taskProgress?.checked ?? 0;
+                  const progressPercent =
+                    totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
-                // Calculate progress for this specific group
-                const totalTasks = group.taskProgress?.total ?? 0;
-                const completedTasks = group.taskProgress?.checked ?? 0;
-                const progressPercent =
-                  totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-                return (
-                  <Dialog key={group.id}>
-                    <Card>
+                  return (
+                    <Card key={group.id}>
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div className="flex-grow">
                             <CardTitle className="flex items-center gap-2">
-                              <GitBranch className="h-5 w-5 text-blue-500" />
+                              <GitBranch className="h-5 w-5 text-blue-500" />{" "}
                               {group.name}
                             </CardTitle>
                             <CardDescription>
                               {group.description || "No description provided"}
                             </CardDescription>
                           </div>
+                          {/* Edit Trigger - Associated Dialog is rendered below outside map */}
                           {canModify && (
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 flex-shrink-0 ml-2"
-                                onClick={() => handleEditGroupClick(group)}
-                              >
-                                <Pencil className="h-4 w-4 text-muted-foreground" />
-                                <span className="sr-only">Edit Group</span>
-                              </Button>
-                            </DialogTrigger>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0 ml-2"
+                              onClick={() => handleEditGroupClick(group)}
+                            >
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </Button>
                           )}
                         </div>
-                        {/* Add progress display */}
                         {totalTasks > 0 && (
                           <div className="mt-2 pt-2 border-t">
                             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                               <span className="flex items-center gap-1.5">
-                                <ListChecks className="h-3 w-3" />
-                                Task Progress
+                                <ListChecks className="h-3 w-3" /> Task Progress
                               </span>
                               <span>
                                 {completedTasks} / {totalTasks} (
@@ -447,7 +489,6 @@ export default function MidtermPage() {
                           </div>
                         )}
                       </CardHeader>
-
                       <CardContent>
                         <div className="space-y-4">
                           <div className="flex flex-col gap-1">
@@ -462,16 +503,16 @@ export default function MidtermPage() {
                                   rel="noopener noreferrer"
                                   className="flex items-center gap-1 text-blue-600 hover:underline"
                                 >
-                                  <Github className="h-4 w-4" />
-                                  {group.repositoryOwner}/{group.repositoryName}
+                                  <Github className="h-4 w-4" />{" "}
+                                  {group.repositoryOwner}/{group.repositoryName}{" "}
                                   <ExternalLink className="h-3 w-3" />
                                 </a>
+                                {/* Update Repo Dialog Trigger */}
                                 <Dialog
                                   open={updatingGroupId === group.id}
                                   onOpenChange={(open) => {
-                                    if (open && group.repositoryUrl) {
+                                    if (open && group.repositoryUrl)
                                       setRepositoryUrl(group.repositoryUrl);
-                                    }
                                     if (!open) setUpdatingGroupId(null);
                                   }}
                                 >
@@ -485,9 +526,6 @@ export default function MidtermPage() {
                                       }
                                     >
                                       <Pencil className="h-3 w-3 text-muted-foreground" />
-                                      <span className="sr-only">
-                                        Update Repository
-                                      </span>
                                     </Button>
                                   </DialogTrigger>
                                   <DialogContent>
@@ -546,7 +584,7 @@ export default function MidtermPage() {
                                 <span className="text-sm text-muted-foreground">
                                   No repository connected
                                 </span>
-
+                                {/* Connect Repo Dialog Trigger */}
                                 <Dialog
                                   open={connectingGroupId === group.id}
                                   onOpenChange={(open) =>
@@ -574,13 +612,14 @@ export default function MidtermPage() {
                                         progress and visualize contributions.
                                       </DialogDescription>
                                     </DialogHeader>
-
                                     <div className="space-y-2 py-4">
-                                      <Label htmlFor="repo-url">
+                                      <Label
+                                        htmlFor={`connect-repo-url-${group.id}`}
+                                      >
                                         Repository URL
                                       </Label>
                                       <Input
-                                        id="repo-url"
+                                        id={`connect-repo-url-${group.id}`}
                                         placeholder="https://github.com/username/repo"
                                         value={repositoryUrl}
                                         onChange={(e) =>
@@ -591,7 +630,6 @@ export default function MidtermPage() {
                                         Must be a public GitHub repository
                                       </p>
                                     </div>
-
                                     <DialogFooter>
                                       <Button
                                         onClick={() =>
@@ -617,7 +655,6 @@ export default function MidtermPage() {
                               </div>
                             )}
                           </div>
-
                           <div>
                             <div className="text-sm font-medium text-muted-foreground mb-2">
                               Members ({group.members.length})
@@ -648,7 +685,6 @@ export default function MidtermPage() {
                           </div>
                         </div>
                       </CardContent>
-
                       <CardFooter className="flex justify-between items-center pt-4 border-t">
                         <div className="flex items-center gap-2">
                           <Button
@@ -674,8 +710,8 @@ export default function MidtermPage() {
                             </Button>
                           )}
                         </div>
-
                         <div className="flex items-center gap-2">
+                          {/* Leave Group Alert Trigger */}
                           {userGroups.some((ug) => ug.id === group.id) && (
                             <AlertDialog
                               open={groupToLeave === group.id}
@@ -690,8 +726,7 @@ export default function MidtermPage() {
                                   onClick={() => setGroupToLeave(group.id)}
                                   className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
                                 >
-                                  <LogOut className="mr-1 h-4 w-4" />
-                                  Leave
+                                  <LogOut className="mr-1 h-4 w-4" /> Leave
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -728,7 +763,7 @@ export default function MidtermPage() {
                               </AlertDialogContent>
                             </AlertDialog>
                           )}
-
+                          {/* Delete Group Alert Trigger */}
                           {canModify && (
                             <AlertDialog
                               open={groupToDelete === group.id}
@@ -742,8 +777,7 @@ export default function MidtermPage() {
                                   size="sm"
                                   onClick={() => setGroupToDelete(group.id)}
                                 >
-                                  <Trash2 className="mr-1 h-4 w-4" />
-                                  Delete
+                                  <Trash2 className="mr-1 h-4 w-4" /> Delete
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -784,38 +818,35 @@ export default function MidtermPage() {
                         </div>
                       </CardFooter>
                     </Card>
-                  </Dialog>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </Suspense>
         </div>
 
+        {/* Available Groups Section */}
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Available Groups</h2>
-
-          {groups.filter(
-            (group) =>
-              !group.members.some((member) => member.userId === user?.id)
-          ).length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">
-                  No other groups available to join.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {groups
-                .filter(
-                  (group) =>
-                    !group.members.some((member) => member.userId === user?.id)
-                )
-                .map((group) => {
-                  // Calculate progress for available groups too
+          <Suspense
+            fallback={
+              <GroupsLoadingSkeleton
+                count={availableGroups.length > 0 ? availableGroups.length : 1}
+              />
+            }
+          >
+            {availableGroups.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground">
+                    No other groups available to join.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {availableGroups.map((group) => {
                   const totalTasks = group.taskProgress?.total ?? 0;
-                  console.log("🚀 ~ .map ~ group:", group);
                   const completedTasks = group.taskProgress?.checked ?? 0;
                   const progressPercent =
                     totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -827,13 +858,11 @@ export default function MidtermPage() {
                         <CardDescription>
                           {group.description || "No description provided"}
                         </CardDescription>
-                        {/* Add progress display */}
                         {totalTasks > 0 && (
                           <div className="mt-2 pt-2 border-t">
                             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                               <span className="flex items-center gap-1">
-                                <ListChecks className="h-3 w-3" />
-                                Progress
+                                <ListChecks className="h-3 w-3" /> Progress
                               </span>
                               <span>{progressPercent.toFixed(0)}%</span>
                             </div>
@@ -844,7 +873,6 @@ export default function MidtermPage() {
                           </div>
                         )}
                       </CardHeader>
-
                       <CardContent>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
@@ -854,7 +882,6 @@ export default function MidtermPage() {
                           </span>
                         </div>
                       </CardContent>
-
                       <CardFooter>
                         <Button
                           onClick={() => handleJoinGroup(group.id)}
@@ -862,18 +889,19 @@ export default function MidtermPage() {
                           variant="outline"
                           disabled={isJoiningGroup}
                         >
-                          <GitFork className="mr-2 h-4 w-4" />
-                          Join Group
+                          <GitFork className="mr-2 h-4 w-4" /> Join Group
                         </Button>
                       </CardFooter>
                     </Card>
                   );
                 })}
-            </div>
-          )}
+              </div>
+            )}
+          </Suspense>
         </div>
       </div>
 
+      {/* Edit Group Dialog (Rendered once, controlled by state) */}
       <Dialog
         open={!!groupToEdit}
         onOpenChange={(open) => {
