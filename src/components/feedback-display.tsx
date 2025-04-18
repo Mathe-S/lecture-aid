@@ -31,6 +31,7 @@ interface ManualGradingResult {
 interface AdditionalInformation {
   implementationStatus?: ImplementationStatus;
   manualGradingResult?: ManualGradingResult;
+  finalGradingExplanation?: string;
   status?: string;
   [key: string]: any;
 }
@@ -169,10 +170,36 @@ export const FeedbackDisplay: FC<FeedbackDisplayProps> = ({ feedback }) => {
                   )}
                 </div>
 
-                <div className="p-3">
+                <div className="p-3 space-y-4">
+                  {/* Final Grading Explanation Section */}
+                  {jsonData.finalGradingExplanation && (
+                    <div className="bg-purple-50 p-3 rounded-md border border-purple-100">
+                      <h5 className="text-sm font-medium text-purple-800 mb-2 flex items-center gap-1.5">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                          <path d="m9 12 2 2 4-4" />
+                        </svg>
+                        Final Grading Explanation
+                      </h5>
+                      <p className="text-sm text-purple-700 whitespace-pre-line">
+                        {jsonData.finalGradingExplanation}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Implementation Status Section */}
                   {jsonData.implementationStatus && (
-                    <div className="mb-4">
+                    <div>
                       <div className="flex items-center justify-between mb-2">
                         <h5 className="text-sm font-medium text-slate-700">
                           Implementation Status
@@ -397,9 +424,10 @@ export const FeedbackDisplay: FC<FeedbackDisplayProps> = ({ feedback }) => {
                     </div>
                   )}
 
-                  {/* If no implementation status or manual grading result, show the JSON formatted */}
+                  {/* Fallback JSON Display */}
                   {!jsonData.implementationStatus &&
-                    !jsonData.manualGradingResult && (
+                    !jsonData.manualGradingResult &&
+                    !jsonData.finalGradingExplanation && (
                       <pre className="text-xs overflow-x-auto p-2 bg-slate-100 rounded">
                         {JSON.stringify(jsonData, null, 2)}
                       </pre>
