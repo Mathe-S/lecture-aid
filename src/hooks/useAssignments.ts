@@ -204,3 +204,29 @@ export function useUploadSingleGradeJson() {
     },
   });
 }
+
+// Admin submit an assignment on behalf of a student
+export function useAdminSubmitAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // Use the existing submitAssignment API function
+    // The API route handles the authorization logic
+    mutationFn: (
+      submission: Omit<
+        AssignmentSubmission,
+        "id" | "submittedAt" | "updatedAt" | "feedback" | "grade"
+      >
+    ) => assignmentApi.submitAssignment(submission),
+    onSuccess: (_, variables) => {
+      // Invalidate submissions for the specific assignment
+      queryClient.invalidateQueries({
+        queryKey: assignmentKeys.submissions(variables.assignmentId),
+      });
+      // Optionally invalidate details if needed
+      // queryClient.invalidateQueries({
+      //   queryKey: assignmentKeys.details(variables.assignmentId),
+      // });
+    },
+  });
+}
