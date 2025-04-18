@@ -25,7 +25,7 @@ import {
   CheckSquare,
   Trophy,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import NProgress from "nprogress";
 import { ActiveUsers } from "./ActiveUsers";
 import { AdminActiveUsersList } from "./AdminActiveUsersList";
@@ -33,6 +33,7 @@ import { AdminActiveUsersList } from "./AdminActiveUsersList";
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Get avatar URL and initials from user metadata
   const avatarUrl = user?.user_metadata?.avatar_url || "";
@@ -129,25 +130,35 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link
               href={user ? "/dashboard" : "/"}
-              className="text-xl font-bold text-blue-600 cursor-pointer"
+              className="text-xl font-bold text-blue-600 cursor-pointer mr-4"
             >
               Lecture+
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:ml-10 md:flex md:space-x-8">
+            {/* Desktop Navigation with Highlighting */}
+            <nav className="hidden md:ml-6 md:flex md:space-x-1">
               {navItems
                 .filter((item) => item.showWhen)
-                .map((item, index) => (
-                  <Link
-                    key={index}
-                    href={item.href}
-                    className="flex items-center text-slate-600 hover:text-blue-600 px-3 py-2 text-sm font-medium cursor-pointer"
-                  >
-                    {item.icon && <item.icon className="mr-2 h-4 w-4" />}
-                    {item.label}
-                  </Link>
-                ))}
+                .map((item, index) => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/" && pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={index}
+                      href={item.href}
+                      className={`flex items-center rounded-md px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 ease-in-out ${
+                        isActive
+                          ? "bg-blue-50 text-blue-700 font-semibold"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                      }`}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                      {item.label}
+                    </Link>
+                  );
+                })}
             </nav>
           </div>
 
@@ -212,7 +223,7 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Mobile Menu */}
+            {/* Mobile Menu with Highlighting */}
             <div className="md:hidden ml-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -223,15 +234,23 @@ export default function Navbar() {
                 <DropdownMenuContent align="end">
                   {navItems
                     .filter((item) => item.showWhen)
-                    .map((item, index) => (
-                      <DropdownMenuItem
-                        key={index}
-                        onClick={() => navigateTo(item.href)}
-                        className="cursor-pointer"
-                      >
-                        {item.label}
-                      </DropdownMenuItem>
-                    ))}
+                    .map((item, index) => {
+                      const isActive =
+                        pathname === item.href ||
+                        (item.href !== "/" && pathname.startsWith(item.href));
+                      return (
+                        <DropdownMenuItem
+                          key={index}
+                          onClick={() => navigateTo(item.href)}
+                          className={`cursor-pointer ${
+                            isActive ? "bg-slate-100 font-medium" : ""
+                          }`}
+                          aria-current={isActive ? "page" : undefined}
+                        >
+                          {item.label}
+                        </DropdownMenuItem>
+                      );
+                    })}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

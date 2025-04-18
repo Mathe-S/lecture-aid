@@ -20,7 +20,6 @@ import {
   Loader2,
   BarChart,
   RefreshCw,
-  Users,
   Code,
   Github,
   ExternalLink,
@@ -42,6 +41,7 @@ import {
 import { useMidtermGroupDetails } from "@/hooks/useMidtermGroups";
 import { useQueryClient } from "@tanstack/react-query";
 import { midtermKeys } from "@/hooks/useMidtermGroups";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function transformDataForVisualization(
   group: any
@@ -145,62 +145,180 @@ export default function RepositoryVisualizationPage() {
         svg.removeChild(svg.firstChild);
       }
 
-      const trunk = document.createElementNS(
+      const width = 500;
+      const height = 500;
+      const centerX = width / 2;
+      const trunkBaseY = height - 50;
+      const trunkHeight = 80;
+      const trunkTopY = trunkBaseY - trunkHeight;
+      const trunkWidth = 25;
+
+      const branchColor = "#A0522D";
+      const leafColors = [
+        "#8FBC8F",
+        "#98FB98",
+        "#90EE90",
+        "#3CB371",
+        "#2E8B57",
+      ];
+      const textFill = "#4A5568";
+      const minBranchLength = 60;
+      const maxBranchLengthAddition = 120;
+
+      const trunkPath = document.createElementNS(
         "http://www.w3.org/2000/svg",
-        "rect"
+        "path"
       );
-      trunk.setAttribute("x", "240");
-      trunk.setAttribute("y", "400");
-      trunk.setAttribute("width", "20");
-      trunk.setAttribute("height", "100");
-      trunk.setAttribute("fill", "#8B4513");
-      svg.appendChild(trunk);
+      trunkPath.setAttribute(
+        "d",
+        `M ${centerX - trunkWidth / 2} ${trunkBaseY} 
+          Q ${centerX - trunkWidth / 4} ${trunkBaseY - trunkHeight / 2}, ${
+          centerX - trunkWidth / 6
+        } ${trunkTopY} 
+          L ${centerX + trunkWidth / 6} ${trunkTopY} 
+          Q ${centerX + trunkWidth / 4} ${trunkBaseY - trunkHeight / 2}, ${
+          centerX + trunkWidth / 2
+        } ${trunkBaseY} 
+          Z`
+      );
+      trunkPath.setAttribute("fill", branchColor);
+      trunkPath.setAttribute("filter", "url(#trunk-texture)");
+      svg.appendChild(trunkPath);
+
+      const defs = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "defs"
+      );
+      const filter = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "filter"
+      );
+      filter.setAttribute("id", "trunk-texture");
+      const turbulence = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "feTurbulence"
+      );
+      turbulence.setAttribute("type", "fractalNoise");
+      turbulence.setAttribute("baseFrequency", "0.02 0.05");
+      turbulence.setAttribute("numOctaves", "2");
+      turbulence.setAttribute("result", "noise");
+      filter.appendChild(turbulence);
+      const displace = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "feDisplacementMap"
+      );
+      displace.setAttribute("in", "SourceGraphic");
+      displace.setAttribute("in2", "noise");
+      displace.setAttribute("scale", "3");
+      displace.setAttribute("xChannelSelector", "R");
+      displace.setAttribute("yChannelSelector", "G");
+      filter.appendChild(displace);
+      defs.appendChild(filter);
+      svg.appendChild(defs);
 
       const contributors = visData.contributors.data;
+      if (!contributors || contributors.length === 0) return;
+
       const maxContributions = Math.max(
         1,
-        ...contributors.map((c) => c.contributions)
+        ...contributors.map((c) => c.contributions || 0)
       );
+      const totalContributors = contributors.length;
+      const angleSpread = Math.PI * 0.8;
+      const startAngle = -Math.PI / 2 - angleSpread / 2;
 
       contributors.forEach((contributor, index) => {
-        const angle =
-          (Math.PI / (contributors.length + 1)) * (index + 1) - Math.PI / 2;
+        const contributionRatio =
+          maxContributions > 0
+            ? (contributor.contributions || 0) / maxContributions
+            : 0;
         const length =
-          50 + (contributor.contributions / maxContributions) * 150;
+          minBranchLength + contributionRatio * maxBranchLengthAddition;
+        const angle =
+          startAngle + (angleSpread / (totalContributors + 1)) * (index + 1);
+        const endX = centerX + Math.cos(angle) * length;
+        const endY = trunkTopY + Math.sin(angle) * length;
+        const controlX = centerX + Math.cos(angle) * length * 0.5;
+        const controlY = trunkTopY + Math.sin(angle) * length * 0.5;
+        const branchWidthStart = 12;
+        const branchWidthEnd = 4;
 
         const branch = document.createElementNS(
           "http://www.w3.org/2000/svg",
-          "line"
+          "path"
         );
-        branch.setAttribute("x1", "250");
-        branch.setAttribute("y1", "400");
-        branch.setAttribute("x2", `${250 + Math.cos(angle) * length}`);
-        branch.setAttribute("y2", `${400 - Math.sin(angle) * length}`);
-        branch.setAttribute("stroke", "#8B4513");
-        branch.setAttribute("stroke-width", "10");
+        const anglePerp = angle + Math.PI / 2;
+        const startOffsetX = (Math.cos(anglePerp) * branchWidthStart) / 2;
+        const startOffsetY = (Math.sin(anglePerp) * branchWidthStart) / 2;
+        const endOffsetX = (Math.cos(anglePerp) * branchWidthEnd) / 2;
+        const endOffsetY = (Math.sin(anglePerp) * branchWidthEnd) / 2;
+
+        branch.setAttribute(
+          "d",
+          `M ${centerX - startOffsetX} ${trunkTopY - startOffsetY} 
+             Q ${controlX} ${controlY}, ${endX - endOffsetX} ${
+            endY - endOffsetY
+          } 
+             L ${endX + endOffsetX} ${endY + endOffsetY} 
+             Q ${controlX} ${controlY}, ${centerX + startOffsetX} ${
+            trunkTopY + startOffsetY
+          } 
+             Z`
+        );
+        branch.setAttribute("fill", branchColor);
+        branch.setAttribute("stroke", "#663300");
+        branch.setAttribute("stroke-width", "0.5");
+
+        const branchTitle = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "title"
+        );
+        branchTitle.textContent = `${
+          contributor.displayName || contributor.username
+        }: ${contributor.contributions} commits`;
+        branch.appendChild(branchTitle);
+
         svg.appendChild(branch);
 
         const commits = visData.commits.byAuthor[contributor.username] || 0;
-        for (let i = 0; i < Math.min(commits, 30); i++) {
-          const leafSize = 4 + Math.random() * 6;
-          const leafDistance = 30 + Math.random() * (length - 40);
-          const leafAngle = angle + (Math.random() * 0.4 - 0.2);
+        const leafCount = Math.min(commits * 2, 60);
+
+        for (let i = 0; i < leafCount; i++) {
+          const leafSizeX = 3 + Math.random() * 4;
+          const leafSizeY = leafSizeX * (0.7 + Math.random() * 0.6);
+          const leafDistanceRatio = 0.3 + Math.random() * 0.7;
+          const leafDist = length * leafDistanceRatio;
+          const placementAngle = angle + (Math.random() - 0.5) * 0.5;
+          const leafX = centerX + Math.cos(placementAngle) * leafDist;
+          const leafY = trunkTopY + Math.sin(placementAngle) * leafDist;
+          const leafRotation = Math.random() * 360;
 
           const leaf = document.createElementNS(
             "http://www.w3.org/2000/svg",
-            "circle"
+            "ellipse"
           );
+          leaf.setAttribute("cx", `${leafX}`);
+          leaf.setAttribute("cy", `${leafY}`);
+          leaf.setAttribute("rx", `${leafSizeX}`);
+          leaf.setAttribute("ry", `${leafSizeY}`);
+          leaf.setAttribute("fill", leafColors[i % leafColors.length]);
+          leaf.setAttribute("fill-opacity", `${0.6 + Math.random() * 0.4}`);
           leaf.setAttribute(
-            "cx",
-            `${250 + Math.cos(leafAngle) * leafDistance}`
+            "transform",
+            `rotate(${leafRotation} ${leafX} ${leafY})`
           );
-          leaf.setAttribute(
-            "cy",
-            `${400 - Math.sin(leafAngle) * leafDistance}`
+          leaf.setAttribute("stroke", "#2E8B57");
+          leaf.setAttribute("stroke-width", "0.3");
+
+          const leafTitle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "title"
           );
-          leaf.setAttribute("r", `${leafSize}`);
-          leaf.setAttribute("fill", `hsl(${100 + index * 50}, 70%, 60%)`);
-          leaf.setAttribute("opacity", "0.8");
+          leafTitle.textContent = `${commits} commits by ${
+            contributor.displayName || contributor.username
+          }`;
+          leaf.appendChild(leafTitle);
+
           svg.appendChild(leaf);
         }
 
@@ -208,17 +326,23 @@ export default function RepositoryVisualizationPage() {
           "http://www.w3.org/2000/svg",
           "text"
         );
-        const textX = 250 + Math.cos(angle) * (length + 15);
-        const textY = 400 - Math.sin(angle) * (length + 15);
+        const textOffset = 15;
+        const textX = centerX + Math.cos(angle) * (length + textOffset);
+        const textY = trunkTopY + Math.sin(angle) * (length + textOffset);
         text.setAttribute("x", `${textX}`);
         text.setAttribute("y", `${textY}`);
         text.setAttribute(
           "text-anchor",
-          Math.abs(angle) < 0.1 ? "middle" : angle < 0 ? "start" : "end"
+          Math.abs(angle + Math.PI / 2) < 0.1
+            ? "middle"
+            : angle + Math.PI / 2 < 0
+            ? "start"
+            : "end"
         );
         text.setAttribute("dy", "0.3em");
-        text.setAttribute("fill", "#333");
-        text.setAttribute("font-size", "10px");
+        text.setAttribute("fill", textFill);
+        text.setAttribute("font-size", "11px");
+        text.setAttribute("font-weight", "500");
         text.textContent = contributor.displayName || contributor.username;
         svg.appendChild(text);
       });
@@ -227,11 +351,12 @@ export default function RepositoryVisualizationPage() {
         "http://www.w3.org/2000/svg",
         "text"
       );
-      title.setAttribute("x", "250");
-      title.setAttribute("y", "30");
+      title.setAttribute("x", `${centerX}`);
+      title.setAttribute("y", "35");
       title.setAttribute("text-anchor", "middle");
-      title.setAttribute("font-size", "16");
+      title.setAttribute("font-size", "18");
       title.setAttribute("font-weight", "600");
+      title.setAttribute("fill", textFill);
       title.textContent = `Contribution Tree: ${group?.name || "Group"}`;
       svg.appendChild(title);
     },
@@ -426,7 +551,7 @@ export default function RepositoryVisualizationPage() {
                   </TabsList>
 
                   <TabsContent value="tree" className="space-y-4">
-                    <div className="aspect-video w-full rounded-md border bg-white p-4 flex items-center justify-center overflow-hidden">
+                    <div className="aspect-[4/3] w-full rounded-md border bg-gradient-to-b from-sky-50 to-white p-4 flex items-center justify-center overflow-hidden">
                       <svg
                         ref={svgRef}
                         width="100%"
@@ -438,8 +563,8 @@ export default function RepositoryVisualizationPage() {
                     </div>
                     <div className="text-sm text-center text-muted-foreground">
                       <p>
-                        Contribution tree visualization (placeholder). Branch
-                        size reflects total commits.
+                        Contribution tree: Branch length scales with commit
+                        count. Hover for details.
                       </p>
                     </div>
                   </TabsContent>
@@ -620,7 +745,15 @@ export default function RepositoryVisualizationPage() {
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                                      <Users className="h-6 w-6 text-slate-400" />
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarImage
+                                          src={contributor.avatar}
+                                          alt={contributor.displayName}
+                                        />
+                                        <AvatarFallback>
+                                          {contributor.displayName}
+                                        </AvatarFallback>
+                                      </Avatar>
                                     </div>
                                     <div>
                                       <div className="font-medium">
