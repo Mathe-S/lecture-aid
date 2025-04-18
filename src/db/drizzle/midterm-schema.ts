@@ -8,6 +8,7 @@ import {
   unique,
   jsonb,
   pgPolicy,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { profiles, users } from "./schema";
@@ -336,7 +337,42 @@ export type MidtermGroupWithMembers = MidtermGroup & {
   members: (MidtermGroupMember & { profile: Profile })[];
 };
 
-export type MidtermGroupWithDetails = MidtermGroupWithMembers & {
-  metrics: MidtermRepositoryMetric;
+export type MidtermTask = typeof midtermTasks.$inferSelect;
+
+// Update MidtermGroupWithDetails to potentially include tasks
+export interface MidtermGroupWithDetails extends MidtermGroupWithMembers {
+  metrics: MidtermRepositoryMetric | null;
   contributions: (MidtermContribution & { profile: Profile })[];
-};
+  tasks?: MidtermTask[]; // Add tasks
+}
+
+// Interface for progress calculation
+export interface MidtermGroupWithProgress extends MidtermGroupWithMembers {
+  taskProgress?: {
+    total: number;
+    checked: number;
+  };
+}
+
+// --- Midterm Task Management ---
+
+export const midtermTasks = pgTable(
+  "midterm_tasks",
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => midtermGroups.id, { onDelete: "cascade" }),
+    phase: text("phase").notNull(),
+    step: text("step").notNull(),
+    taskText: text("task_text").notNull(),
+    isChecked: boolean("is_checked").default(false).notNull(),
+    orderIndex: integer("order_index").notNull(), // To maintain order within steps
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow(),
+  }
+  // Optional: Add index on groupId for faster lookups
+  // (table) => ({
+  //   groupIdx: index("midterm_tasks_group_id_idx").on(table.groupId),
+  // })
+);

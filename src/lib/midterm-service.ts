@@ -9,8 +9,11 @@ import {
   MidtermGroup,
   MidtermGroupWithMembers,
   MidtermGroupWithDetails,
+  MidtermGroupWithProgress,
   MidtermContribution,
   MidtermEvaluation,
+  midtermTasks,
+  MidtermTask,
 } from "@/db/drizzle/midterm-schema";
 import { profiles, Profile } from "@/db/drizzle/schema";
 import { Octokit } from "@octokit/rest";
@@ -59,6 +62,203 @@ export interface RepositoryVisualizationData {
       additions: number;
       deletions: number;
     }[];
+  };
+}
+
+/**
+ * Parses TODO markdown into structured tasks.
+ * Forgivingly handles lines starting with #, ##, or - [ ]
+ */
+interface ParsedTask {
+  phase: string;
+  step: string;
+  taskText: string;
+  isChecked: boolean;
+}
+function parseTodoMarkdown(markdown: string): ParsedTask[] {
+  const lines = markdown.split("\n");
+  const tasks: ParsedTask[] = [];
+  let currentPhase = "Phase Unknown";
+  let currentStep = "Step Unknown";
+
+  lines.forEach((line) => {
+    const trimmedLine = line.trim();
+
+    const phaseMatch = trimmedLine.match(/^#\s+(.*)/);
+    if (phaseMatch) {
+      currentPhase = phaseMatch[1].trim() || "Phase Unknown";
+      currentStep = "Step Unknown"; // Reset step when phase changes
+      return; // Move to next line
+    }
+
+    const stepMatch = trimmedLine.match(/^##\s+(.*)/);
+    if (stepMatch) {
+      currentStep = stepMatch[1].trim() || "Step Unknown";
+      return; // Move to next line
+    }
+
+    const taskMatch = trimmedLine.match(/^-\s+\[([x ])\]\s+(.*)/i);
+    if (taskMatch) {
+      tasks.push({
+        phase: currentPhase,
+        step: currentStep,
+        isChecked: taskMatch[1].toLowerCase() === "x",
+        taskText: taskMatch[2].trim() || "Untitled Task",
+      });
+    }
+  });
+
+  return tasks;
+}
+
+/**
+ * Replaces all tasks for a group with a new set.
+ */
+async function replaceGroupTasks(
+  groupId: string,
+  tasks: ParsedTask[]
+): Promise<void> {
+  // Use a transaction to ensure atomicity
+  await db.transaction(async (tx) => {
+    // Delete existing tasks
+    await tx.delete(midtermTasks).where(eq(midtermTasks.groupId, groupId));
+
+    // Insert new tasks if any
+    if (tasks.length > 0) {
+      const tasksToInsert = tasks.map((task, index) => ({
+        groupId,
+        phase: task.phase,
+        step: task.step,
+        taskText: task.taskText,
+        isChecked: task.isChecked,
+        orderIndex: index, // Use array index for ordering
+      }));
+      await tx.insert(midtermTasks).values(tasksToInsert);
+    }
+  });
+}
+
+/**
+ * Updates the checked status of a single task.
+ */
+async function updateTaskStatus(
+  taskId: string,
+  isChecked: boolean
+): Promise<MidtermTask | null> {
+  const [updatedTask] = await db
+    .update(midtermTasks)
+    .set({
+      isChecked,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(midtermTasks.id, taskId))
+    .returning();
+
+  return updatedTask || null;
+}
+
+/**
+ * Gets a single task by its ID.
+ */
+async function getTaskById(taskId: string): Promise<MidtermTask | null> {
+  const [task] = await db
+    .select()
+    .from(midtermTasks)
+    .where(eq(midtermTasks.id, taskId));
+  return task || null;
+}
+
+/**
+ * Gets all tasks for a specific group, ordered.
+ */
+async function getTasksByGroupId(groupId: string): Promise<MidtermTask[]> {
+  return db
+    .select()
+    .from(midtermTasks)
+    .where(eq(midtermTasks.groupId, groupId))
+    .orderBy(midtermTasks.orderIndex);
+}
+
+/**
+ * Checks if a user is the owner of a group.
+ */
+async function isGroupOwner(groupId: string, userId: string): Promise<boolean> {
+  const [member] = await db
+    .select()
+    .from(midtermGroupMembers)
+    .where(
+      and(
+        eq(midtermGroupMembers.groupId, groupId),
+        eq(midtermGroupMembers.userId, userId),
+        eq(midtermGroupMembers.role, "owner")
+      )
+    );
+  return !!member;
+}
+
+/**
+ * Get all midterm groups with their members AND task progress
+ */
+export async function getMidtermGroupsWithProgress(): Promise<
+  MidtermGroupWithProgress[]
+> {
+  const groups = await db
+    .select()
+    .from(midtermGroups)
+    .orderBy(midtermGroups.createdAt);
+
+  const groupsWithDetails: MidtermGroupWithProgress[] = [];
+
+  for (const group of groups) {
+    // Get members
+    const members = await db
+      .select()
+      .from(midtermGroupMembers)
+      .where(eq(midtermGroupMembers.groupId, group.id))
+      .innerJoin(profiles, eq(midtermGroupMembers.userId, profiles.id));
+
+    // Get task counts
+    const taskCounts = await db
+      .select({
+        total: sql<number>`count(*)`.mapWith(Number),
+        checked: sql<number>`count(*) filter (where is_checked = true)`.mapWith(
+          Number
+        ),
+      })
+      .from(midtermTasks)
+      .where(eq(midtermTasks.groupId, group.id));
+
+    groupsWithDetails.push({
+      ...group,
+      members: members.map((m) => ({
+        ...m.midterm_group_members,
+        profile: m.profiles,
+      })),
+      taskProgress: taskCounts[0] || { total: 0, checked: 0 },
+    });
+  }
+
+  return groupsWithDetails;
+}
+
+/**
+ * Get a specific midterm group with all its details including tasks
+ */
+export async function getMidtermGroupDetailsWithTasks(
+  groupId: string
+): Promise<MidtermGroupWithDetails | null> {
+  const groupDetails = await getMidtermGroupDetails(groupId);
+
+  if (!groupDetails) {
+    return null;
+  }
+
+  // Get tasks
+  const tasks = await getTasksByGroupId(groupId);
+
+  return {
+    ...groupDetails,
+    tasks,
   };
 }
 
@@ -862,3 +1062,13 @@ export async function isGroupMember(
 
   return memberCount[0]?.count > 0;
 }
+
+// --- Helper Functions Exported ---
+export {
+  parseTodoMarkdown,
+  replaceGroupTasks,
+  updateTaskStatus,
+  getTaskById,
+  getTasksByGroupId,
+  isGroupOwner,
+};
