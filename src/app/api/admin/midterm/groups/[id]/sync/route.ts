@@ -1,8 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { supabaseForServer } from "@/utils/supabase/server";
-import { getUserRole } from "@/lib/userService"; // Assuming this exists
-import { syncGitHubRepositoryData } from "@/lib/midterm-service"; // Import the sync function
-// import { triggerRepositorySync } from "@/lib/github-service"; // Hypothetical service function
+import { getUserRole } from "@/lib/userService";
+import { syncGitHubRepositoryData, isGroupOwner } from "@/lib/midterm-service";
 
 export async function POST(
   request: NextRequest,
@@ -18,18 +17,42 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Authorization: Admin only
+  // Authorization: Admin OR Owner of this specific group
   const role = await getUserRole(session.user.id);
-  if (role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const isAdmin = role === "admin";
+  let isOwnerOfThisGroup = false;
+
+  if (!isAdmin) {
+    // If not admin, check if they are the owner of THIS group
+    try {
+      isOwnerOfThisGroup = await isGroupOwner(groupId, session.user.id);
+    } catch (err) {
+      console.error(
+        `Error checking group ownership for user ${session.user.id} and group ${groupId}:`,
+        err
+      );
+      // Treat error as unauthorized for safety
+      return NextResponse.json(
+        { error: "Failed to verify ownership" },
+        { status: 500 }
+      );
+    }
+  }
+
+  // Now check if authorized
+  if (!isAdmin && !isOwnerOfThisGroup) {
+    console.warn(
+      `[Sync Auth Failed] User ${session.user.id} (role: ${role}) is not admin and not owner of group ${groupId}.`
+    );
+    return NextResponse.json(
+      { error: "Forbidden: Admin or Group Owner required" },
+      { status: 403 }
+    );
   }
 
   try {
-    // Call the actual sync logic service function
-    console.log(`Admin sync requested for group: ${groupId}`);
-    await syncGitHubRepositoryData(groupId);
-
-    // Remove simulation: await new Promise(resolve => setTimeout(resolve, 1500));
+    // Pass the session's provider_token if available, as the service function might need it
+    await syncGitHubRepositoryData(groupId, session.provider_token);
 
     return NextResponse.json({ message: "Sync initiated successfully" });
   } catch (error) {

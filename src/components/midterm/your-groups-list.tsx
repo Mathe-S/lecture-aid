@@ -47,15 +47,12 @@ interface YourGroupsListProps {
   handleUpdateGroup: (
     groupId: string,
     name: string,
-    description: string
+    description: string,
+    repositoryUrl?: string
   ) => Promise<void>;
   isUpdatingGroup: boolean;
 
   // Group Card Action Handlers & Loading States
-  handleConnectRepo: (groupId: string, repoUrl: string) => Promise<void>;
-  isConnectingRepo: boolean;
-  handleUpdateRepo: (groupId: string, repoUrl: string) => Promise<void>;
-  isUpdatingRepoRepo: boolean;
   handleLeaveGroup: (groupId: string) => Promise<void>;
   isLeavingGroup: boolean;
   handleDeleteGroup: (groupId: string) => Promise<void>;
@@ -92,10 +89,6 @@ export function YourGroupsList({
   setSelectedGroupForEdit,
   handleUpdateGroup,
   isUpdatingGroup,
-  handleConnectRepo,
-  isConnectingRepo,
-  handleUpdateRepo,
-  isUpdatingRepoRepo,
   handleLeaveGroup,
   isLeavingGroup,
   handleDeleteGroup,
@@ -205,10 +198,10 @@ export function YourGroupsList({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold tracking-tight">
-          Your Project Groups
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold tracking-tight flex items-center">
+          <Users className="mr-2 h-5 w-5" /> Your Groups
         </h2>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -278,50 +271,33 @@ export function YourGroupsList({
         </Dialog>
       </div>
 
-      {isLoading && <GroupsLoadingSkeleton count={1} />}
+      {isLoading && <GroupsLoadingSkeleton />}
 
       {error && (
-        <Card className="mt-4">
-          <CardContent className="p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-sm text-destructive">
+                Error loading groups: {error.message}
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-red-700">
-              Error Loading Groups
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              There was a problem fetching your groups. Please try again later.
-            </p>
           </CardContent>
         </Card>
       )}
 
       {!isLoading && !error && userGroups.length === 0 && (
-        <Card className="mt-4">
-          <CardContent className="p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-            <h3 className="text-lg font-medium">No Groups Yet</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              You haven&apos;t created or joined any project groups yet.
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              You haven&apos;t joined or created any groups yet.
             </p>
-            <Button
-              className="mt-4"
-              onClick={() => {
-                setNewGroupName("");
-                setNewGroupDescription("");
-                setShowCreateDialog(true);
-              }}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Your First Group
-            </Button>
           </CardContent>
         </Card>
       )}
 
       {!isLoading && !error && userGroups.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {userGroups.map((group) => (
             <GroupCard
               key={group.id}
@@ -330,16 +306,14 @@ export function YourGroupsList({
               role={role}
               type="user"
               onEditClick={handleEditClick}
-              onConnectRepo={handleConnectRepo}
-              onUpdateRepo={handleUpdateRepo}
+              onUpdateGroup={handleUpdateGroup}
+              isUpdatingGroup={isUpdatingGroup}
               onLeaveGroup={handleLeaveGroup}
-              onDeleteGroup={handleDeleteGroup}
-              isConnectingRepo={isConnectingRepo}
-              isUpdatingRepo={isUpdatingRepoRepo}
               isLeavingGroup={isLeavingGroup}
+              onDeleteGroup={handleDeleteGroup}
               isDeletingGroup={isDeletingGroup}
-              onJoinGroup={async () => {}}
               isJoiningGroup={false}
+              onJoinGroup={async () => {}}
             />
           ))}
         </div>

@@ -47,29 +47,31 @@ import {
 } from "lucide-react";
 import { MidtermGroupWithMembers } from "@/db/drizzle/midterm-schema";
 import type { User } from "@supabase/supabase-js";
-
-// Define needed types directly or infer from hook
-type UserRole = "admin" | "lecturer" | "student" | null;
+import { UserRole } from "@/types/general";
 
 interface GroupCardProps {
   group: MidtermGroupWithMembers & {
     taskProgress?: { total?: number; checked?: number };
-  }; // Add taskProgress to type inline for now
-  user: User | null; // Use imported User type or inferred type
-  role: UserRole; // Use defined role type or inferred type
+  };
+  user: User | null; // Keep user object
+  role: UserRole; // Keep role
   type: "user" | "available";
 
   // Callbacks for actions
   onEditClick: (group: MidtermGroupWithMembers) => void;
-  onConnectRepo: (groupId: string, repoUrl: string) => Promise<void>;
-  onUpdateRepo: (groupId: string, repoUrl: string) => Promise<void>;
+  onUpdateGroup: (
+    groupId: string,
+    name: string,
+    description: string,
+    repositoryUrl?: string
+  ) => Promise<void>;
+  isUpdatingGroup: boolean;
+
   onLeaveGroup: (groupId: string) => Promise<void>;
   onDeleteGroup: (groupId: string) => Promise<void>;
   onJoinGroup: (groupId: string) => Promise<void>;
 
   // Loading states
-  isConnectingRepo: boolean;
-  isUpdatingRepo: boolean;
   isLeavingGroup: boolean;
   isDeletingGroup: boolean;
   isJoiningGroup: boolean;
@@ -81,13 +83,11 @@ export function GroupCard({
   role,
   type,
   onEditClick,
-  onConnectRepo,
-  onUpdateRepo,
+  onUpdateGroup,
+  isUpdatingGroup,
   onLeaveGroup,
   onDeleteGroup,
   onJoinGroup,
-  isConnectingRepo,
-  isUpdatingRepo,
   isLeavingGroup,
   isDeletingGroup,
   isJoiningGroup,
@@ -114,14 +114,20 @@ export function GroupCard({
 
   // Action handlers
   const handleConnectSubmit = () => {
-    onConnectRepo(group.id, repositoryUrl).then(() =>
-      setShowConnectDialog(false)
-    );
+    onUpdateGroup(
+      group.id,
+      group.name,
+      group.description || "",
+      repositoryUrl
+    ).then(() => setShowConnectDialog(false));
   };
   const handleUpdateSubmit = () => {
-    onUpdateRepo(group.id, repositoryUrl).then(() =>
-      setShowUpdateDialog(false)
-    );
+    onUpdateGroup(
+      group.id,
+      group.name,
+      group.description || "",
+      repositoryUrl
+    ).then(() => setShowUpdateDialog(false));
   };
   const handleLeaveSubmit = () => {
     onLeaveGroup(group.id).then(() => setShowLeaveAlert(false));
@@ -247,11 +253,12 @@ export function GroupCard({
                         <Button
                           onClick={handleUpdateSubmit}
                           disabled={
-                            isUpdatingRepo ||
+                            isUpdatingGroup ||
+                            !repositoryUrl ||
                             !repositoryUrl.includes("github.com")
                           }
                         >
-                          {isUpdatingRepo ? (
+                          {isUpdatingGroup ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Updating...
@@ -265,10 +272,8 @@ export function GroupCard({
                   </Dialog>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    No repository connected
-                  </span>
+                <div className="flex justify-between items-center p-3 bg-amber-50 text-amber-800 rounded-md">
+                  <p className="text-sm">No GitHub repository connected.</p>
                   {/* Connect Repo Dialog */}
                   <Dialog
                     open={showConnectDialog}
@@ -276,19 +281,17 @@ export function GroupCard({
                   >
                     <DialogTrigger asChild>
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setRepositoryUrl("")}
+                        variant="ghost"
+                        className="text-amber-800 hover:text-amber-900 h-auto p-0 text-sm"
                       >
-                        Connect
+                        Connect Now
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Connect GitHub Repository</DialogTitle>
                         <DialogDescription>
-                          Connect your GitHub repository to track progress and
-                          visualize contributions.
+                          Connect your GitHub repository to track progress.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-2 py-4">
@@ -315,11 +318,12 @@ export function GroupCard({
                         <Button
                           onClick={handleConnectSubmit}
                           disabled={
-                            isConnectingRepo ||
+                            isUpdatingGroup ||
+                            !repositoryUrl ||
                             !repositoryUrl.includes("github.com")
                           }
                         >
-                          {isConnectingRepo ? (
+                          {isUpdatingGroup ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Connecting...

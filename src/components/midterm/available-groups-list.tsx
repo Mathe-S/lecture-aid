@@ -72,14 +72,12 @@ export function AvailableGroupsList({
               isJoiningGroup={isJoiningGroup}
               // Provide dummy handlers/state for actions not relevant to 'available' cards
               onEditClick={() => {}}
-              onConnectRepo={async () => {}}
-              onUpdateRepo={async () => {}}
               onLeaveGroup={async () => {}}
               onDeleteGroup={async () => {}}
-              isConnectingRepo={false}
-              isUpdatingRepo={false}
               isLeavingGroup={false}
               isDeletingGroup={false}
+              onUpdateGroup={async () => {}}
+              isUpdatingGroup={false}
             />
           ))}
         </div>

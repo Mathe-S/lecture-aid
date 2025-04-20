@@ -4,8 +4,7 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
   useMidtermGroupDetails,
-  useConnectRepository,
-  useUpdateRepository,
+  useUpdateMidtermGroup,
   useLeaveGroup,
   useUploadTodo,
 } from "@/hooks/useMidtermGroups";
@@ -69,45 +68,57 @@ export default function GroupDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: group, isLoading: isLoadingGroup } = useMidtermGroupDetails(id);
-  const { mutateAsync: connectRepository, isPending: isConnecting } =
-    useConnectRepository();
-  const { mutateAsync: updateRepository, isPending: isUpdating } =
-    useUpdateRepository();
+  const { mutateAsync: updateGroup, isPending: isUpdatingGroup } =
+    useUpdateMidtermGroup();
   const { mutateAsync: leaveGroup, isPending: isLeaving } = useLeaveGroup();
   const { mutateAsync: uploadTodo, isPending: isUploadingTodo } =
     useUploadTodo();
 
   const handleConnectRepository = async () => {
     if (!repositoryUrl.trim() || !repositoryUrl.includes("github.com")) {
+      toast.error("Please provide a valid GitHub URL.");
       return;
     }
 
     try {
-      await connectRepository({
+      await updateGroup({
         groupId: id,
         repositoryUrl,
+        name: group?.name ?? undefined,
+        description: group?.description ?? undefined,
       });
+      toast.success("Repository connected successfully!");
       setRepositoryUrl("");
       setShowConnectDialog(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to connect repository", error);
+      toast.error(
+        `Failed to connect repository: ${error?.message || "Unknown error"}`
+      );
     }
   };
 
   const handleUpdateRepository = async () => {
     if (!repositoryUrl.trim() || !repositoryUrl.includes("github.com")) {
+      toast.error("Please provide a valid GitHub URL.");
       return;
     }
 
     try {
-      await updateRepository({
+      await updateGroup({
         groupId: id,
         repositoryUrl,
+        name: group?.name ?? undefined,
+        description: group?.description ?? undefined,
       });
+      toast.success("Repository updated successfully!");
       setRepositoryUrl("");
       setShowUpdateDialog(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update repository", error);
+      toast.error(
+        `Failed to update repository: ${error?.message || "Unknown error"}`
+      );
     }
   };
 
@@ -270,12 +281,18 @@ export default function GroupDetailPage() {
 
                   <DialogFooter>
                     <Button
+                      variant="outline"
+                      onClick={() => setShowConnectDialog(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
                       onClick={handleConnectRepository}
                       disabled={
-                        isConnecting || !repositoryUrl.includes("github.com")
+                        isUpdatingGroup || !repositoryUrl.includes("github.com")
                       }
                     >
-                      {isConnecting ? (
+                      {isUpdatingGroup ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Connecting...
@@ -342,12 +359,19 @@ export default function GroupDetailPage() {
 
                       <DialogFooter>
                         <Button
+                          variant="outline"
+                          onClick={() => setShowUpdateDialog(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
                           onClick={handleUpdateRepository}
                           disabled={
-                            isUpdating || !repositoryUrl.includes("github.com")
+                            isUpdatingGroup ||
+                            !repositoryUrl.includes("github.com")
                           }
                         >
-                          {isUpdating ? (
+                          {isUpdatingGroup ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Updating...

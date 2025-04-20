@@ -12,11 +12,10 @@ import {
   useMidtermGroups,
   useCreateMidtermGroup,
   useJoinMidtermGroup,
-  useConnectRepository,
-  useUpdateRepository,
   useLeaveGroup,
   useDeleteMidtermGroup,
   useUpdateMidtermGroup,
+  useSyncRepository,
 } from "@/hooks/useMidtermGroups";
 import {
   MidtermGroupWithMembers,
@@ -63,7 +62,6 @@ export default function MidtermPage() {
   // --- Hooks ---
   const {
     data: groups = [],
-    refetch: refetchGroups,
     isLoading: isLoadingGroups,
     error: groupsError,
   } = useMidtermGroups();
@@ -72,16 +70,13 @@ export default function MidtermPage() {
     useCreateMidtermGroup();
   const { mutateAsync: joinGroup, isPending: isJoiningGroup } =
     useJoinMidtermGroup();
-  const { mutateAsync: connectRepository, isPending: isConnectingRepo } =
-    useConnectRepository();
-  const { mutateAsync: updateRepository, isPending: isUpdatingRepo } =
-    useUpdateRepository();
   const { mutateAsync: updateGroup, isPending: isUpdatingGroup } =
     useUpdateMidtermGroup();
   const { mutateAsync: leaveGroup, isPending: isLeavingGroup } =
     useLeaveGroup();
   const { mutateAsync: deleteGroup, isPending: isDeletingGroup } =
     useDeleteMidtermGroup();
+  const { mutateAsync: syncRepository } = useSyncRepository();
 
   // --- Derived State ---
   const userGroups = groups.filter((group) =>
@@ -116,17 +111,18 @@ export default function MidtermPage() {
   const handleUpdateGroup = async (
     groupId: string,
     name: string,
-    description: string
+    description: string,
+    repositoryUrl?: string
   ): Promise<void> => {
     if (!groupId || !name.trim()) {
       toast.error("Group ID missing or Group name cannot be empty.");
       return;
     }
     try {
-      await updateGroup({ groupId, name, description });
+      await updateGroup({ groupId, name, description, repositoryUrl });
       toast.success("Group updated successfully!");
       setSelectedGroupForEdit(null);
-      refetchGroups();
+      if (repositoryUrl) await syncRepository(groupId);
     } catch (error: any) {
       toast.error(
         `Failed to update group: ${error?.message || "Unknown error"}`
@@ -141,46 +137,6 @@ export default function MidtermPage() {
       toast.success("Successfully joined group!");
     } catch (error: any) {
       console.error("Failed to join group (handler level)", error);
-    }
-  };
-
-  const handleConnectRepository = async (
-    groupId: string,
-    repoUrl: string
-  ): Promise<void> => {
-    if (!repoUrl.trim() || !repoUrl.includes("github.com")) {
-      toast.error("Please enter a valid GitHub repository URL.");
-      return;
-    }
-    try {
-      await connectRepository({ groupId, repositoryUrl: repoUrl });
-      toast.success("Repository connected successfully!");
-      refetchGroups();
-    } catch (error: any) {
-      toast.error(
-        `Failed to connect repository: ${error?.message || "Unknown error"}`
-      );
-      console.error("Failed to connect repository", error);
-    }
-  };
-
-  const handleUpdateRepository = async (
-    groupId: string,
-    repoUrl: string
-  ): Promise<void> => {
-    if (!repoUrl.trim() || !repoUrl.includes("github.com")) {
-      toast.error("Please enter a valid GitHub repository URL.");
-      return;
-    }
-    try {
-      await updateRepository({ groupId, repositoryUrl: repoUrl });
-      toast.success("Repository updated successfully!");
-      refetchGroups();
-    } catch (error: any) {
-      toast.error(
-        `Failed to update repository: ${error?.message || "Unknown error"}`
-      );
-      console.error("Failed to update repository", error);
     }
   };
 
@@ -236,10 +192,6 @@ export default function MidtermPage() {
             setSelectedGroupForEdit={setSelectedGroupForEdit}
             handleUpdateGroup={handleUpdateGroup}
             isUpdatingGroup={isUpdatingGroup}
-            handleConnectRepo={handleConnectRepository}
-            isConnectingRepo={isConnectingRepo}
-            handleUpdateRepo={handleUpdateRepository}
-            isUpdatingRepoRepo={isUpdatingRepo}
             handleLeaveGroup={handleLeaveGroup}
             isLeavingGroup={isLeavingGroup}
             handleDeleteGroup={handleDeleteGroup}

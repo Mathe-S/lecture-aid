@@ -215,87 +215,25 @@ export function useJoinMidtermGroup(): UseMutationResult<
   });
 }
 
-// Connect Repository
-// This likely needs adjustment - the mutation currently calls apiConnectRepository directly
-// Should probably call an API endpoint e.g., POST /api/midterm/groups/[id]/connect
-export function useConnectRepository(): UseMutationResult<
-  void,
-  Error,
-  { groupId: string; repositoryUrl: string },
-  unknown
-> {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ groupId, repositoryUrl }) => {
-      const response = await fetch(`/api/midterm/groups/${groupId}/connect`, {
-        // Changed endpoint
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repositoryUrl }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to connect repository");
-      }
-      // No return needed for void
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: midtermKeys.group(variables.groupId),
-      });
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-    },
-  });
-}
-
-// Update Repository
-// Similar to connect, should call an API endpoint e.g., PUT /api/midterm/groups/[id]/connect
-export function useUpdateRepository(): UseMutationResult<
-  MidtermGroup | null, // API might return updated group or just success
-  Error,
-  { groupId: string; repositoryUrl: string },
-  unknown
-> {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ groupId, repositoryUrl }) => {
-      const response = await fetch(`/api/midterm/groups/${groupId}/connect`, {
-        // Changed endpoint
-        method: "PUT", // Use PUT for update
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repositoryUrl }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to update repository");
-      }
-      return response.json(); // Assuming API returns updated group
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: midtermKeys.group(variables.groupId),
-      });
-      queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
-    },
-  });
-}
-
-// Update Group Details (Name/Description)
-// Assumes PUT /api/midterm/groups/[id]
+// Update Group Details (Name/Description/Repo URL)
 export function useUpdateMidtermGroup(): UseMutationResult<
   MidtermGroup | null,
   Error,
-  { groupId: string; name?: string; description?: string },
+  {
+    groupId: string;
+    name?: string;
+    description?: string;
+    repositoryUrl?: string;
+  },
   unknown
 > {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ groupId, name, description }) => {
+    mutationFn: async ({ groupId, name, description, repositoryUrl }) => {
       const response = await fetch(`/api/midterm/groups/${groupId}`, {
-        // Changed endpoint
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
+        body: JSON.stringify({ name, description, repositoryUrl }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

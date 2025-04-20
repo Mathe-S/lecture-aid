@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseForServer } from "@/utils/supabase/server";
 import * as midtermService from "@/lib/midterm-service";
 import { getUserRole } from "@/lib/userService";
+import { MidtermGroup } from "@/db/drizzle/midterm-schema";
 
 export async function GET(
   request: NextRequest,
@@ -97,7 +98,28 @@ export async function DELETE(
   }
 }
 
-// PUT handler for updating group name/description
+// Function to parse GitHub URL
+function parseGitHubUrl(url: string): { owner: string; name: string } | null {
+  if (!url || typeof url !== "string") return null;
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname !== "github.com") return null;
+    const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+    if (pathParts.length >= 2) {
+      return {
+        owner: pathParts[0],
+        name: pathParts[1].replace(".git", ""), // Remove .git suffix if present
+      };
+    }
+  } catch (e) {
+    console.error("Failed to parse GitHub URL:", e);
+    // Invalid URL
+    return null;
+  }
+  return null;
+}
+
+// PUT handler for updating group name/description/repositoryUrl
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -113,16 +135,41 @@ export async function PUT(
   }
 
   try {
-    const { name, description } = await request.json();
+    const { name, description, repositoryUrl } = await request.json();
 
-    if (!name || typeof name !== "string" || name.trim() === "") {
+    if (
+      name !== undefined &&
+      (typeof name !== "string" || name.trim() === "")
+    ) {
       return NextResponse.json(
-        { error: "Group name is required" },
+        { error: "Group name cannot be empty" },
         { status: 400 }
       );
     }
 
-    // Authorization Check: Admin or Owner
+    // Validate repositoryUrl if provided
+    let parsedRepo: { owner: string; name: string } | null = null;
+    if (repositoryUrl !== undefined) {
+      if (repositoryUrl === null || repositoryUrl === "") {
+        // Allowing explicit clearing of the URL
+        parsedRepo = null;
+      } else if (typeof repositoryUrl !== "string") {
+        return NextResponse.json(
+          { error: "Invalid repository URL format" },
+          { status: 400 }
+        );
+      } else {
+        parsedRepo = parseGitHubUrl(repositoryUrl);
+        if (!parsedRepo) {
+          return NextResponse.json(
+            { error: "Invalid GitHub repository URL" },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // Authorization Check: Admin or Owner (check based on current DB state)
     const groupDetails = await midtermService.getMidtermGroupDetailsWithTasks(
       groupId
     );
@@ -143,11 +190,33 @@ export async function PUT(
       );
     }
 
-    // Prepare update data (only name and description)
-    const updateData = {
-      name: name.trim(),
-      description: description || null, // Use null if empty/undefined
-    };
+    // Prepare update data - only include fields that were actually sent
+    const updateData: Partial<MidtermGroup> = {};
+    if (name !== undefined) {
+      updateData.name = name.trim();
+    }
+    if (description !== undefined) {
+      updateData.description = description || null; // Use null if empty/falsy
+    }
+    if (repositoryUrl !== undefined) {
+      if (repositoryUrl === null || repositoryUrl === "") {
+        // Explicitly clear repository fields
+        updateData.repositoryUrl = null;
+        updateData.repositoryOwner = null;
+        updateData.repositoryName = null;
+        updateData.lastSync = null; // Also clear last sync time
+      } else if (parsedRepo) {
+        updateData.repositoryUrl = repositoryUrl;
+        updateData.repositoryOwner = parsedRepo.owner;
+        updateData.repositoryName = parsedRepo.name;
+        // Note: We might want to trigger an initial sync here or soon after
+      }
+    }
+
+    // Prevent empty updates
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(groupDetails); // No changes, return current data
+    }
 
     const updatedGroup = await midtermService.updateMidtermGroup(
       groupId,
@@ -155,7 +224,29 @@ export async function PUT(
     );
 
     if (!updatedGroup) {
-      throw new Error("Update failed in service layer"); // Should not happen if auth passed
+      throw new Error(
+        "Update failed in service layer, group might not exist or DB error."
+      );
+    }
+
+    if (
+      updateData.repositoryUrl &&
+      updateData.repositoryOwner &&
+      updateData.repositoryName
+    ) {
+      console.log(
+        `Repository URL updated for group ${groupId}, attempting initial sync...`
+      );
+      // We run this without await and ignore errors for now
+      // Consider a more robust background job system for this
+      midtermService
+        .syncGitHubRepositoryData(groupId, session.provider_token)
+        .catch((err) => {
+          console.error(
+            `[Non-blocking] Initial sync failed for ${groupId} after URL update:`,
+            err
+          );
+        });
     }
 
     return NextResponse.json(updatedGroup);
