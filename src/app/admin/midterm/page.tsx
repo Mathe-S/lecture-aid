@@ -29,6 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
 import {
   GitBranch,
@@ -39,13 +40,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { MidtermGroupWithMembers } from "@/db/drizzle/midterm-schema";
+import {
+  MidtermGroupWithProgress,
+  MidtermGroupWithMembers,
+} from "@/db/drizzle/midterm-schema";
 import {
   useMidtermGroups,
   useSaveEvaluation,
   useEvaluation,
   useSyncRepository,
+  useMidtermGroupDetails,
 } from "@/hooks/useMidtermGroups";
+import { MidtermTodoList } from "@/components/midterm/MidtermTodoList";
 
 // Default evaluation state
 const defaultEvaluationState = {
@@ -68,6 +74,9 @@ export default function MidtermAdminPage() {
   } | null>(null);
   const [evaluation, setEvaluation] = useState(defaultEvaluationState);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewingTasksGroupId, setViewingTasksGroupId] = useState<string | null>(
+    null
+  );
 
   // --- Fetching Data ---
   const { data: groups = [], isLoading: isLoadingGroups } = useMidtermGroups();
@@ -114,10 +123,10 @@ export default function MidtermAdminPage() {
 
   const openEvaluationDialog = useCallback(
     (
-      group: MidtermGroupWithMembers,
+      group: MidtermGroupWithProgress,
       member: { userId: string; profile: { fullName: string | null } }
     ) => {
-      setSelectedGroup(group);
+      setSelectedGroup(group as MidtermGroupWithMembers);
       setSelectedUser({
         id: member.userId,
         name: member.profile.fullName ?? "Unknown User",
@@ -213,6 +222,7 @@ export default function MidtermAdminPage() {
                       <TableHead>Members</TableHead>
                       <TableHead>Repository</TableHead>
                       <TableHead>Last Sync</TableHead>
+                      <TableHead>Task Progress</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -290,25 +300,63 @@ export default function MidtermAdminPage() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSyncRepository(group.id)}
-                            disabled={!group.repositoryUrl || isSyncingRepo}
-                            title={
-                              !group.repositoryUrl
-                                ? "Connect repository first"
-                                : "Sync repository data"
-                            }
-                          >
-                            {isSyncingRepo ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        <TableCell>
+                          {(() => {
+                            const totalTasks = group.taskProgress?.total ?? 0;
+                            const completedTasks =
+                              group.taskProgress?.checked ?? 0;
+                            const progressPercent =
+                              totalTasks > 0
+                                ? (completedTasks / totalTasks) * 100
+                                : 0;
+
+                            return totalTasks > 0 ? (
+                              <div className="flex flex-col items-start space-y-1">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {completedTasks} / {totalTasks} (
+                                  {progressPercent.toFixed(0)}%)
+                                </span>
+                                <Progress
+                                  value={progressPercent}
+                                  className="h-1.5 w-24"
+                                />
+                              </div>
                             ) : (
-                              <RefreshCw className="h-4 w-4 mr-1" />
-                            )}
-                            Sync
-                          </Button>
+                              <span className="text-muted-foreground text-sm">
+                                No tasks
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setViewingTasksGroupId(group.id)}
+                              title="View Tasks"
+                            >
+                              View Tasks
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSyncRepository(group.id)}
+                              disabled={!group.repositoryUrl || isSyncingRepo}
+                              title={
+                                !group.repositoryUrl
+                                  ? "Connect repository first"
+                                  : "Sync repository data"
+                              }
+                            >
+                              {isSyncingRepo ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                              )}
+                              Sync
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -480,6 +528,96 @@ export default function MidtermAdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* --- Task Viewer Dialog --- */}
+      <Dialog
+        open={!!viewingTasksGroupId}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setViewingTasksGroupId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          {viewingTasksGroupId && (
+            <GroupTasksDialogContent groupId={viewingTasksGroupId} />
+          )}
+          <DialogFooter className="pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setViewingTasksGroupId(null)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* --- End Task Viewer Dialog --- */}
     </main>
+  );
+}
+
+// --- Helper Component for Task Dialog Content ---
+
+interface GroupTasksDialogContentProps {
+  groupId: string;
+}
+
+function GroupTasksDialogContent({ groupId }: GroupTasksDialogContentProps) {
+  const { data: group, isLoading, error } = useMidtermGroupDetails(groupId);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DialogHeader>
+        <DialogTitle>Error Loading Tasks</DialogTitle>
+        <DialogDescription className="text-red-600">
+          Failed to load group details: {error.message}
+        </DialogDescription>
+      </DialogHeader>
+    );
+  }
+
+  if (!group) {
+    return (
+      <DialogHeader>
+        <DialogTitle>Group Not Found</DialogTitle>
+        <DialogDescription>
+          The selected group could not be found.
+        </DialogDescription>
+      </DialogHeader>
+    );
+  }
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Tasks for {group.name}</DialogTitle>
+        <DialogDescription>
+          Viewing the TODO list for this group. Check marks indicate completed
+          tasks.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="max-h-[60vh] overflow-y-auto pr-2 py-4">
+        {group.tasks && group.tasks.length > 0 ? (
+          <MidtermTodoList
+            tasks={group.tasks}
+            groupId={groupId}
+            canEdit={false} // Admins view only
+          />
+        ) : (
+          <p className="text-muted-foreground text-center py-4">
+            No tasks found for this group.
+          </p>
+        )}
+      </div>
+    </>
   );
 }

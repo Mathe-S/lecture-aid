@@ -9,6 +9,7 @@ import {
   MidtermGroup,
   MidtermGroupWithDetails,
   MidtermGroupWithMembers,
+  MidtermGroupWithProgress,
   MidtermTask,
   MidtermEvaluation,
 } from "@/db/drizzle/midterm-schema";
@@ -27,7 +28,7 @@ export const midtermKeys = {
 
 // --- Helper Fetch Functions (Similar to original pattern) ---
 
-const fetchGroups = async (): Promise<MidtermGroupWithMembers[]> => {
+const fetchGroups = async (): Promise<MidtermGroupWithProgress[]> => {
   const response = await fetch("/api/midterm/groups"); // Target the API route
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -52,7 +53,7 @@ const fetchGroupDetails = async (
 
 // Fetch all groups (with progress)
 export function useMidtermGroups(): UseQueryResult<
-  MidtermGroupWithMembers[],
+  MidtermGroupWithProgress[],
   Error
 > {
   return useQuery({
@@ -116,7 +117,7 @@ export function useJoinMidtermGroup(): UseMutationResult<
   boolean,
   Error,
   string, // groupId
-  { previousGroups?: MidtermGroupWithMembers[] } // Context type
+  { previousGroups?: MidtermGroupWithProgress[] } // Context type
 > {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -140,10 +141,10 @@ export function useJoinMidtermGroup(): UseMutationResult<
       const queryKey = midtermKeys.groups();
       await queryClient.cancelQueries({ queryKey });
       const previousGroups =
-        queryClient.getQueryData<MidtermGroupWithMembers[]>(queryKey);
+        queryClient.getQueryData<MidtermGroupWithProgress[]>(queryKey);
 
       if (previousGroups && user) {
-        queryClient.setQueryData<MidtermGroupWithMembers[]>(
+        queryClient.setQueryData<MidtermGroupWithProgress[]>(
           queryKey,
           (oldData) => {
             if (!oldData) return [];
@@ -327,7 +328,7 @@ export function useDeleteMidtermGroup(): UseMutationResult<
   boolean,
   Error,
   string, // groupId
-  { previousGroups?: MidtermGroupWithMembers[] } // Optimistic context
+  { previousGroups?: MidtermGroupWithProgress[] } // Optimistic context
 > {
   const queryClient = useQueryClient();
 
@@ -346,10 +347,10 @@ export function useDeleteMidtermGroup(): UseMutationResult<
       const queryKey = midtermKeys.groups();
       await queryClient.cancelQueries({ queryKey });
       const previousGroups =
-        queryClient.getQueryData<MidtermGroupWithMembers[]>(queryKey);
+        queryClient.getQueryData<MidtermGroupWithProgress[]>(queryKey);
 
       if (previousGroups) {
-        queryClient.setQueryData<MidtermGroupWithMembers[]>(
+        queryClient.setQueryData<MidtermGroupWithProgress[]>(
           queryKey,
           (old) => old?.filter((g) => g.id !== groupId) ?? []
         );
