@@ -29,6 +29,7 @@ import { useRouter, usePathname } from "next/navigation";
 import NProgress from "nprogress";
 import { ActiveUsers } from "./ActiveUsers";
 import { AdminActiveUsersList } from "./AdminActiveUsersList";
+import { Logo } from "./svg/Logo";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
@@ -130,9 +131,9 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link
               href={user ? "/dashboard" : "/"}
-              className="text-xl font-bold text-blue-600 cursor-pointer mr-4"
+              className="text-xl font-bold text-blue-600 cursor-pointer mr-4 flex items-center gap-2"
             >
-              Lecture+
+              <Logo />
             </Link>
 
             {/* Desktop Navigation with Highlighting */}
