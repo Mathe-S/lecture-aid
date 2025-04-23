@@ -31,11 +31,16 @@ import NProgress from "nprogress";
 import { ActiveUsers } from "./ActiveUsers";
 import { AdminActiveUsersList } from "./AdminActiveUsersList";
 import { Logo } from "./svg/Logo";
+import { HangoutUsersCountMinimal } from "./HangoutUsersCountMinimal";
+import { useInitializeHangoutStore } from "@/store/hangoutStore";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Initialize the Hangout store based on auth state
+  useInitializeHangoutStore();
 
   // Get avatar URL and initials from user metadata
   const avatarUrl = user?.user_metadata?.avatar_url || "";
@@ -159,6 +164,8 @@ export default function Navbar() {
                     >
                       {item.icon && <item.icon className="mr-2 h-4 w-4" />}
                       {item.label}
+                      {/* Conditionally render the count for Hangout link */}
+                      {item.label === "Hangout" && <HangoutUsersCountMinimal />}
                     </Link>
                   );
                 })}
