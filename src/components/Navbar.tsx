@@ -24,6 +24,7 @@ import {
   LayoutDashboard,
   CheckSquare,
   Trophy,
+  Users,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import NProgress from "nprogress";
@@ -66,6 +67,7 @@ export default function Navbar() {
     },
     { label: "Midterm", href: "/midterm", showWhen: !!user, icon: GitBranch },
     { label: "Chat", href: "/chat", showWhen: !!user, icon: MessageSquare },
+    { label: "Hangout", href: "/hangout", showWhen: !!user, icon: Users },
     {
       label: "Leaderboard",
       href: "/leaderboard",
