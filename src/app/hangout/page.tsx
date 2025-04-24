@@ -46,11 +46,9 @@ function JitsiMeetEmbed() {
     router.push("/dashboard");
   };
 
-  const showSpinner = isAuthLoading || !jitsiApiReady;
-
   return (
     <div className="h-[calc(100vh-theme(spacing.16))] w-full relative">
-      {showSpinner && <Spinner />}
+      <Spinner />
       {!isAuthLoading && user && (
         <JaaSMeeting
           appId={process.env.NEXT_PUBLIC_JAAS_APP_ID!}
@@ -74,13 +72,15 @@ function JitsiMeetEmbed() {
           getIFrameRef={(iframeRef) => {
             iframeRef.style.height = "100%";
             iframeRef.style.width = "100%";
+            iframeRef.style.position = "absolute"; // Ensure iframe covers spinner
+            iframeRef.style.inset = "0";
           }}
           userInfo={{
             displayName:
               user?.user_metadata?.full_name || user?.email || "Student",
             email: user?.email || "",
           }}
-          spinner={Spinner}
+          spinner={() => null}
         />
       )}
     </div>

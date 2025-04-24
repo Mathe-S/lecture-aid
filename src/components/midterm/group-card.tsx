@@ -186,25 +186,25 @@ export function GroupCard({
         {" "}
         {/* Allow content to grow */}
         <div className="space-y-4">
-          {/* Repository Section (only for 'user' type cards) */}
-          {type === "user" && (
-            <div className="flex flex-col gap-1">
-              <div className="text-sm font-medium text-muted-foreground">
-                Repository
-              </div>
-              {group.repositoryUrl ? (
-                <div className="flex items-center">
-                  <a
-                    href={group.repositoryUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-600 hover:underline text-sm mr-1"
-                  >
-                    <Github className="h-4 w-4" /> {group.repositoryOwner}/
-                    {group.repositoryName}
-                    <ExternalLink className="h-3 w-3 ml-0.5" />
-                  </a>
-                  {/* Update Repo Dialog */}
+          {/* Repository Section */}
+          <div className="flex flex-col gap-1">
+            <div className="text-sm font-medium text-muted-foreground">
+              Repository
+            </div>
+            {group.repositoryUrl ? (
+              <div className="flex items-center">
+                <a
+                  href={group.repositoryUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-blue-600 hover:underline text-sm mr-1"
+                >
+                  <Github className="h-4 w-4" /> {group.repositoryOwner}/
+                  {group.repositoryName}
+                  <ExternalLink className="h-3 w-3 ml-0.5" />
+                </a>
+                {/* Conditionally render Update Repo Dialog Trigger for 'user' type */}
+                {type === "user" && (
                   <Dialog
                     open={showUpdateDialog}
                     onOpenChange={setShowUpdateDialog}
@@ -270,11 +270,13 @@ export function GroupCard({
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center p-3 bg-amber-50 text-amber-800 rounded-md">
-                  <p className="text-sm">No GitHub repository connected.</p>
-                  {/* Connect Repo Dialog */}
+                )}
+              </div>
+            ) : (
+              <div className="flex justify-between items-center p-3 bg-amber-50 text-amber-800 rounded-md">
+                <p className="text-sm">No GitHub repository connected.</p>
+                {/* Conditionally render Connect Repo Dialog Trigger for 'user' type */}
+                {type === "user" && (
                   <Dialog
                     open={showConnectDialog}
                     onOpenChange={setShowConnectDialog}
@@ -335,10 +337,10 @@ export function GroupCard({
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Member List */}
           <div>
