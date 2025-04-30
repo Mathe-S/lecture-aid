@@ -15,6 +15,7 @@ import {
   midtermTasks,
   MidtermTask,
   MemberWithProfileAndEvaluationStatus,
+  MidtermEvaluationWithGroup,
 } from "@/db/drizzle/midterm-schema";
 import { profiles, Profile } from "@/db/drizzle/schema";
 import { Octokit } from "@octokit/rest";
@@ -1127,6 +1128,27 @@ export async function isGroupMember(
     );
 
   return memberCount[0]?.count > 0;
+}
+
+/**
+ * Get evaluations for a specific user, including the group name.
+ */
+export async function getMidtermEvaluationsForUser(
+  userId: string
+): Promise<MidtermEvaluationWithGroup[]> {
+  const results = await db
+    .select({
+      evaluation: midtermEvaluations,
+      groupName: midtermGroups.name,
+    })
+    .from(midtermEvaluations)
+    .where(eq(midtermEvaluations.userId, userId))
+    .innerJoin(midtermGroups, eq(midtermEvaluations.groupId, midtermGroups.id));
+
+  return results.map((r) => ({
+    ...r.evaluation,
+    groupName: r.groupName,
+  }));
 }
 
 // --- Helper Functions Exported ---

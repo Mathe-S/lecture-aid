@@ -13,6 +13,7 @@ import {
   MidtermTask,
   MidtermEvaluation,
   MemberWithProfileAndEvaluationStatus,
+  MidtermEvaluationWithGroup,
 } from "@/db/drizzle/midterm-schema";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -25,6 +26,8 @@ export const midtermKeys = {
   evaluations: () => [...midtermKeys.all, "evaluations"] as const,
   evaluation: (groupId: string, userId: string) =>
     [...midtermKeys.evaluations(), groupId, userId] as const,
+  userEvaluations: (userId: string) =>
+    [...midtermKeys.evaluations(), "user", userId] as const,
 };
 
 // --- Helper Fetch Functions (Similar to original pattern) ---
@@ -462,6 +465,33 @@ export function useUpdateTaskStatus(): UseMutationResult<
       });
       queryClient.invalidateQueries({ queryKey: midtermKeys.groups() });
     },
+  });
+}
+
+// --- User-Specific Hooks ---
+
+// Hook to fetch evaluations for the current user
+export function useUserMidtermEvaluations(): UseQueryResult<
+  MidtermEvaluationWithGroup[],
+  Error
+> {
+  const { user } = useAuth();
+  const userId = user?.id;
+
+  return useQuery({
+    queryKey: midtermKeys.userEvaluations(userId!), // Use specific user key
+    queryFn: async () => {
+      if (!userId) return []; // Return empty if no user
+      const response = await fetch("/api/midterm/evaluations/me");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to fetch user midterm evaluations"
+        );
+      }
+      return response.json();
+    },
+    enabled: !!userId, // Only run when userId is available
   });
 }
 

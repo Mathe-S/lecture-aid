@@ -333,6 +333,11 @@ export type MidtermRepositoryMetric =
 export type MidtermContribution = typeof midtermContributions.$inferSelect;
 export type MidtermEvaluation = typeof midtermEvaluations.$inferSelect;
 
+// Add the new type here
+export interface MidtermEvaluationWithGroup extends MidtermEvaluation {
+  groupName: string;
+}
+
 // Define the specific member structure needed for getMidtermGroupsWithProgress
 export interface MemberWithProfileAndEvaluationStatus
   extends MidtermGroupMember {

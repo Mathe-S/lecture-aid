@@ -23,6 +23,7 @@ import {
   X,
   BookOpen,
   ExternalLink,
+  Award,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { updateUserProfileAction } from "../actions/auth";
@@ -32,6 +33,7 @@ import { format } from "date-fns";
 import { AssignmentSubmissionWithProfile } from "@/db/drizzle/schema";
 import { useGrades } from "@/hooks/useGrades";
 import { Progress } from "@/components/ui/progress";
+import { useUserMidtermEvaluations } from "@/hooks/useMidtermGroups";
 
 export default function DashboardPage() {
   const { user, role, isLoading, refreshUser } = useAuth();
@@ -45,6 +47,9 @@ export default function DashboardPage() {
     useUserSubmissions(user?.id);
 
   const { data: grades, isLoading: isLoadingGrades } = useGrades();
+
+  const { data: midtermEvaluations, isLoading: isLoadingMidtermEvals } =
+    useUserMidtermEvaluations();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -327,6 +332,57 @@ export default function DashboardPage() {
               <p className="text-center py-4 text-slate-500">
                 No grade data available
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5" />
+              Midterm Project Evaluations
+            </CardTitle>
+            <CardDescription>
+              Your evaluation results for the midterm project
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingMidtermEvals ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            ) : midtermEvaluations?.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">
+                Your midterm evaluation is not available yet.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {midtermEvaluations?.map((evalData) => (
+                  <div
+                    key={evalData.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-slate-200 bg-white"
+                  >
+                    <div className="space-y-1">
+                      <Link
+                        href={`/midterm/groups/${evalData.groupId}`}
+                        className="text-sm font-medium text-blue-600 hover:underline"
+                      >
+                        Group: {evalData.groupName}
+                      </Link>
+                      <p className="text-xs text-slate-500">
+                        Evaluated on:{" "}
+                        {format(new Date(evalData.updatedAt), "PPP")}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold">
+                        {evalData.totalScore}/250
+                      </p>
+                      {/* Optionally add breakdown or link to details */}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
