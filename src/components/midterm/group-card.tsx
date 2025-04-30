@@ -358,13 +358,21 @@ export function GroupCard({
                       {member.profile.fullName
                         ?.split(" ")
                         .map((n) => n[0])
-                        .join("") ?? "U"}
+                        .join("") ??
+                        member.profile.email?.[0]?.toUpperCase() ??
+                        "?"}
                     </div>
                     <span
                       className="text-sm truncate"
-                      title={member.profile.fullName ?? "Unknown User"}
+                      title={
+                        member.profile.fullName ??
+                        member.profile.email ??
+                        "Unknown"
+                      }
                     >
-                      {member.profile.fullName ?? "Unknown User"}
+                      {member.profile.fullName ??
+                        member.profile.email ??
+                        "Unknown"}
                     </span>
                   </div>
                   <span className="text-xs px-2 py-0.5 bg-slate-100 rounded-full flex-shrink-0">

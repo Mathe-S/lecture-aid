@@ -249,9 +249,15 @@ export default function MidtermAdminPage() {
                               >
                                 <span
                                   className="text-sm truncate"
-                                  title={member.profile.fullName ?? ""}
+                                  title={
+                                    member.profile.fullName ??
+                                    member.profile.email ??
+                                    ""
+                                  }
                                 >
-                                  {member.profile.fullName ?? "Unknown User"}
+                                  {member.profile.fullName ??
+                                    member.profile.email ??
+                                    "Unknown"}
                                 </span>
                                 <Button
                                   size="sm"
