@@ -45,14 +45,14 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import { Profile } from "@/db/drizzle/schema";
-import { GradeWithProfilesType } from "@/db/drizzle/schema";
+import { Profile, GradeWithProfilesType } from "@/db/drizzle/schema";
 
 // Define sort fields
 type SortField =
   | "name"
   | "quizPoints"
   | "assignmentPoints"
+  | "midtermPoints"
   | "extraPoints"
   | "totalPoints"
   | "progress";
@@ -122,7 +122,7 @@ export default function AdminGradesPage() {
 
         // Helper function for percentage calculation
         const getProgress = (grade: GradeWithProfilesType) =>
-          ((grade.totalPoints ?? 0) / (grade.maxPossiblePoints ?? 1000)) * 100;
+          ((grade.totalPoints ?? 0) / (grade.maxPossiblePoints || 1000)) * 100;
 
         switch (sortField) {
           case "name":
@@ -133,6 +133,9 @@ export default function AdminGradesPage() {
             break;
           case "assignmentPoints":
             comparison = (a.assignmentPoints ?? 0) - (b.assignmentPoints ?? 0);
+            break;
+          case "midtermPoints":
+            comparison = (a.midtermPoints ?? 0) - (b.midtermPoints ?? 0);
             break;
           case "extraPoints":
             comparison = (a.extraPoints ?? 0) - (b.extraPoints ?? 0);
@@ -251,6 +254,12 @@ export default function AdminGradesPage() {
                         Assignment
                       </SortableHeader>
                       <SortableHeader
+                        field="midtermPoints"
+                        className="w-[100px] text-right"
+                      >
+                        Midterm
+                      </SortableHeader>
+                      <SortableHeader
                         field="extraPoints"
                         className="w-[100px] text-right"
                       >
@@ -310,6 +319,9 @@ export default function AdminGradesPage() {
                           <TableCell className="text-right">
                             {grade.assignmentPoints}/
                             {grade.maxAssignmentPoints || 0}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {grade.midtermPoints ?? 0}/250
                           </TableCell>
                           <TableCell className="text-right">
                             {grade.extraPoints}
