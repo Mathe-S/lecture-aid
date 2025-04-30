@@ -1,0 +1,1 @@
+ALTER TABLE "student_grades" ADD COLUMN "midterm_points" integer DEFAULT 0;

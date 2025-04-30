@@ -384,6 +384,7 @@ export const studentGrades = pgTable(
     maxQuizPoints: integer("max_quiz_points").default(0),
     assignmentPoints: integer("assignment_points").default(0),
     maxAssignmentPoints: integer("max_assignment_points").default(0),
+    midtermPoints: integer("midterm_points").default(0),
     extraPoints: integer("extra_points").default(0),
     totalPoints: integer("total_points").default(0),
     maxPossiblePoints: integer("max_possible_points").default(1000),

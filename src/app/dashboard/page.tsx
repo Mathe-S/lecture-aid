@@ -279,21 +279,20 @@ export default function DashboardPage() {
                         {grades.totalPoints}
                       </span>
                       <span className="text-slate-500 text-sm">
-                        / {grades.maxPossiblePoints || 1000}
+                        / {grades.maxPossiblePoints || "N/A"}
                       </span>
                     </div>
                   </div>
                   <Progress
                     value={
-                      (grades.totalPoints /
-                        (grades.maxPossiblePoints || 1000)) *
+                      (grades.totalPoints / (grades.maxPossiblePoints || 1)) *
                       100
                     }
                     className="h-2"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="bg-slate-50 rounded-md p-4 space-y-1">
                     <h4 className="text-sm font-medium text-slate-500">
                       Quiz Points
@@ -315,6 +314,16 @@ export default function DashboardPage() {
                       <span className="text-slate-400 text-sm ml-1">
                         / {grades.maxAssignmentPoints || "0"}
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-md p-4 space-y-1">
+                    <h4 className="text-sm font-medium text-slate-500">
+                      Midterm Points
+                    </h4>
+                    <div className="text-lg font-semibold">
+                      {grades.midtermPoints ?? 0}
+                      <span className="text-slate-400 text-sm ml-1">/ 250</span>
                     </div>
                   </div>
 

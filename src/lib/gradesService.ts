@@ -7,6 +7,7 @@ import {
   profiles,
   GradeWithProfilesType,
 } from "@/db/drizzle/schema";
+import { getMidtermEvaluationsForUser } from "./midterm-service";
 
 /**
  * Get a student's grade from the database
@@ -198,38 +199,65 @@ export async function updateExtraPoints(userId: string, extraPoints: number) {
 }
 
 /**
- * Recalculate grades for a student after new quiz result or assignment submission
+ * Recalculate grades for a student (including midterm)
  */
 export async function recalculateGrades(userId: string) {
   try {
-    // Get fresh calculations
-    const newGradeData = await calculateGrades(userId);
+    const baseGradeData = await calculateGrades(userId);
 
-    // Get current record for extra points
-    const currentGrade = await getStudentGrade(userId);
+    const midtermEvaluations = await getMidtermEvaluationsForUser(userId);
 
-    // Keep the extra points as they are manually assigned
+    const midtermPoints = midtermEvaluations.reduce(
+      (sum, evalData) => sum + (evalData.totalScore || 0),
+      0
+    );
+    const maxMidtermPoints = midtermEvaluations.length * 250;
+
+    const currentGrade = await db.query.studentGrades.findFirst({
+      where: eq(studentGrades.userId, userId),
+    });
+
     const extraPoints = currentGrade?.extraPoints ?? 0;
 
-    // Update with new calculations
+    // Calculate total points and max possible points
     const totalPoints =
-      newGradeData.quizPoints + newGradeData.assignmentPoints + extraPoints;
+      baseGradeData.quizPoints +
+      baseGradeData.assignmentPoints +
+      midtermPoints +
+      extraPoints;
+    const maxPossiblePoints =
+      baseGradeData.maxQuizPoints +
+      baseGradeData.maxAssignmentPoints +
+      maxMidtermPoints;
 
-    await db
-      .update(studentGrades)
-      .set({
-        ...newGradeData,
-        extraPoints,
-        totalPoints,
-        maxPossiblePoints: 1000, // Always set to 1000
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(studentGrades.userId, userId));
+    // Prepare data object for update/insert
+    const gradeRecordData = {
+      quizPoints: baseGradeData.quizPoints,
+      maxQuizPoints: baseGradeData.maxQuizPoints,
+      assignmentPoints: baseGradeData.assignmentPoints,
+      maxAssignmentPoints: baseGradeData.maxAssignmentPoints,
+      midtermPoints: midtermPoints,
+      extraPoints: extraPoints,
+      totalPoints: totalPoints,
+      maxPossiblePoints: maxPossiblePoints,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (currentGrade) {
+      await db
+        .update(studentGrades)
+        .set(gradeRecordData)
+        .where(eq(studentGrades.userId, userId));
+    } else {
+      await db.insert(studentGrades).values({
+        userId,
+        ...gradeRecordData,
+      });
+    }
 
     return true;
   } catch (error) {
-    console.error("Error recalculating student grades:", error);
-    throw error;
+    throw error; // Re-throw the error so the API route catches it
   }
 }
 
