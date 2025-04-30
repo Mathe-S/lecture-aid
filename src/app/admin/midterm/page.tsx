@@ -37,12 +37,13 @@ import {
   ExternalLink,
   RefreshCw,
   Loader2,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
   MidtermGroupWithProgress,
-  MidtermGroupWithMembers,
+  MemberWithProfileAndEvaluationStatus,
 } from "@/db/drizzle/midterm-schema";
 import {
   useMidtermGroups,
@@ -67,7 +68,7 @@ export default function MidtermAdminPage() {
   const { role } = useAuth();
   const router = useRouter();
   const [selectedGroup, setSelectedGroup] =
-    useState<MidtermGroupWithMembers | null>(null);
+    useState<MidtermGroupWithProgress | null>(null);
   const [selectedUser, setSelectedUser] = useState<{
     id: string;
     name: string;
@@ -124,14 +125,14 @@ export default function MidtermAdminPage() {
   const openEvaluationDialog = useCallback(
     (
       group: MidtermGroupWithProgress,
-      member: { userId: string; profile: { fullName: string | null } }
+      member: MemberWithProfileAndEvaluationStatus
     ) => {
-      setSelectedGroup(group as MidtermGroupWithMembers);
+      setSelectedGroup(group);
       setSelectedUser({
         id: member.userId,
-        name: member.profile.fullName ?? "Unknown User",
+        name: member.profile.fullName ?? member.profile.email ?? "Unknown",
       });
-      setEvaluation(defaultEvaluationState); // Reset form immediately
+      setEvaluation(defaultEvaluationState);
       setDialogOpen(true);
     },
     []
@@ -258,6 +259,9 @@ export default function MidtermAdminPage() {
                                   {member.profile.fullName ??
                                     member.profile.email ??
                                     "Unknown"}
+                                  {member.isEvaluated && (
+                                    <Check className="h-4 w-4 ml-1 inline text-green-600" />
+                                  )}
                                 </span>
                                 <Button
                                   size="sm"
@@ -266,8 +270,20 @@ export default function MidtermAdminPage() {
                                   onClick={() =>
                                     openEvaluationDialog(group, member)
                                   }
+                                  title={
+                                    member.isEvaluated
+                                      ? "View/Edit Evaluation"
+                                      : "Grade Student"
+                                  }
                                 >
-                                  <Star className="h-4 w-4" />
+                                  <Star
+                                    className={[
+                                      "h-4 w-4",
+                                      member.isEvaluated
+                                        ? "text-yellow-500 fill-yellow-400"
+                                        : "",
+                                    ].join(" ")}
+                                  />
                                   <span className="sr-only">Grade</span>
                                 </Button>
                               </div>

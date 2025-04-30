@@ -12,6 +12,7 @@ import {
   MidtermGroupWithProgress,
   MidtermTask,
   MidtermEvaluation,
+  MemberWithProfileAndEvaluationStatus,
 } from "@/db/drizzle/midterm-schema";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -154,38 +155,29 @@ export function useJoinMidtermGroup(): UseMutationResult<
                 !group.members?.some((m) => m.userId === user.id)
               ) {
                 const now = new Date().toISOString();
-                // Construct the full new member object matching the expected type
-                const newMember = {
+                const newMember: MemberWithProfileAndEvaluationStatus = {
                   profile: {
-                    // Fields expected by Profile type
                     id: user.id,
-                    createdAt: now, // Assume profile created now for optimistic update
+                    createdAt: now,
                     updatedAt: now,
                     email: user.email ?? null,
                     fullName:
                       user.user_metadata?.full_name ??
                       user.email ??
                       "New Member",
-                    avatarUrl: user.user_metadata?.avatar_url ?? null, // Use avatarUrl field name if that's what Profile type expects
+                    avatarUrl: user.user_metadata?.avatar_url ?? null,
                   },
-                  // Fields expected by MidtermGroupMember base type
                   id: `optimistic-${Date.now()}`,
                   groupId: group.id,
                   userId: user.id,
                   role: "member",
                   joinedAt: now,
-                  // Add other potential base fields if necessary (e.g., createdAt/updatedAt for the *membership* itself)
-                  // These might differ from the profile's timestamps
-                  // Assuming membership also has createdAt/updatedAt, using 'now' for optimism
-                  // createdAt: now,
-                  // updatedAt: now,
+                  isEvaluated: false,
                 };
 
-                // Cast to the specific member type expected in MidtermGroupWithMembers if necessary
-                // e.g., const typedNewMember = newMember as ExpectedMemberType;
-                // This might require importing the specific type from your schema
-
-                const updatedMembers = [...(group.members || []), newMember];
+                const existingMembers: MemberWithProfileAndEvaluationStatus[] =
+                  group.members || [];
+                const updatedMembers = [...existingMembers, newMember];
 
                 return {
                   ...group,

@@ -14,6 +14,7 @@ import {
   MidtermEvaluation,
   midtermTasks,
   MidtermTask,
+  MemberWithProfileAndEvaluationStatus,
 } from "@/db/drizzle/midterm-schema";
 import { profiles, Profile } from "@/db/drizzle/schema";
 import { Octokit } from "@octokit/rest";
@@ -197,7 +198,7 @@ async function isGroupOwner(groupId: string, userId: string): Promise<boolean> {
 }
 
 /**
- * Get all midterm groups with their members AND task progress (OPTIMIZED)
+ * Get all midterm groups with their members AND task progress AND evaluation status (OPTIMIZED)
  */
 export async function getMidtermGroupsWithProgress(): Promise<
   MidtermGroupWithProgress[]
@@ -209,22 +210,26 @@ export async function getMidtermGroupsWithProgress(): Promise<
     .orderBy(midtermGroups.createdAt);
 
   if (groups.length === 0) {
-    return []; // No groups, return early
+    return [];
   }
 
   const groupIds = groups.map((g) => g.id);
 
-  // 2. Fetch all relevant members and their profiles in one query
-  const allMembers = await db
+  // 2. Fetch all relevant members and their profiles
+  const allMembersWithProfiles = await db
     .select({
-      member: midtermGroupMembers, // Select the whole member table
-      profile: profiles, // Select the whole profile table
+      id: midtermGroupMembers.id,
+      groupId: midtermGroupMembers.groupId,
+      userId: midtermGroupMembers.userId,
+      role: midtermGroupMembers.role,
+      joinedAt: midtermGroupMembers.joinedAt,
+      profile: profiles,
     })
     .from(midtermGroupMembers)
     .innerJoin(profiles, eq(midtermGroupMembers.userId, profiles.id))
-    .where(inArray(midtermGroupMembers.groupId, groupIds)); // Filter by fetched group IDs
+    .where(inArray(midtermGroupMembers.groupId, groupIds));
 
-  // 3. Fetch all task counts grouped by groupId in one query
+  // 3. Fetch all task counts grouped by groupId
   const allTaskCounts = await db
     .select({
       groupId: midtermTasks.groupId,
@@ -235,17 +240,44 @@ export async function getMidtermGroupsWithProgress(): Promise<
           .as("checked_tasks"),
     })
     .from(midtermTasks)
-    .where(inArray(midtermTasks.groupId, groupIds)) // Filter by fetched group IDs
+    .where(inArray(midtermTasks.groupId, groupIds))
     .groupBy(midtermTasks.groupId);
 
-  // 4. Combine the data efficiently using Maps for quick lookups
+  // 4. Fetch existing evaluation markers (groupId, userId pairs)
+  const existingEvaluations = await db
+    .select({
+      groupId: midtermEvaluations.groupId,
+      userId: midtermEvaluations.userId,
+    })
+    .from(midtermEvaluations)
+    .where(inArray(midtermEvaluations.groupId, groupIds));
 
-  // Map members to their groupId
-  const membersByGroupId = new Map<string, (typeof allMembers)[0][]>();
-  allMembers.forEach((m) => {
-    const existing = membersByGroupId.get(m.member.groupId) || [];
-    existing.push(m);
-    membersByGroupId.set(m.member.groupId, existing);
+  // Create a Set for quick lookup of evaluated user-group pairs
+  const evaluatedSet = new Set(
+    existingEvaluations.map((e) => `${e.groupId}-${e.userId}`)
+  );
+
+  // 5. Combine the data efficiently using Maps
+  const membersByGroupId = new Map<
+    string,
+    MemberWithProfileAndEvaluationStatus[]
+  >();
+  allMembersWithProfiles.forEach((m) => {
+    const isEvaluated = evaluatedSet.has(`${m.groupId}-${m.userId}`);
+
+    const processedMember: MemberWithProfileAndEvaluationStatus = {
+      id: m.id,
+      groupId: m.groupId,
+      userId: m.userId,
+      role: m.role as "owner" | "member",
+      joinedAt: m.joinedAt,
+      profile: m.profile,
+      isEvaluated: isEvaluated,
+    };
+
+    const existing = membersByGroupId.get(m.groupId) || [];
+    existing.push(processedMember);
+    membersByGroupId.set(m.groupId, existing);
   });
 
   // Map task counts to their groupId
@@ -255,30 +287,24 @@ export async function getMidtermGroupsWithProgress(): Promise<
   >();
   allTaskCounts.forEach((tc) => {
     taskCountsByGroupId.set(tc.groupId, {
-      total: tc.total,
-      checked: tc.checked,
+      total: tc.total || 0,
+      checked: tc.checked || 0,
     });
   });
 
-  // Construct the final result
-  const groupsWithDetails: MidtermGroupWithProgress[] = groups.map((group) => {
-    const membersForGroup = membersByGroupId.get(group.id) || [];
-    const taskProgressForGroup = taskCountsByGroupId.get(group.id) || {
-      total: 0,
-      checked: 0,
-    };
+  // 6. Construct the final result array
+  const results: MidtermGroupWithProgress[] = groups.map((group) => {
+    const members = membersByGroupId.get(group.id) || [];
+    const taskProgress = taskCountsByGroupId.get(group.id);
 
     return {
       ...group,
-      members: membersForGroup.map((m) => ({
-        ...m.member, // Spread member data
-        profile: m.profile, // Assign profile data
-      })),
-      taskProgress: taskProgressForGroup,
+      members: members,
+      taskProgress: taskProgress,
     };
   });
 
-  return groupsWithDetails;
+  return results;
 }
 
 /**

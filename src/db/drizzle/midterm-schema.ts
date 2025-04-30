@@ -333,21 +333,35 @@ export type MidtermRepositoryMetric =
 export type MidtermContribution = typeof midtermContributions.$inferSelect;
 export type MidtermEvaluation = typeof midtermEvaluations.$inferSelect;
 
+// Define the specific member structure needed for getMidtermGroupsWithProgress
+export interface MemberWithProfileAndEvaluationStatus
+  extends MidtermGroupMember {
+  // Inherits id, groupId, userId, role, joinedAt from MidtermGroupMember
+  profile: Profile; // The nested profile
+  isEvaluated: boolean; // The new flag indicating evaluation status
+}
+
+// Original MidtermGroupWithMembers (reference)
 export type MidtermGroupWithMembers = MidtermGroup & {
   members: (MidtermGroupMember & { profile: Profile })[];
 };
 
 export type MidtermTask = typeof midtermTasks.$inferSelect;
 
-// Update MidtermGroupWithDetails to potentially include tasks
 export interface MidtermGroupWithDetails extends MidtermGroupWithMembers {
   metrics: MidtermRepositoryMetric | null;
   contributions: (MidtermContribution & { profile: Profile })[];
   tasks?: MidtermTask[]; // Add tasks
 }
 
-// Interface for progress calculation
-export interface MidtermGroupWithProgress extends MidtermGroupWithMembers {
+export interface MidtermGroupWithProgress extends MidtermGroup {
+  // Inherits name, id, description, repositoryUrl, repositoryOwner,
+  // repositoryName, lastSync, createdAt, updatedAt FROM MidtermGroup.
+  // DO NOT re-declare inherited properties here.
+
+  // Define ONLY the properties added or modified for this specific type.
+  members: MemberWithProfileAndEvaluationStatus[]; // MODIFIED property
+
   taskProgress?: {
     total: number;
     checked: number;
