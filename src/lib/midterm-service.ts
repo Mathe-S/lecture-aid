@@ -648,21 +648,14 @@ export async function syncGitHubRepositoryData(
   groupId: string,
   githubToken?: string | null // Add optional token parameter
 ): Promise<boolean> {
-  console.log(`Starting sync for group ${groupId}`);
   const group = await getMidtermGroupById(groupId);
 
   if (!group || !group.repositoryOwner || !group.repositoryName) {
-    console.error(`Group ${groupId} not found or repository not connected.`);
     throw new Error("Group not found or repository not connected.");
   }
 
   // --- Initialize Octokit --- //
   const tokenToUse = githubToken || process.env.GITHUB_TOKEN || null;
-  if (!tokenToUse) {
-    console.warn(
-      `No GitHub token found for sync (user provider_token or GITHUB_TOKEN env var). Proceeding with unauthenticated requests (rate limited).`
-    );
-  }
   const octokit = new Octokit({ auth: tokenToUse });
   const owner = group.repositoryOwner;
   const repo = group.repositoryName;
@@ -681,8 +674,6 @@ export async function syncGitHubRepositoryData(
       });
     } catch (err) {
       console.error(`Error fetching commits for ${owner}/${repo}:`, err);
-      // Decide if this is a fatal error or if we can continue
-      // throw err; // Option: Stop sync if commits fail
     }
 
     // 2. Pull Requests (Paginated)
@@ -712,78 +703,178 @@ export async function syncGitHubRepositoryData(
       // Handle error as needed
     }
 
-    // 4. Commit Activity Stats (for additions/deletions)
-    let weeklyStats: any[] = [];
-    let totalAdditions = 0;
-    let totalDeletions = 0;
-    try {
-      const { data: activityData } = await octokit.repos.getCommitActivityStats(
-        { owner, repo }
-      );
+    // 4. Commit Activity Stats (Weekly Commits) - WITH STATUS LOGGING AND BASIC RETRY
 
-      if (Array.isArray(activityData)) {
-        weeklyStats = activityData;
-        weeklyStats.forEach((week) => {
-          // Ensure 'a' and 'd' are numbers, default to 0 if not
-          const additions = Number.isFinite(week.a) ? week.a : 0;
-          const deletions = Number.isFinite(week.d) ? week.d : 0;
-          totalAdditions += additions;
-          totalDeletions += deletions;
+    let weeklyCommitStats: { week: number; total: number; days: number[] }[] =
+      [];
+    let commitActivityResponseStatus: number | undefined;
+    let finalCommitActivityData: any = null;
+    try {
+      let commitActivityResponse = await octokit.repos.getCommitActivityStats({
+        owner: owner,
+        repo: repo,
+      });
+      commitActivityResponseStatus = commitActivityResponse.status;
+
+      if (commitActivityResponseStatus === 202) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        commitActivityResponse = await octokit.repos.getCommitActivityStats({
+          owner: owner,
+          repo: repo,
         });
+        commitActivityResponseStatus = commitActivityResponse.status;
+      }
+      finalCommitActivityData = commitActivityResponse.data; // Store data regardless of final status for logging
+
+      // Process data based on final status
+      if (
+        commitActivityResponseStatus === 200 &&
+        Array.isArray(finalCommitActivityData)
+      ) {
+        weeklyCommitStats = finalCommitActivityData;
+      } else if (commitActivityResponseStatus === 204) {
         console.log(
-          `[Sync ${groupId}] Commit activity stats processed: Additions=${totalAdditions}, Deletions=${totalDeletions}`
+          `[Sync ${groupId}] Commit activity stats returned no content (204).`
+        );
+      } else if (commitActivityResponseStatus === 202) {
+        console.warn(
+          `[Sync ${groupId}] Commit activity stats still computing after retry (202).`
+        );
+      } else {
+        // Handle other statuses (e.g., 403, 404, 422, 500)
+        console.warn(
+          `[Sync ${groupId}] Could not fetch commit activity stats. Final Status: ${commitActivityResponseStatus}, Data:`,
+          finalCommitActivityData
+        );
+      }
+    } catch (error: any) {
+      console.error(
+        `[Sync ${groupId}] Error fetching commit activity stats: ${error.message}`,
+        error
+      );
+    }
+
+    // 5. Code Frequency Stats (Weekly Add/Del) - Fetching it simply for now
+    let weeklyCodeFrequency: [number, number, number][] = []; // Expected: [timestamp, additions, deletions]
+    let codeFrequencyResponseStatus: number | undefined;
+    let finalCodeFrequencyData: any = null;
+    try {
+      // Note: This might also return 202/204
+      const codeFrequencyResponse = await octokit.repos.getCodeFrequencyStats({
+        owner: group.repositoryOwner,
+        repo: group.repositoryName,
+      });
+      codeFrequencyResponseStatus = codeFrequencyResponse.status;
+      finalCodeFrequencyData = codeFrequencyResponse.data;
+
+      if (
+        codeFrequencyResponseStatus === 200 &&
+        Array.isArray(finalCodeFrequencyData)
+      ) {
+        const validatedData = finalCodeFrequencyData.filter(
+          (item: unknown): item is [number, number, number] =>
+            Array.isArray(item) &&
+            item.length === 3 &&
+            item.every((n) => typeof n === "number")
+        );
+        weeklyCodeFrequency = validatedData;
+      } else if (codeFrequencyResponseStatus === 204) {
+        console.log(
+          `[Sync ${groupId}] Code frequency stats returned no content (204).`
+        );
+      } else if (codeFrequencyResponseStatus === 202) {
+        console.warn(
+          `[Sync ${groupId}] Code frequency stats are computing (202). Data might be incomplete this cycle.`
         );
       } else {
         console.warn(
-          `[Sync ${groupId}] Commit activity stats not an array or being computed. Add/Del set to 0.`
+          `[Sync ${groupId}] Could not fetch code frequency stats. Status: ${codeFrequencyResponseStatus}, Data:`,
+          finalCodeFrequencyData
         );
-        totalAdditions = 0;
-        totalDeletions = 0;
-        weeklyStats = [];
       }
-    } catch (err: any) {
+    } catch (error: any) {
       console.error(
-        `[Sync ${groupId}] Error fetching commit activity stats. Add/Del set to 0. Error: ${err.message}`
+        `[Sync ${groupId}] Error fetching code frequency stats: ${error.message}`,
+        error
       );
-      totalAdditions = 0;
-      totalDeletions = 0;
-      weeklyStats = [];
     }
 
-    // 4. Contributors
+    // 6. Contributors
     let contributors: any[] = [];
     try {
       const { data: contributorStats } = await octokit.repos.listContributors({
-        owner,
-        repo,
-        anon: "false", // Include anonymous contributions if needed?
+        owner: owner,
+        repo: repo,
       });
       contributors = contributorStats;
     } catch (err) {
-      console.error(`Error fetching contributors for ${owner}/${repo}:`, err);
-      // Handle error as needed
+      console.error(`[Sync ${groupId}] Error fetching contributors:`, err);
     }
 
-    // 5. Languages
+    // 7. Languages
     let languages: Record<string, number> = {};
     try {
       const { data: langData } = await octokit.repos.listLanguages({
-        owner,
-        repo,
+        owner: group.repositoryOwner,
+        repo: group.repositoryName,
       });
       languages = langData;
-      console.log(
-        `[Sync ${groupId}] Languages fetched: ${Object.keys(languages).join(
-          ", "
-        )}`
-      );
     } catch (err) {
-      console.error(`Error fetching languages for ${owner}/${repo}:`, err);
-      // Handle error as needed, languages will remain empty
+      console.error(`[Sync ${groupId}] Error fetching languages:`, err);
     }
 
     // --- Process Data --- //
-    console.log("Processing GitHub data...");
+
+    // Create Maps for weekly data aggregation
+    const weeklyDataMap = new Map<
+      number,
+      { commits: number; additions: number; deletions: number }
+    >();
+
+    // Process Commit Activity (using the fetched weeklyCommitStats)
+    weeklyCommitStats.forEach((weekStat) => {
+      const weekTimestamp = weekStat.week;
+      if (!weeklyDataMap.has(weekTimestamp)) {
+        weeklyDataMap.set(weekTimestamp, {
+          commits: 0,
+          additions: 0,
+          deletions: 0,
+        });
+      }
+      weeklyDataMap.get(weekTimestamp)!.commits = weekStat.total;
+    });
+
+    // Process Code Frequency (using the fetched weeklyCodeFrequency)
+    weeklyCodeFrequency.forEach(([weekTimestamp, additions, deletions]) => {
+      if (!weeklyDataMap.has(weekTimestamp)) {
+        weeklyDataMap.set(weekTimestamp, {
+          commits: 0,
+          additions: 0,
+          deletions: 0,
+        });
+      }
+      const weekData = weeklyDataMap.get(weekTimestamp)!;
+      weekData.additions = additions;
+      weekData.deletions = Math.abs(deletions); // Deletions are negative
+    });
+
+    // Convert Map to Timeline Array
+    const weeklyTimeline = Array.from(weeklyDataMap.entries())
+      .map(([timestamp, data]) => ({
+        date: new Date(timestamp * 1000).toISOString().split("T")[0],
+        commits: data.commits,
+        additions: data.additions,
+        deletions: data.deletions,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Calculate overall additions/deletions from the merged timeline
+    let totalAdditions = 0;
+    let totalDeletions = 0;
+    weeklyTimeline.forEach((week) => {
+      totalAdditions += week.additions;
+      totalDeletions += week.deletions;
+    });
 
     // Commit aggregation
     const commitsByAuthor: Record<string, number> = {};
@@ -810,29 +901,22 @@ export async function syncGitHubRepositoryData(
       totalPullRequests: allPRs.length,
       totalBranches: allBranches.length,
       totalIssues: 0, // Issues need separate fetching if required
-      codeAdditions: totalAdditions, // Use sum from commit activity
-      codeDeletions: totalDeletions, // Use sum from commit activity
+      codeAdditions: totalAdditions,
+      codeDeletions: totalDeletions,
       contributorsCount: contributors.length,
       detailedMetrics: {
         commitsByAuthor,
         prsByAuthor,
         openPRs,
-        closedPRs, // Includes merged and unmerged closed
+        closedPRs,
         mergedPRs,
         branchNames: allBranches.map((b) => b.name),
-        // Add more details as needed
-        weeklyCommitActivity: weeklyStats.map((w) => ({
-          week: w.week,
-          additions: w.a,
-          deletions: w.d,
-          commits: w.c,
-        })),
-        languages, // Add fetched languages
+        languages,
+        weeklyTimeline: weeklyTimeline, // Store the combined timeline
       },
     };
 
     // --- Update Contributions --- //
-    console.log(`[Sync ${groupId}] Attempting to update contributor links...`);
     for (const contributor of contributors) {
       if (!contributor.login) continue; // Skip if no login
 
@@ -848,20 +932,12 @@ export async function syncGitHubRepositoryData(
 
         if (commitWithEmail?.commit?.author?.email) {
           const contributorEmail = commitWithEmail.commit.author.email;
-          console.log(
-            `[Sync ${groupId}] Found email ${contributorEmail} for contributor ${contributor.login}`
-          );
           const [foundProfile] = await db
             .select()
             .from(profiles)
             .where(eq(profiles.email, contributorEmail))
             .limit(1);
-          if (foundProfile) {
-            profile = foundProfile;
-            console.log(
-              `[Sync ${groupId}] Linked ${contributor.login} to profile ID ${profile.id} via email`
-            );
-          }
+          if (foundProfile) profile = foundProfile;
         }
       } catch (err) {
         console.error(
@@ -907,9 +983,6 @@ export async function syncGitHubRepositoryData(
               lastCommitDate: null, // TODO: Find last commit date for this user if needed
               contributionData: { weeks: contributor.weeks || [] }, // Store raw week data
             });
-            console.log(
-              `[Sync ${groupId}] Updated contribution record for profile ${profile.id} (${contributor.login})`
-            );
           } catch (updateErr) {
             console.error(
               `[Sync ${groupId}] Error updating contribution for profile ${profile.id} (${contributor.login}):`,
@@ -927,21 +1000,14 @@ export async function syncGitHubRepositoryData(
         );
       }
     }
-    console.log(`[Sync ${groupId}] Finished contributor link update attempts.`);
 
     // --- Update Database --- //
-    console.log(
-      `[Sync ${groupId}] Updating DB metrics: Commits=${calculatedMetrics.totalCommits}, Add=${calculatedMetrics.codeAdditions}, Del=${calculatedMetrics.codeDeletions}`
-    );
     await updateRepositoryMetrics(groupId, calculatedMetrics);
     await updateLastSync(groupId);
 
-    console.log(`[Sync ${groupId}] Sync successful.`);
     return true;
   } catch (error) {
-    console.error(`Error during GitHub sync for group ${groupId}:`, error);
-    // Optionally update the group status to indicate sync failure
-    throw error; // Re-throw error to be caught by API route
+    throw error;
   }
 }
 

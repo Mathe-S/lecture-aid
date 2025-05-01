@@ -41,9 +41,6 @@ export async function POST(
 
   // Now check if authorized
   if (!isAdmin && !isOwnerOfThisGroup) {
-    console.warn(
-      `[Sync Auth Failed] User ${session.user.id} (role: ${role}) is not admin and not owner of group ${groupId}.`
-    );
     return NextResponse.json(
       { error: "Forbidden: Admin or Group Owner required" },
       { status: 403 }

@@ -29,7 +29,7 @@ export function MidtermTodoList({
 }: MidtermTodoListProps) {
   const { mutate: updateTask } = useUpdateTaskStatus();
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const handleCheckedChange = (taskId: string, isChecked: boolean) => {
     if (!canEdit) return;
