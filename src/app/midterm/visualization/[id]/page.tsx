@@ -148,59 +148,55 @@ export default function RepositoryVisualizationPage() {
       const width = 500;
       const height = 500;
       const centerX = width / 2;
-      const trunkBaseY = height - 50;
-      const trunkHeight = 80;
+      const trunkBaseY = height - 10;
+      const trunkHeight = 110;
       const trunkTopY = trunkBaseY - trunkHeight;
-      const trunkWidth = 25;
-
-      const branchColor = "#A0522D";
-      const leafColors = [
-        "#8FBC8F",
-        "#98FB98",
-        "#90EE90",
-        "#3CB371",
-        "#2E8B57",
-      ];
-      const textFill = "#4A5568";
+      const trunkWidthAtBase = 45;
+      const trunkWidthAtTop = 28;
+      const rootFlairFactor = 0.4;
+      const branchAngleSpread = Math.PI * 0.85;
+      const startAngle = -Math.PI / 2 - branchAngleSpread / 2;
       const minBranchLength = 60;
-      const maxBranchLengthAddition = 120;
+      const maxBranchLengthAddition = 150;
+      const textOffset = 22;
 
-      const trunkPath = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "path"
-      );
-      trunkPath.setAttribute(
-        "d",
-        `M ${centerX - trunkWidth / 2} ${trunkBaseY} 
-          Q ${centerX - trunkWidth / 4} ${trunkBaseY - trunkHeight / 2}, ${
-          centerX - trunkWidth / 6
-        } ${trunkTopY} 
-          L ${centerX + trunkWidth / 6} ${trunkTopY} 
-          Q ${centerX + trunkWidth / 4} ${trunkBaseY - trunkHeight / 2}, ${
-          centerX + trunkWidth / 2
-        } ${trunkBaseY} 
-          Z`
-      );
-      trunkPath.setAttribute("fill", branchColor);
-      trunkPath.setAttribute("filter", "url(#trunk-texture)");
-      svg.appendChild(trunkPath);
+      const trunkColor = "#8B4513";
+      const branchColor = "#A0522D";
+      const branchStrokeColor = "#6B4423";
+      const leafColors = [
+        "#55a630",
+        "#80b918",
+        "#aacc00",
+        "#bfd200",
+        "#d4d700",
+        "#6b9127",
+        "#9dbd3c",
+        "#448a20",
+      ];
+      const textFill = "#1e293b";
 
       const defs = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "defs"
       );
+
       const filter = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "filter"
       );
-      filter.setAttribute("id", "trunk-texture");
+      filter.setAttribute("id", "subtle-texture");
+      filter.setAttribute("x", "0");
+      filter.setAttribute("y", "0");
+      filter.setAttribute("width", "100%");
+      filter.setAttribute("height", "100%");
       const turbulence = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "feTurbulence"
       );
       turbulence.setAttribute("type", "fractalNoise");
-      turbulence.setAttribute("baseFrequency", "0.02 0.05");
+      turbulence.setAttribute("baseFrequency", "0.03 0.06");
       turbulence.setAttribute("numOctaves", "2");
+      turbulence.setAttribute("seed", `${Math.random() * 100}`);
       turbulence.setAttribute("result", "noise");
       filter.appendChild(turbulence);
       const displace = document.createElementNS(
@@ -209,12 +205,96 @@ export default function RepositoryVisualizationPage() {
       );
       displace.setAttribute("in", "SourceGraphic");
       displace.setAttribute("in2", "noise");
-      displace.setAttribute("scale", "3");
+      displace.setAttribute("scale", "2");
       displace.setAttribute("xChannelSelector", "R");
       displace.setAttribute("yChannelSelector", "G");
       filter.appendChild(displace);
+      const blur = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "feGaussianBlur"
+      );
+      blur.setAttribute("stdDeviation", "0.5");
+      filter.appendChild(blur);
       defs.appendChild(filter);
+
+      leafColors.forEach((color, index) => {
+        const grad = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "radialGradient"
+        );
+        grad.setAttribute("id", `leafGrad${index}`);
+        grad.setAttribute("cx", "30%");
+        grad.setAttribute("cy", "30%");
+        grad.setAttribute("r", "70%");
+
+        const stop1 = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "stop"
+        );
+        stop1.setAttribute("offset", "0%");
+        stop1.setAttribute("stop-color", "#ffffff");
+        stop1.setAttribute("stop-opacity", "0.3");
+        grad.appendChild(stop1);
+
+        const stop2 = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "stop"
+        );
+        stop2.setAttribute("offset", "100%");
+        stop2.setAttribute("stop-color", color);
+        grad.appendChild(stop2);
+        defs.appendChild(grad);
+      });
+
       svg.appendChild(defs);
+
+      const trunkPath = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+      );
+      const rootFlairOffset = trunkWidthAtBase * rootFlairFactor;
+      trunkPath.setAttribute(
+        "d",
+        `M ${centerX - trunkWidthAtBase / 2 - rootFlairOffset} ${trunkBaseY} ` +
+          `C ${centerX - trunkWidthAtBase / 2 - rootFlairOffset * 0.5} ${
+            trunkBaseY - trunkHeight * 0.1
+          }, ` +
+          `${centerX - trunkWidthAtBase / 2.5} ${
+            trunkBaseY - trunkHeight * 0.25
+          }, ` +
+          `${centerX - trunkWidthAtBase / 2} ${
+            trunkBaseY - trunkHeight * 0.3
+          } ` +
+          `C ${centerX - trunkWidthAtBase / 3} ${
+            trunkBaseY - trunkHeight * 0.6
+          }, ` +
+          `${centerX - trunkWidthAtTop / 1.5} ${
+            trunkTopY + trunkHeight * 0.3
+          }, ` +
+          `${centerX - trunkWidthAtTop / 2} ${trunkTopY} ` +
+          `L ${centerX + trunkWidthAtTop / 2} ${trunkTopY} ` +
+          `C ${centerX + trunkWidthAtTop / 1.5} ${
+            trunkTopY + trunkHeight * 0.3
+          }, ` +
+          `${centerX + trunkWidthAtBase / 3} ${
+            trunkBaseY - trunkHeight * 0.6
+          }, ` +
+          `${centerX + trunkWidthAtBase / 2} ${
+            trunkBaseY - trunkHeight * 0.3
+          } ` +
+          `C ${centerX + trunkWidthAtBase / 2.5} ${
+            trunkBaseY - trunkHeight * 0.25
+          }, ` +
+          `${centerX + trunkWidthAtBase / 2 + rootFlairOffset * 0.5} ${
+            trunkBaseY - trunkHeight * 0.1
+          }, ` +
+          `${centerX + trunkWidthAtBase / 2 + rootFlairOffset} ${trunkBaseY} Z`
+      );
+      trunkPath.setAttribute("fill", trunkColor);
+      trunkPath.setAttribute("stroke", branchStrokeColor);
+      trunkPath.setAttribute("stroke-width", "1");
+      trunkPath.setAttribute("filter", "url(#subtle-texture)");
+      svg.appendChild(trunkPath);
 
       const contributors = visData.contributors.data;
       if (!contributors || contributors.length === 0) return;
@@ -224,50 +304,93 @@ export default function RepositoryVisualizationPage() {
         ...contributors.map((c) => c.contributions || 0)
       );
       const totalContributors = contributors.length;
-      const angleSpread = Math.PI * 0.8;
-      const startAngle = -Math.PI / 2 - angleSpread / 2;
+
+      const branchesGroup = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "g"
+      );
+      const leavesGroup = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "g"
+      );
+      const textGroup = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "g"
+      );
+      svg.appendChild(branchesGroup);
+      svg.appendChild(leavesGroup);
+      svg.appendChild(textGroup);
 
       contributors.forEach((contributor, index) => {
         const contributionRatio =
           maxContributions > 0
             ? (contributor.contributions || 0) / maxContributions
             : 0;
-        const length =
+        const branchLength =
           minBranchLength + contributionRatio * maxBranchLengthAddition;
+        const angleVariance =
+          (Math.random() - 0.5) *
+          (branchAngleSpread / (totalContributors * 2.5));
         const angle =
-          startAngle + (angleSpread / (totalContributors + 1)) * (index + 1);
-        const endX = centerX + Math.cos(angle) * length;
-        const endY = trunkTopY + Math.sin(angle) * length;
-        const controlX = centerX + Math.cos(angle) * length * 0.5;
-        const controlY = trunkTopY + Math.sin(angle) * length * 0.5;
-        const branchWidthStart = 12;
-        const branchWidthEnd = 4;
+          startAngle +
+          (branchAngleSpread / (totalContributors + 1)) * (index + 1) +
+          angleVariance;
+        const branchStartX =
+          centerX + (Math.random() - 0.5) * (trunkWidthAtTop * 0.4);
+        const branchStartY = trunkTopY + 5 + Math.random() * 10;
+        const endX = branchStartX + Math.cos(angle) * branchLength;
+        const endY = branchStartY + Math.sin(angle) * branchLength;
+        const controlX1 =
+          branchStartX + Math.cos(angle + 0.1) * branchLength * 0.3;
+        const controlY1 =
+          branchStartY + Math.sin(angle + 0.1) * branchLength * 0.3;
+        const controlX2 =
+          branchStartX + Math.cos(angle - 0.1) * branchLength * 0.7;
+        const controlY2 =
+          branchStartY + Math.sin(angle - 0.1) * branchLength * 0.7;
+        const branchWidthStart = Math.max(
+          5,
+          16 * (0.4 + contributionRatio * 0.6)
+        );
+        const branchWidthEnd = Math.max(2.5, branchWidthStart * 0.3);
+        const anglePerp = angle + Math.PI / 2;
+        const endOffsetX = (Math.cos(anglePerp) * branchWidthEnd) / 2;
+        const endOffsetY = (Math.sin(anglePerp) * branchWidthEnd) / 2;
 
         const branch = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "path"
         );
-        const anglePerp = angle + Math.PI / 2;
-        const startOffsetX = (Math.cos(anglePerp) * branchWidthStart) / 2;
-        const startOffsetY = (Math.sin(anglePerp) * branchWidthStart) / 2;
-        const endOffsetX = (Math.cos(anglePerp) * branchWidthEnd) / 2;
-        const endOffsetY = (Math.sin(anglePerp) * branchWidthEnd) / 2;
-
         branch.setAttribute(
           "d",
-          `M ${centerX - startOffsetX} ${trunkTopY - startOffsetY} 
-             Q ${controlX} ${controlY}, ${endX - endOffsetX} ${
-            endY - endOffsetY
-          } 
-             L ${endX + endOffsetX} ${endY + endOffsetY} 
-             Q ${controlX} ${controlY}, ${centerX + startOffsetX} ${
-            trunkTopY + startOffsetY
-          } 
-             Z`
+          `M ${branchStartX - (Math.cos(anglePerp) * branchWidthStart) / 2} ${
+            branchStartY - (Math.sin(anglePerp) * branchWidthStart) / 2
+          } ` +
+            `C ${controlX1 - Math.cos(anglePerp) * branchWidthStart * 0.3} ${
+              controlY1 - Math.sin(anglePerp) * branchWidthStart * 0.3
+            }, ` +
+            `${controlX2 - Math.cos(anglePerp) * branchWidthEnd * 0.6} ${
+              controlY2 - Math.sin(anglePerp) * branchWidthEnd * 0.6
+            }, ` +
+            `${endX - endOffsetX} ${endY - endOffsetY} ` +
+            `A ${branchWidthEnd / 2} ${branchWidthEnd / 2} 0 0 1 ${
+              endX + endOffsetX
+            } ${endY + endOffsetY} ` +
+            `C ${controlX2 + Math.cos(anglePerp) * branchWidthEnd * 0.6} ${
+              controlY2 + Math.sin(anglePerp) * branchWidthEnd * 0.6
+            }, ` +
+            `${controlX1 + Math.cos(anglePerp) * branchWidthStart * 0.3} ${
+              controlY1 + Math.sin(anglePerp) * branchWidthStart * 0.3
+            }, ` +
+            `${branchStartX + (Math.cos(anglePerp) * branchWidthStart) / 2} ${
+              branchStartY + (Math.sin(anglePerp) * branchWidthStart) / 2
+            } ` +
+            `Z`
         );
         branch.setAttribute("fill", branchColor);
-        branch.setAttribute("stroke", "#663300");
-        branch.setAttribute("stroke-width", "0.5");
+        branch.setAttribute("stroke", branchStrokeColor);
+        branch.setAttribute("stroke-width", "0.75");
+        branch.setAttribute("filter", "url(#subtle-texture)");
 
         const branchTitle = document.createElementNS(
           "http://www.w3.org/2000/svg",
@@ -277,74 +400,136 @@ export default function RepositoryVisualizationPage() {
           contributor.displayName || contributor.username
         }: ${contributor.contributions} commits`;
         branch.appendChild(branchTitle);
-
-        svg.appendChild(branch);
+        branchesGroup.appendChild(branch);
 
         const commits = visData.commits.byAuthor[contributor.username] || 0;
-        const leafCount = Math.min(commits * 2, 60);
+        const numTwigs = Math.max(1, Math.min(3, Math.floor(commits / 10)));
+        const baseLeafCountPerCommit = 3.5;
+        const maxTotalLeaves = 200;
+        const totalLeavesForBranch = Math.min(
+          maxTotalLeaves,
+          10 + Math.floor(commits * baseLeafCountPerCommit)
+        );
 
-        for (let i = 0; i < leafCount; i++) {
-          const leafSizeX = 3 + Math.random() * 4;
-          const leafSizeY = leafSizeX * (0.7 + Math.random() * 0.6);
-          const leafDistanceRatio = 0.3 + Math.random() * 0.7;
-          const leafDist = length * leafDistanceRatio;
-          const placementAngle = angle + (Math.random() - 0.5) * 0.5;
-          const leafX = centerX + Math.cos(placementAngle) * leafDist;
-          const leafY = trunkTopY + Math.sin(placementAngle) * leafDist;
-          const leafRotation = Math.random() * 360;
+        for (let t = 0; t < numTwigs; t++) {
+          const twigStartRatio = 0.3 + Math.random() * 0.6;
+          const twigStartX =
+            branchStartX + Math.cos(angle) * branchLength * twigStartRatio;
+          const twigStartY =
+            branchStartY + Math.sin(angle) * branchLength * twigStartRatio;
+          const twigAngleVariance = (Math.random() - 0.5) * 1.2;
+          const twigAngle = angle + twigAngleVariance;
+          const twigLength = branchLength * (0.15 + Math.random() * 0.25);
+          const twigEndX = twigStartX + Math.cos(twigAngle) * twigLength;
+          const twigEndY = twigStartY + Math.sin(twigAngle) * twigLength;
+          const twigWidth = Math.max(1.5, branchWidthEnd * 0.6);
 
-          const leaf = document.createElementNS(
+          const twig = document.createElementNS(
             "http://www.w3.org/2000/svg",
-            "ellipse"
+            "line"
           );
-          leaf.setAttribute("cx", `${leafX}`);
-          leaf.setAttribute("cy", `${leafY}`);
-          leaf.setAttribute("rx", `${leafSizeX}`);
-          leaf.setAttribute("ry", `${leafSizeY}`);
-          leaf.setAttribute("fill", leafColors[i % leafColors.length]);
-          leaf.setAttribute("fill-opacity", `${0.6 + Math.random() * 0.4}`);
-          leaf.setAttribute(
-            "transform",
-            `rotate(${leafRotation} ${leafX} ${leafY})`
-          );
-          leaf.setAttribute("stroke", "#2E8B57");
-          leaf.setAttribute("stroke-width", "0.3");
+          twig.setAttribute("x1", `${twigStartX}`);
+          twig.setAttribute("y1", `${twigStartY}`);
+          twig.setAttribute("x2", `${twigEndX}`);
+          twig.setAttribute("y2", `${twigEndY}`);
+          twig.setAttribute("stroke", branchColor);
+          twig.setAttribute("stroke-width", `${twigWidth}`);
+          twig.setAttribute("stroke-linecap", "round");
+          branchesGroup.appendChild(twig);
 
-          const leafTitle = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "title"
-          );
-          leafTitle.textContent = `${commits} commits by ${
-            contributor.displayName || contributor.username
-          }`;
-          leaf.appendChild(leafTitle);
+          const leavesOnThisTwig = Math.floor(totalLeavesForBranch / numTwigs);
+          for (let i = 0; i < leavesOnThisTwig; i++) {
+            const leafDistanceRatio = 0.1 + Math.random() * 0.9;
+            const leafDist = twigLength * leafDistanceRatio;
+            const leafAngleVariance = (Math.random() - 0.5) * 0.5;
+            const placementAngle = twigAngle + leafAngleVariance;
+            const leafBaseX = twigStartX + Math.cos(placementAngle) * leafDist;
+            const leafBaseY = twigStartY + Math.sin(placementAngle) * leafDist;
 
-          svg.appendChild(leaf);
+            const leafSize = 4 + Math.pow(Math.random(), 1.5) * 7;
+            const leafWidth = leafSize * (0.3 + Math.random() * 0.4);
+            const leafRotation =
+              twigAngle * (180 / Math.PI) + 90 + (Math.random() - 0.5) * 75;
+            const leafColorIndex = Math.floor(
+              Math.random() * leafColors.length
+            );
+
+            const leaf = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "path"
+            );
+            let dPath = "";
+            const shapeType = Math.random();
+            if (shapeType < 0.6) {
+              dPath = `M 0 0 Q ${leafWidth / 2} ${
+                -leafSize / 2
+              }, 0 ${-leafSize} Q ${-leafWidth / 2} ${-leafSize / 2}, 0 0 Z`;
+            } else if (shapeType < 0.85) {
+              dPath = `M 0 0 Q ${leafWidth / 1.5} ${
+                -leafSize / 2.5
+              }, 0 ${-leafSize} Q ${-leafWidth / 1.5} ${
+                -leafSize / 2.5
+              }, 0 0 Z`;
+            } else {
+              dPath = `M 0 0 Q ${leafWidth * 0.8} ${
+                -leafSize * 0.4
+              }, 0 ${-leafSize} Q ${-leafWidth * 0.8} ${
+                -leafSize * 0.4
+              }, 0 0 Z`;
+            }
+            leaf.setAttribute("d", dPath);
+            leaf.setAttribute("fill", `url(#leafGrad${leafColorIndex})`);
+            leaf.setAttribute("fill-opacity", `${0.65 + Math.random() * 0.3}`);
+            leaf.setAttribute("stroke", "#16302b");
+            leaf.setAttribute("stroke-width", "0.2");
+            leaf.setAttribute(
+              "transform",
+              `translate(${leafBaseX} ${leafBaseY}) rotate(${leafRotation})`
+            );
+
+            leavesGroup.appendChild(leaf);
+          }
         }
 
         const text = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "text"
         );
-        const textOffset = 15;
-        const textX = centerX + Math.cos(angle) * (length + textOffset);
-        const textY = trunkTopY + Math.sin(angle) * (length + textOffset);
+        const textAngle = angle;
+        const textRadius = branchLength + textOffset;
+        const textX = centerX + Math.cos(textAngle) * textRadius;
+        const textY = trunkTopY + Math.sin(textAngle) * textRadius;
+
         text.setAttribute("x", `${textX}`);
         text.setAttribute("y", `${textY}`);
-        text.setAttribute(
-          "text-anchor",
-          Math.abs(angle + Math.PI / 2) < 0.1
-            ? "middle"
-            : angle + Math.PI / 2 < 0
-            ? "start"
-            : "end"
-        );
-        text.setAttribute("dy", "0.3em");
+        text.setAttribute("dy", "0.35em");
         text.setAttribute("fill", textFill);
         text.setAttribute("font-size", "11px");
-        text.setAttribute("font-weight", "500");
+        text.setAttribute("font-family", "'Inter', sans-serif");
+        text.setAttribute("font-weight", "600");
         text.textContent = contributor.displayName || contributor.username;
-        svg.appendChild(text);
+
+        const normalizedAngle = (angle + Math.PI * 2) % (Math.PI * 2);
+        if (
+          normalizedAngle > Math.PI * 0.1 &&
+          normalizedAngle < Math.PI * 0.9
+        ) {
+          text.setAttribute("text-anchor", "start");
+        } else if (
+          normalizedAngle > Math.PI * 1.1 &&
+          normalizedAngle < Math.PI * 1.9
+        ) {
+          text.setAttribute("text-anchor", "end");
+        } else {
+          text.setAttribute("text-anchor", "middle");
+        }
+
+        text.setAttribute("stroke", "#ffffff");
+        text.setAttribute("stroke-width", "2.5");
+        text.setAttribute("stroke-linejoin", "round");
+        text.setAttribute("paint-order", "stroke");
+
+        textGroup.appendChild(text);
       });
 
       const title = document.createElementNS(
@@ -352,9 +537,10 @@ export default function RepositoryVisualizationPage() {
         "text"
       );
       title.setAttribute("x", `${centerX}`);
-      title.setAttribute("y", "35");
+      title.setAttribute("y", "30");
       title.setAttribute("text-anchor", "middle");
-      title.setAttribute("font-size", "18");
+      title.setAttribute("font-size", "20px");
+      title.setAttribute("font-family", "'Inter', sans-serif");
       title.setAttribute("font-weight", "600");
       title.setAttribute("fill", textFill);
       title.textContent = `Contribution Tree: ${group?.name || "Group"}`;
