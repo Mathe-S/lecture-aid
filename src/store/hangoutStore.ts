@@ -45,7 +45,6 @@ export const useHangoutStore = create<HangoutState>((set, get) => ({
       return;
     }
 
-    console.log(`[Hangout Store] Initializing channel for user ${user.id}...`);
     get().setCurrentUser(user); // Set the user for this channel instance
 
     const newChannel = supabase.channel(HANGOUT_PRESENCE_CHANNEL, {
@@ -61,12 +60,6 @@ export const useHangoutStore = create<HangoutState>((set, get) => ({
       try {
         const presenceState = newChannel.presenceState<HangoutPresenceInfo>();
         const newCount = Object.keys(presenceState).length;
-        console.log(
-          "[Hangout Store] Sync event. State:",
-          presenceState,
-          "Count:",
-          newCount
-        );
         get().setCount(newCount);
       } catch (error) {
         console.error("[Hangout Store] Error during presence sync:", error);
@@ -78,7 +71,6 @@ export const useHangoutStore = create<HangoutState>((set, get) => ({
       .on("presence", { event: "join" }, handleSync)
       .on("presence", { event: "leave" }, handleSync)
       .subscribe((status) => {
-        console.log("[Hangout Store] Subscription Status:", status);
         if (status === "SUBSCRIBED") {
           get().setChannel(newChannel); // Set channel in state *after* successful subscribe
           handleSync(); // Initial sync
@@ -101,7 +93,6 @@ export const useHangoutStore = create<HangoutState>((set, get) => ({
   closeChannel: async () => {
     const currentChannel = get().channel;
     if (currentChannel) {
-      console.log("[Hangout Store] Closing channel...");
       try {
         await currentChannel.unsubscribe();
         console.log("[Hangout Store] Unsubscribe successful.");
@@ -129,9 +120,6 @@ export const useHangoutStore = create<HangoutState>((set, get) => ({
       );
       return;
     }
-    console.log(
-      `[Hangout Store] Tracking presence for user ${currentUser.id}...`
-    );
     try {
       await channel.track({
         joined_at: new Date().toISOString(),
@@ -153,9 +141,6 @@ export const useHangoutStore = create<HangoutState>((set, get) => ({
       );
       return;
     }
-    console.log(
-      `[Hangout Store] Untracking presence (associated user: ${currentUser?.id})...`
-    );
     try {
       // untrack() removes the presence tracked by this specific channel instance
       await channel.untrack();

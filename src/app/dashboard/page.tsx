@@ -369,26 +369,39 @@ export default function DashboardPage() {
                 {midtermEvaluations?.map((evalData) => (
                   <div
                     key={evalData.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-slate-200 bg-white"
+                    className="p-4 rounded-lg border border-slate-200 bg-white space-y-3"
                   >
-                    <div className="space-y-1">
-                      <Link
-                        href={`/midterm/groups/${evalData.groupId}`}
-                        className="text-sm font-medium text-blue-600 hover:underline"
-                      >
-                        Group: {evalData.groupName}
-                      </Link>
-                      <p className="text-xs text-slate-500">
-                        Evaluated on:{" "}
-                        {format(new Date(evalData.updatedAt), "PPP")}
-                      </p>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Link
+                          href={`/midterm/groups/${evalData.groupId}`}
+                          className="text-sm font-medium text-blue-600 hover:underline"
+                        >
+                          Group: {evalData.groupName}
+                        </Link>
+                        <p className="text-xs text-slate-500">
+                          Evaluated on:{" "}
+                          {format(new Date(evalData.updatedAt), "PPP")}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-semibold">
+                          {evalData.totalScore}/250
+                        </p>
+                        {/* Optionally add breakdown or link to details */}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold">
-                        {evalData.totalScore}/250
-                      </p>
-                      {/* Optionally add breakdown or link to details */}
-                    </div>
+                    {/* Conditionally display feedback */}
+                    {evalData.feedback && (
+                      <div className="mt-2 pt-3 border-t border-slate-100">
+                        <h4 className="text-xs font-medium text-slate-600 mb-1">
+                          Feedback:
+                        </h4>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                          {evalData.feedback}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
