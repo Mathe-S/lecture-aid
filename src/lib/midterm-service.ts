@@ -51,9 +51,13 @@ export interface RepositoryVisualizationData {
     count: number;
     data: {
       username: string;
-      displayName?: string;
-      contributions: number;
-      avatar?: string;
+      displayName: string;
+      avatar?: string | null;
+      commits: number;
+      additions: number;
+      deletions: number;
+      totalLoc: number;
+      pullRequests: number;
     }[];
   };
   activity: {
