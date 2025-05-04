@@ -132,7 +132,7 @@ export const useHangoutStore = create<HangoutState>((set, get) => ({
   },
 
   untrackPresence: async () => {
-    const { channel, currentUser } = get();
+    const { channel } = get();
     // It's okay to untrack even if currentUser is briefly null during logout,
     // as untrack doesn't require specific user data, just the channel instance.
     if (!channel) {
