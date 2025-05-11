@@ -1,4 +1,4 @@
-import { updateSubmission } from "@/lib/assignmentService";
+import { setGradeAndFeedback } from "@/lib/assignmentService";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PUT(
@@ -16,11 +16,7 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const submission = await updateSubmission(id, {
-      feedback,
-      grade,
-      updatedAt: new Date().toISOString(),
-    });
+    const submission = await setGradeAndFeedback(id, feedback, grade);
 
     return NextResponse.json(submission);
   } catch (error) {

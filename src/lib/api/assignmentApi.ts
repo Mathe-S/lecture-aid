@@ -3,6 +3,8 @@ import {
   AssignmentSubmission,
   AssignmentSubmissionWithProfile,
   AssignmentCustomField,
+  AssignmentSubmissionWithCustomAnswers,
+  AssignmentSubmissionCustomValue,
 } from "@/db/drizzle/schema";
 
 // API Responses
@@ -155,7 +157,11 @@ export const assignmentApi = {
 
   getSubmission: async (
     submissionId: string
-  ): Promise<AssignmentSubmissionWithProfile> => {
+  ): Promise<
+    AssignmentSubmissionWithProfile & {
+      customAnswers?: AssignmentSubmissionCustomValue[];
+    }
+  > => {
     const response = await fetch(`/api/submissions/${submissionId}`);
     if (!response.ok) {
       const error = await response.json();
@@ -167,7 +173,7 @@ export const assignmentApi = {
   getUserSubmission: async (
     assignmentId: string,
     userId: string
-  ): Promise<AssignmentSubmission | null> => {
+  ): Promise<AssignmentSubmissionWithCustomAnswers | null> => {
     const response = await fetch(
       `/api/assignments/${assignmentId}/submissions/user/${userId}`
     );

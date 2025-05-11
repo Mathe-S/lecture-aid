@@ -62,18 +62,21 @@ export function SubmitAssignment({ assignmentId }: SubmitAssignmentProps) {
     Record<string, string>
   >({});
 
-  // Effect to initialize customFieldInputs when assignment loads
-  // For now, this doesn't load existing custom answers from submission, that's a later step.
+  // Effect to initialize customFieldInputs when assignment loads or existing submission changes
   useEffect(() => {
     if (assignment && assignment.customFields) {
       const initialInputs: Record<string, string> = {};
-      // TODO: Pre-fill from existingSubmission.customAnswers if available and structure is known
       assignment.customFields.forEach((field) => {
-        initialInputs[field.id] = ""; // Default to empty
+        // Check if there's an existing answer for this field
+        const existingAnswer = existingSubmission?.customAnswers?.find(
+          (ans) => ans.custom_field_id === field.id
+        );
+        initialInputs[field.id] = existingAnswer?.value || ""; // Pre-fill or default to empty
       });
       setCustomFieldInputs(initialInputs);
     }
-  }, [assignment]);
+    // Add existingSubmission to dependency array to re-run if it changes
+  }, [assignment, existingSubmission]);
 
   const handleCustomFieldChange = (fieldId: string, value: string) => {
     setCustomFieldInputs((prev) => ({ ...prev, [fieldId]: value }));

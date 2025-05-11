@@ -8,6 +8,8 @@ import {
   assignmentCustomFields,
   AssignmentWithCustomFields,
   assignmentSubmissionCustomValues,
+  AssignmentSubmissionCustomValue,
+  Profile,
 } from "@/db/drizzle/schema";
 
 export async function getAssignments() {
@@ -124,14 +126,56 @@ export async function getSubmissionsByAssignment(assignmentId: string) {
   });
 }
 
-export async function getSubmissionById(id: string) {
-  return await db.query.assignmentSubmissions.findFirst({
+export async function getSubmissionById(id: string): Promise<
+  | (AssignmentSubmission & {
+      profile: Profile | null;
+      assignment: AssignmentWithCustomFields;
+      customAnswers: AssignmentSubmissionCustomValue[];
+    })
+  | null
+> {
+  const submissionData = await db.query.assignmentSubmissions.findFirst({
     where: eq(assignmentSubmissions.id, id),
     with: {
       profile: true,
       assignment: true,
     },
   });
+
+  if (!submissionData) {
+    return null;
+  }
+
+  let populatedAssignment: AssignmentWithCustomFields | undefined;
+  if (submissionData.assignment) {
+    const customFieldDefinitions =
+      await db.query.assignmentCustomFields.findMany({
+        where: eq(
+          assignmentCustomFields.assignment_id,
+          submissionData.assignment.id
+        ),
+        orderBy: (fields, { asc }) => [asc(fields.order)],
+      });
+    populatedAssignment = {
+      ...submissionData.assignment,
+      customFields: customFieldDefinitions || [],
+    };
+  }
+
+  const customAnswers =
+    await db.query.assignmentSubmissionCustomValues.findMany({
+      where: eq(
+        assignmentSubmissionCustomValues.submission_id,
+        submissionData.id
+      ),
+    });
+
+  return {
+    ...submissionData,
+    profile: submissionData.profile || null,
+    assignment: populatedAssignment!,
+    customAnswers: customAnswers || [],
+  };
 }
 
 export async function createSubmission(
@@ -229,6 +273,24 @@ export async function updateSubmission(
   return updatedMainSubmission;
 }
 
+export async function setGradeAndFeedback(
+  submissionId: string,
+  feedback: string | null, // Allow null feedback
+  grade: number | null // Allow null grade (e.g., if clearing a grade)
+) {
+  const [gradedSubmission] = await db
+    .update(assignmentSubmissions)
+    .set({
+      feedback: feedback,
+      grade: grade,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(assignmentSubmissions.id, submissionId))
+    .returning();
+
+  return gradedSubmission;
+}
+
 export async function deleteSubmission(id: string) {
   await db
     .delete(assignmentSubmissions)
@@ -239,8 +301,15 @@ export async function deleteSubmission(id: string) {
 export async function getSubmissionByUserAndAssignment(
   assignmentId: string,
   userId: string
-) {
-  return await db.query.assignmentSubmissions.findFirst({
+): Promise<
+  | (AssignmentSubmission & {
+      profile: Profile | null;
+      assignment: AssignmentWithCustomFields | null;
+      customAnswers: AssignmentSubmissionCustomValue[];
+    })
+  | null
+> {
+  const submission = await db.query.assignmentSubmissions.findFirst({
     where: (submissions) =>
       and(
         eq(submissions.assignmentId, assignmentId),
@@ -251,6 +320,34 @@ export async function getSubmissionByUserAndAssignment(
       assignment: true,
     },
   });
+
+  if (!submission) {
+    return null;
+  }
+
+  let populatedAssignmentForUser: AssignmentWithCustomFields | undefined;
+  if (submission.assignment) {
+    const cfDefs = await db.query.assignmentCustomFields.findMany({
+      where: eq(assignmentCustomFields.assignment_id, submission.assignment.id),
+      orderBy: (f, { asc }) => [asc(f.order)],
+    });
+    populatedAssignmentForUser = {
+      ...submission.assignment,
+      customFields: cfDefs || [],
+    };
+  }
+
+  const customAnswersForUser =
+    await db.query.assignmentSubmissionCustomValues.findMany({
+      where: eq(assignmentSubmissionCustomValues.submission_id, submission.id),
+    });
+
+  return {
+    ...submission,
+    profile: submission.profile || null,
+    assignment: populatedAssignmentForUser || null,
+    customAnswers: customAnswersForUser || [],
+  };
 }
 
 export async function getSubmissionsByUser(userId: string) {

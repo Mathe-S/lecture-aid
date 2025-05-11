@@ -33,6 +33,7 @@ export default function GradeSubmissionPage() {
 
   // Fetch submission details
   const { data: submission, isLoading } = useSubmission(id);
+  console.log("🚀 ~ GradeSubmissionPage ~ submission:", submission);
 
   useEffect(() => {
     if (submission) {
@@ -175,6 +176,35 @@ export default function GradeSubmissionPage() {
                     )}
                   </p>
                 </div>
+
+                {/* Display Submitted Custom Field Answers */}
+                {submission.customAnswers &&
+                  submission.customAnswers.length > 0 && (
+                    <div className="pt-4 border-t mt-4">
+                      <h3 className="text-sm font-medium text-slate-600 mb-2">
+                        Submitted Custom Fields:
+                      </h3>
+                      <div className="space-y-3">
+                        {submission.customAnswers.map((answer) => {
+                          // Find the corresponding custom field definition for the label
+                          const fieldDefinition =
+                            submission.assignment?.customFields?.find(
+                              (cf) => cf.id === answer.custom_field_id
+                            );
+                          return (
+                            <div key={answer.id}>
+                              <h4 className="text-xs font-semibold text-slate-500">
+                                {fieldDefinition?.label || "Unknown Field"}:
+                              </h4>
+                              <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                {answer.value}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>

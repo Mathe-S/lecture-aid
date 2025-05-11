@@ -546,7 +546,7 @@ export type AssignmentWithCustomFields = Assignment & {
 export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
 export type AssignmentSubmissionWithProfile = AssignmentSubmission & {
   profile: Profile;
-  assignment: Assignment;
+  assignment: AssignmentWithCustomFields;
 };
 export type AssignmentSubmissionCustomValue =
   typeof assignmentSubmissionCustomValues.$inferSelect;
