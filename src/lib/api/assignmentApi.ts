@@ -38,6 +38,7 @@ export const assignmentApi = {
   createAssignment: async (
     assignmentData: Omit<Assignment, "id" | "created_at" | "updatedAt"> & {
       created_by: string;
+      customFields?: Array<{ label: string }>;
     }
   ): Promise<CreateAssignmentResponse> => {
     const response = await fetch("/api/assignments", {
@@ -59,7 +60,9 @@ export const assignmentApi = {
 
   updateAssignment: async (
     id: string,
-    assignmentData: Partial<Assignment>
+    assignmentData: Partial<Assignment> & {
+      customFields?: Array<{ label: string }>;
+    }
   ): Promise<UpdateAssignmentResponse> => {
     const response = await fetch(`/api/assignments/${id}`, {
       method: "PUT",

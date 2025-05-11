@@ -5,6 +5,7 @@ import {
   assignmentSubmissions,
   Assignment,
   AssignmentSubmission,
+  assignmentCustomFields,
 } from "@/db/drizzle/schema";
 
 export async function getAssignments() {
@@ -20,7 +21,9 @@ export async function getAssignmentById(id: string) {
 }
 
 export async function createAssignment(
-  assignmentData: Omit<Assignment, "id" | "created_at" | "updatedAt">
+  assignmentData: Omit<Assignment, "id" | "created_at" | "updatedAt"> & {
+    customFields?: Array<{ label: string }>;
+  }
 ) {
   const [assignment] = await db
     .insert(assignments)
@@ -33,13 +36,45 @@ export async function createAssignment(
     })
     .returning();
 
+  if (assignment && assignmentData.customFields) {
+    for (const [index, customField] of assignmentData.customFields.entries()) {
+      if (customField.label.trim() !== "") {
+        await db.insert(assignmentCustomFields).values({
+          assignment_id: assignment.id,
+          label: customField.label,
+          order: index,
+          is_required: false,
+        });
+      }
+    }
+  }
+
   return assignment;
 }
 
 export async function updateAssignment(
   id: string,
-  assignmentData: Partial<Assignment>
+  assignmentData: Partial<Assignment> & {
+    customFields?: Array<{ label: string }>;
+  }
 ) {
+  await db
+    .delete(assignmentCustomFields)
+    .where(eq(assignmentCustomFields.assignment_id, id));
+
+  if (assignmentData.customFields) {
+    for (const [index, customField] of assignmentData.customFields.entries()) {
+      if (customField.label.trim() !== "") {
+        await db.insert(assignmentCustomFields).values({
+          assignment_id: id,
+          label: customField.label,
+          order: index,
+          is_required: false,
+        });
+      }
+    }
+  }
+
   const [assignment] = await db
     .update(assignments)
     .set({

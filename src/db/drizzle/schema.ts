@@ -305,6 +305,37 @@ export const assignments = pgTable(
   ]
 );
 
+export const assignmentCustomFields = pgTable(
+  "assignment_custom_fields",
+  {
+    id: uuid("id")
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    assignment_id: uuid("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    is_required: boolean("is_required").default(false).notNull(),
+    order: integer("order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    assignmentIdFk: foreignKey({
+      columns: [table.assignment_id],
+      foreignColumns: [assignments.id],
+      name: "assignment_custom_fields_assignment_id_fkey",
+    }).onDelete("cascade"),
+    // Optional: Add a unique constraint on assignment_id and label if needed
+    // uniqueLabelPerAssignment: unique("assignment_custom_fields_assignment_id_label_key").on(table.assignment_id, table.label),
+  })
+);
+
 export const assignmentSubmissions = pgTable(
   "assignment_submissions",
   {
@@ -449,6 +480,10 @@ export function isQuestionMultipleChoice(
 
 //  types for assignments
 export type Assignment = typeof assignments.$inferSelect;
+export type AssignmentCustomField = typeof assignmentCustomFields.$inferSelect;
+export type AssignmentWithCustomFields = Assignment & {
+  customFields: AssignmentCustomField[];
+};
 export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
 export type AssignmentSubmissionWithProfile = AssignmentSubmission & {
   profile: Profile;

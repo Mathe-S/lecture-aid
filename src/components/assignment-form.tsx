@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
@@ -21,7 +21,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, Download, Loader2 } from "lucide-react";
+import {
+  CalendarIcon,
+  Download,
+  Loader2,
+  PlusCircle,
+  Trash2,
+} from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -33,11 +39,16 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Assignment } from "@/db/drizzle/schema";
 
+const customFieldSchema = z.object({
+  label: z.string().min(1, "Label is required"),
+});
+
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   dueDate: z.date().optional(),
   grade: z.number().min(0, "Grade must be a positive number").default(30),
+  customFields: z.array(customFieldSchema).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -62,7 +73,13 @@ export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
       title: "",
       description: "",
       grade: 30,
+      customFields: [],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "customFields",
   });
 
   // Set form values when editing
@@ -75,6 +92,7 @@ export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
           ? new Date(assignmentData.due_date)
           : undefined,
         grade: assignmentData.grade,
+        customFields: [], // Placeholder for now
       });
     }
   }, [assignmentData, form]);
@@ -96,6 +114,7 @@ export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
             due_date: values.dueDate ? values.dueDate.toISOString() : null,
             grade: values.grade,
             updatedAt: new Date().toISOString(),
+            customFields: values.customFields,
           },
         });
         toast.success("Assignment updated successfully");
@@ -109,6 +128,7 @@ export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
           grade: values.grade,
           created_by: user.id,
           closed: false,
+          customFields: values.customFields,
         });
         toast.success("Assignment created successfully");
         form.reset();
@@ -252,6 +272,48 @@ export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Custom Fields Section */}
+        <div>
+          <FormLabel>Custom Fields</FormLabel>
+          {fields.map((field, index) => (
+            <div key={field.id} className="flex items-center space-x-2 mt-2">
+              <FormField
+                control={form.control}
+                name={`customFields.${index}.label`}
+                render={({ field }) => (
+                  <FormItem className="flex-grow">
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., GitHub Repository URL"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => remove(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => append({ label: "" })}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Custom Field
+          </Button>
+        </div>
 
         <div className="flex justify-between items-center">
           <Button

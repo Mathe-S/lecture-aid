@@ -39,6 +39,7 @@ export function useCreateAssignment() {
     mutationFn: (
       newAssignment: Omit<Assignment, "id" | "created_at" | "updatedAt"> & {
         created_by: string;
+        customFields?: Array<{ label: string }>;
       }
     ) => assignmentApi.createAssignment(newAssignment),
     onSuccess: () => {
@@ -52,8 +53,13 @@ export function useUpdateAssignment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Assignment> }) =>
-      assignmentApi.updateAssignment(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Assignment> & { customFields?: Array<{ label: string }> };
+    }) => assignmentApi.updateAssignment(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: assignmentKeys.details(variables.id),
