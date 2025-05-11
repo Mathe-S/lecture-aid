@@ -36,6 +36,20 @@
       "when": 1746048016473,
       "tag": "0004_deep_morph",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1746962529253,
+      "tag": "0005_strange_pete_wisdom",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1746964630842,
+      "tag": "0006_dapper_victor_mancha",
+      "breakpoints": true
     }
   ]
 }

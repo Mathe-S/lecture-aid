@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AssignmentSubmission } from "@/db/drizzle/schema";
+import {
+  AssignmentSubmission,
+  AssignmentSubmissionWithCustomAnswers,
+  AssignmentSubmissionWithProfile,
+  AssignmentSubmissionCustomValue,
+} from "@/db/drizzle/schema";
 import { useAuth } from "@/context/AuthContext";
 import { assignmentApi } from "@/lib/api/assignmentApi";
 import { GitHubRepo } from "@/lib/github-service";
@@ -49,7 +54,13 @@ export function useAssignmentSubmissions(assignmentId: string | undefined) {
 
 // Get specific submission by ID
 export function useSubmission(submissionId: string | undefined) {
-  return useQuery({
+  return useQuery<
+    | (AssignmentSubmissionWithProfile & {
+        customAnswers?: AssignmentSubmissionCustomValue[];
+      })
+    | null,
+    Error
+  >({
     queryKey: submissionKeys.detail(submissionId || ""),
     queryFn: async () => {
       if (!submissionId) return null;
@@ -64,7 +75,7 @@ export function useUserSubmission(
   assignmentId: string | undefined,
   userId: string | undefined
 ) {
-  return useQuery({
+  return useQuery<AssignmentSubmissionWithCustomAnswers | null, Error>({
     queryKey: submissionKeys.userSubmission(assignmentId || "", userId || ""),
     queryFn: async () => {
       if (!assignmentId || !userId) return null;
@@ -99,7 +110,7 @@ export function useSubmitAssignment() {
       submission: Omit<
         AssignmentSubmission,
         "id" | "submittedAt" | "updatedAt" | "feedback" | "grade"
-      >
+      > & { customAnswers?: Array<{ customFieldId: string; value: string }> }
     ) => assignmentApi.submitAssignment(submission),
     onSuccess: (data) => {
       queryClient.invalidateQueries({

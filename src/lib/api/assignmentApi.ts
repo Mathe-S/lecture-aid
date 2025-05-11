@@ -2,10 +2,15 @@ import {
   Assignment,
   AssignmentSubmission,
   AssignmentSubmissionWithProfile,
+  AssignmentCustomField,
+  AssignmentSubmissionWithCustomAnswers,
+  AssignmentSubmissionCustomValue,
 } from "@/db/drizzle/schema";
 
 // API Responses
-export type GetAssignmentResponse = Assignment;
+export type GetAssignmentResponse = Assignment & {
+  customFields?: AssignmentCustomField[];
+};
 export type CreateAssignmentResponse = Assignment;
 export type UpdateAssignmentResponse = Assignment;
 
@@ -38,6 +43,7 @@ export const assignmentApi = {
   createAssignment: async (
     assignmentData: Omit<Assignment, "id" | "created_at" | "updatedAt"> & {
       created_by: string;
+      customFields?: Array<{ label: string }>;
     }
   ): Promise<CreateAssignmentResponse> => {
     const response = await fetch("/api/assignments", {
@@ -59,7 +65,9 @@ export const assignmentApi = {
 
   updateAssignment: async (
     id: string,
-    assignmentData: Partial<Assignment>
+    assignmentData: Partial<Assignment> & {
+      customFields?: Array<{ label: string }>;
+    }
   ): Promise<UpdateAssignmentResponse> => {
     const response = await fetch(`/api/assignments/${id}`, {
       method: "PUT",
@@ -109,7 +117,7 @@ export const assignmentApi = {
     submission: Omit<
       AssignmentSubmission,
       "id" | "submittedAt" | "updatedAt" | "feedback" | "grade"
-    >
+    > & { customAnswers?: Array<{ customFieldId: string; value: string }> }
   ): Promise<AssignmentSubmission> => {
     const response = await fetch(
       `/api/assignments/${submission.assignmentId}/submissions`,
@@ -149,7 +157,11 @@ export const assignmentApi = {
 
   getSubmission: async (
     submissionId: string
-  ): Promise<AssignmentSubmissionWithProfile> => {
+  ): Promise<
+    AssignmentSubmissionWithProfile & {
+      customAnswers?: AssignmentSubmissionCustomValue[];
+    }
+  > => {
     const response = await fetch(`/api/submissions/${submissionId}`);
     if (!response.ok) {
       const error = await response.json();
@@ -161,7 +173,7 @@ export const assignmentApi = {
   getUserSubmission: async (
     assignmentId: string,
     userId: string
-  ): Promise<AssignmentSubmission | null> => {
+  ): Promise<AssignmentSubmissionWithCustomAnswers | null> => {
     const response = await fetch(
       `/api/assignments/${assignmentId}/submissions/user/${userId}`
     );

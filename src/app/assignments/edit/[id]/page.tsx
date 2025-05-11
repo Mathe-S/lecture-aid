@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Assignment } from "@/db/drizzle/schema";
+import { AssignmentWithCustomFields } from "@/db/drizzle/schema";
 
 export default function EditAssignmentPage() {
   const params = useParams();
@@ -92,7 +92,9 @@ export default function EditAssignmentPage() {
             <Button variant="outline">Back to Assignments</Button>
           </Link>
         </div>
-        <AssignmentForm assignmentData={assignment as Assignment} />
+        <AssignmentForm
+          assignmentData={assignment as AssignmentWithCustomFields}
+        />
       </div>
     </div>
   );

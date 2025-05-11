@@ -305,6 +305,37 @@ export const assignments = pgTable(
   ]
 );
 
+export const assignmentCustomFields = pgTable(
+  "assignment_custom_fields",
+  {
+    id: uuid("id")
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    assignment_id: uuid("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    is_required: boolean("is_required").default(false).notNull(),
+    order: integer("order").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    assignmentIdFk: foreignKey({
+      columns: [table.assignment_id],
+      foreignColumns: [assignments.id],
+      name: "assignment_custom_fields_assignment_id_fkey",
+    }).onDelete("cascade"),
+    // Optional: Add a unique constraint on assignment_id and label if needed
+    // uniqueLabelPerAssignment: unique("assignment_custom_fields_assignment_id_label_key").on(table.assignment_id, table.label),
+  })
+);
+
 export const assignmentSubmissions = pgTable(
   "assignment_submissions",
   {
@@ -368,6 +399,65 @@ export const assignmentSubmissions = pgTable(
           AND user_roles.role IN ('lecturer', 'admin')
         )
       )`,
+    }),
+  ]
+);
+
+export const assignmentSubmissionCustomValues = pgTable(
+  "assignment_submission_custom_values",
+  {
+    id: uuid("id")
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    submission_id: uuid("submission_id")
+      .notNull()
+      .references(() => assignmentSubmissions.id, { onDelete: "cascade" }),
+    custom_field_id: uuid("custom_field_id")
+      .notNull()
+      .references(() => assignmentCustomFields.id, { onDelete: "cascade" }),
+    value: text("value").notNull(), // Assuming custom field values are always text and required if a record exists
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.submission_id],
+      foreignColumns: [assignmentSubmissions.id],
+      name: "ascv_submission_id_fkey", // Using a shorter name for the constraint
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.custom_field_id],
+      foreignColumns: [assignmentCustomFields.id],
+      name: "ascv_custom_field_id_fkey",
+    }).onDelete("cascade"),
+    // Unique constraint to ensure a user doesn't submit multiple values for the same custom field on the same submission
+    unique("ascv_submission_field_unique").on(
+      table.submission_id,
+      table.custom_field_id
+    ),
+    pgPolicy("Users can manage their own custom submission values", {
+      as: "permissive",
+      for: "all", // Allows insert, select, update, delete by the user who owns the submission
+      to: ["authenticated"],
+      using: sql`(EXISTS ( SELECT 1
+   FROM assignment_submissions sub
+  WHERE ((sub.id = submission_id) AND (sub.user_id = auth.uid()))))`, // User owns the submission
+      withCheck: sql`(EXISTS ( SELECT 1
+   FROM assignment_submissions sub
+  WHERE ((sub.id = submission_id) AND (sub.user_id = auth.uid()))))`,
+    }),
+    pgPolicy("Lecturers and admins can view all custom submission values", {
+      as: "permissive",
+      for: "select",
+      to: ["authenticated"],
+      using: sql`(EXISTS ( SELECT 1
+   FROM user_roles
+  WHERE ((user_roles.id = auth.uid()) AND (user_roles.role = ANY (ARRAY['lecturer'::text, 'admin'::text])))))`,
     }),
   ]
 );
@@ -449,10 +539,20 @@ export function isQuestionMultipleChoice(
 
 //  types for assignments
 export type Assignment = typeof assignments.$inferSelect;
+export type AssignmentCustomField = typeof assignmentCustomFields.$inferSelect;
+export type AssignmentWithCustomFields = Assignment & {
+  customFields: AssignmentCustomField[];
+};
 export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
 export type AssignmentSubmissionWithProfile = AssignmentSubmission & {
   profile: Profile;
-  assignment: Assignment;
+  assignment: AssignmentWithCustomFields;
+};
+export type AssignmentSubmissionCustomValue =
+  typeof assignmentSubmissionCustomValues.$inferSelect;
+
+export type AssignmentSubmissionWithCustomAnswers = AssignmentSubmission & {
+  customAnswers?: AssignmentSubmissionCustomValue[];
 };
 
 //  types for grades

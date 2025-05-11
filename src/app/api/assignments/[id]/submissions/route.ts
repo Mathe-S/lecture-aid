@@ -53,6 +53,7 @@ export async function POST(
     // 2. Parse Request Data
     const submissionData = await request.json();
     const { id: assignmentId } = await params;
+    const { customAnswers } = submissionData; // Extract customAnswers
 
     // Validate required fields in the request body
     if (!submissionData.userId) {
@@ -108,30 +109,31 @@ export async function POST(
     const submissionPayload: {
       repositoryUrl: string;
       repositoryName: string | null;
+      // Add customAnswers to the payload type if it will be directly passed
+      // For now, we pass it separately to the service functions
     } = {
       repositoryUrl: submissionData.repositoryUrl,
       repositoryName: submissionData.repositoryName ?? null, // Ensure repositoryName is string or null
-      // Important: We deliberately DON'T include grade/feedback here.
-      // 'submittedAt' and 'updatedAt' are handled by the service/database.
     };
 
     if (existingSubmission) {
       // Update existing submission
+      // We need to decide how to handle customAnswers updates.
+      // For now, let's assume updateSubmission will also handle customAnswers.
       submission = await updateSubmission(
         existingSubmission.id,
-        submissionPayload
+        submissionPayload, // This payload might need to include customAnswers
+        customAnswers // Or pass separately
       );
     } else {
       // Create new submission
-      // The createSubmission function likely needs userId and assignmentId separately
       submission = await createSubmission({
-        ...submissionPayload, // Spread the validated payload
-        userId: submissionData.userId, // Use the target userId (already validated)
+        ...submissionPayload,
+        userId: submissionData.userId,
         assignmentId: assignmentId,
-        // Explicitly set other non-provided fields expected by createSubmission
         grade: null,
         feedback: null,
-        // submittedAt and updatedAt should be handled by the service/DB
+        customAnswers: customAnswers, // Pass customAnswers here
       });
     }
 

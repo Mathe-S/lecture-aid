@@ -277,10 +277,7 @@ export default function AssignmentDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <SubmitAssignment
-              assignmentId={id}
-              assignmentTitle={assignment.title}
-            />
+            <SubmitAssignment assignmentId={id} />
           )}
         </div>
       ) : isLecturerOrAdmin ? (
