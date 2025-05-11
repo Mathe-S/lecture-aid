@@ -7,6 +7,7 @@ import {
   AssignmentSubmission,
   assignmentCustomFields,
   AssignmentWithCustomFields,
+  assignmentSubmissionCustomValues,
 } from "@/db/drizzle/schema";
 
 export async function getAssignments() {
@@ -134,7 +135,12 @@ export async function getSubmissionById(id: string) {
 }
 
 export async function createSubmission(
-  submissionData: Omit<AssignmentSubmission, "id" | "submittedAt" | "updatedAt">
+  submissionData: Omit<
+    AssignmentSubmission,
+    "id" | "submittedAt" | "updatedAt"
+  > & {
+    customAnswers?: Array<{ customFieldId: string; value: string }>;
+  }
 ) {
   const [submission] = await db
     .insert(assignmentSubmissions)
@@ -159,26 +165,68 @@ export async function createSubmission(
     })
     .returning();
 
+  if (
+    submission &&
+    submissionData.customAnswers &&
+    submissionData.customAnswers.length > 0
+  ) {
+    await db
+      .delete(assignmentSubmissionCustomValues)
+      .where(eq(assignmentSubmissionCustomValues.submission_id, submission.id));
+
+    for (const answer of submissionData.customAnswers) {
+      if (answer.value.trim() !== "") {
+        await db.insert(assignmentSubmissionCustomValues).values({
+          submission_id: submission.id,
+          custom_field_id: answer.customFieldId,
+          value: answer.value,
+        });
+      }
+    }
+  }
+
   return submission;
 }
 
 export async function updateSubmission(
   id: string,
-  submissionData: Partial<AssignmentSubmission>
+  submissionData: Partial<
+    Omit<
+      AssignmentSubmission,
+      "id" | "submittedAt" | "updatedAt" | "feedback" | "grade"
+    >
+  >,
+  customAnswers?: Array<{ customFieldId: string; value: string }>
 ) {
-  const [submission] = await db
+  const [updatedMainSubmission] = await db
     .update(assignmentSubmissions)
     .set({
       repositoryUrl: submissionData.repositoryUrl,
       repositoryName: submissionData.repositoryName,
-      feedback: submissionData.feedback,
-      grade: submissionData.grade,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(assignmentSubmissions.id, id))
     .returning();
 
-  return submission;
+  if (updatedMainSubmission) {
+    await db
+      .delete(assignmentSubmissionCustomValues)
+      .where(eq(assignmentSubmissionCustomValues.submission_id, id));
+
+    if (customAnswers && customAnswers.length > 0) {
+      for (const answer of customAnswers) {
+        if (answer.value.trim() !== "") {
+          await db.insert(assignmentSubmissionCustomValues).values({
+            submission_id: id,
+            custom_field_id: answer.customFieldId,
+            value: answer.value,
+          });
+        }
+      }
+    }
+  }
+
+  return updatedMainSubmission;
 }
 
 export async function deleteSubmission(id: string) {

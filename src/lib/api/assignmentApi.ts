@@ -115,7 +115,7 @@ export const assignmentApi = {
     submission: Omit<
       AssignmentSubmission,
       "id" | "submittedAt" | "updatedAt" | "feedback" | "grade"
-    >
+    > & { customAnswers?: Array<{ customFieldId: string; value: string }> }
   ): Promise<AssignmentSubmission> => {
     const response = await fetch(
       `/api/assignments/${submission.assignmentId}/submissions`,

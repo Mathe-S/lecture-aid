@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
   useGitHubRepositories,
   useSubmitAssignment,
   useUserSubmission,
 } from "@/hooks/useSubmissions";
+import { useAssignment } from "@/hooks/useAssignments";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,15 +30,17 @@ import { toast } from "sonner";
 
 interface SubmitAssignmentProps {
   assignmentId: string;
-  assignmentTitle: string;
 }
 
-export function SubmitAssignment({
-  assignmentId,
-  assignmentTitle,
-}: SubmitAssignmentProps) {
+export function SubmitAssignment({ assignmentId }: SubmitAssignmentProps) {
   const { user, session } = useAuth();
   const userId = user?.id;
+
+  const {
+    data: assignment,
+    isLoading: isLoadingAssignment,
+    error: assignmentError,
+  } = useAssignment(assignmentId);
 
   const { data: repositories, isLoading: isLoadingRepos } =
     useGitHubRepositories();
@@ -54,6 +57,28 @@ export function SubmitAssignment({
     !!existingSubmission?.repositoryUrl
   );
 
+  // State for custom field inputs: Record<customFieldId, value>
+  const [customFieldInputs, setCustomFieldInputs] = useState<
+    Record<string, string>
+  >({});
+
+  // Effect to initialize customFieldInputs when assignment loads
+  // For now, this doesn't load existing custom answers from submission, that's a later step.
+  useEffect(() => {
+    if (assignment && assignment.customFields) {
+      const initialInputs: Record<string, string> = {};
+      // TODO: Pre-fill from existingSubmission.customAnswers if available and structure is known
+      assignment.customFields.forEach((field) => {
+        initialInputs[field.id] = ""; // Default to empty
+      });
+      setCustomFieldInputs(initialInputs);
+    }
+  }, [assignment]);
+
+  const handleCustomFieldChange = (fieldId: string, value: string) => {
+    setCustomFieldInputs((prev) => ({ ...prev, [fieldId]: value }));
+  };
+
   const handleSubmit = async () => {
     if (!userId) {
       toast.error("You must be logged in to submit");
@@ -69,17 +94,28 @@ export function SubmitAssignment({
 
     try {
       // Find repository name if using dropdown selection
-      let repoName = "";
+      let repoName = repoUrl.split("/").pop() || "";
       if (!isManualEntry && repositories) {
         const repo = repositories.find((r) => r.html_url === repoUrl);
         repoName = repo?.name || "";
       }
+
+      // Prepare custom answers for submission
+      const customAnswersToSubmit = assignment?.customFields
+        ? assignment.customFields
+            .map((field) => ({
+              customFieldId: field.id,
+              value: customFieldInputs[field.id] || "",
+            }))
+            .filter((answer) => answer.value.trim() !== "") // Only submit non-empty answers
+        : [];
 
       await submitMutation.mutateAsync({
         assignmentId,
         userId,
         repositoryUrl: repoUrl,
         repositoryName: repoName,
+        customAnswers: customAnswersToSubmit, // Add custom answers to payload
       });
 
       // Check if this is a new submission or an update
@@ -126,9 +162,57 @@ export function SubmitAssignment({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Submit: {assignmentTitle}</CardTitle>
+        <CardTitle>
+          Submit: {assignment ? assignment.title : "Loading assignment..."}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isLoadingAssignment && (
+          <div className="flex items-center space-x-2 text-sm py-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Loading assignment details...</span>
+          </div>
+        )}
+        {assignmentError && (
+          <p className="text-sm text-red-500 py-2">
+            Error loading assignment details. Please try again later.
+          </p>
+        )}
+
+        {/* Display Custom Fields as Inputs */}
+        {assignment &&
+          assignment.customFields &&
+          assignment.customFields.length > 0 && (
+            <div className="mb-6 p-4 border rounded-md bg-slate-50 space-y-3">
+              <h4 className="text-md font-semibold text-slate-800 mb-2">
+                Assignment Specifics:
+              </h4>
+              {assignment.customFields.map((field) => (
+                <div key={field.id} className="space-y-1.5">
+                  <Label
+                    htmlFor={`custom-field-${field.id}`}
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {field.label}{" "}
+                    {field.is_required && (
+                      <span className="text-red-500">*</span>
+                    )}
+                  </Label>
+                  <Input
+                    id={`custom-field-${field.id}`}
+                    value={customFieldInputs[field.id] || ""}
+                    onChange={(e) =>
+                      handleCustomFieldChange(field.id, e.target.value)
+                    }
+                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                    // TODO: Add required attribute based on field.is_required for client-side indication
+                  />
+                  {/* TODO: Add FormMessage for custom field validation errors if we implement that */}
+                </div>
+              ))}
+            </div>
+          )}
+
         {existingSubmission && (
           <div className="bg-slate-50 p-4 rounded-md mb-4 border border-slate-200">
             <div className="flex items-center text-sm text-green-600 mb-2">
