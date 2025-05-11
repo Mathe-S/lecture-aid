@@ -6,6 +6,7 @@ import {
   Assignment,
   AssignmentSubmission,
   assignmentCustomFields,
+  AssignmentWithCustomFields,
 } from "@/db/drizzle/schema";
 
 export async function getAssignments() {
@@ -14,10 +15,26 @@ export async function getAssignments() {
   });
 }
 
-export async function getAssignmentById(id: string) {
-  return await db.query.assignments.findFirst({
+export async function getAssignmentById(
+  id: string
+): Promise<AssignmentWithCustomFields | undefined> {
+  const assignment = await db.query.assignments.findFirst({
     where: eq(assignments.id, id),
   });
+
+  if (!assignment) {
+    return undefined;
+  }
+
+  const customFields = await db.query.assignmentCustomFields.findMany({
+    where: eq(assignmentCustomFields.assignment_id, id),
+    orderBy: (fields, { asc }) => [asc(fields.order)],
+  });
+
+  return {
+    ...assignment,
+    customFields: customFields || [],
+  };
 }
 
 export async function createAssignment(

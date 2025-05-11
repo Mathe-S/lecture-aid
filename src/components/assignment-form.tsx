@@ -37,7 +37,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Assignment } from "@/db/drizzle/schema";
+import { AssignmentWithCustomFields } from "@/db/drizzle/schema";
 
 const customFieldSchema = z.object({
   label: z.string().min(1, "Label is required"),
@@ -54,7 +54,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface AssignmentFormProps {
-  assignmentData?: Assignment;
+  assignmentData?: AssignmentWithCustomFields;
 }
 
 export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
@@ -92,7 +92,11 @@ export function AssignmentForm({ assignmentData }: AssignmentFormProps) {
           ? new Date(assignmentData.due_date)
           : undefined,
         grade: assignmentData.grade,
-        customFields: [], // Placeholder for now
+        customFields: assignmentData.customFields
+          ? assignmentData.customFields.map((cf: { label: string | null }) => ({
+              label: cf.label || "",
+            }))
+          : [],
       });
     }
   }, [assignmentData, form]);

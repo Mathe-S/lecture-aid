@@ -2,10 +2,13 @@ import {
   Assignment,
   AssignmentSubmission,
   AssignmentSubmissionWithProfile,
+  AssignmentCustomField,
 } from "@/db/drizzle/schema";
 
 // API Responses
-export type GetAssignmentResponse = Assignment;
+export type GetAssignmentResponse = Assignment & {
+  customFields?: AssignmentCustomField[];
+};
 export type CreateAssignmentResponse = Assignment;
 export type UpdateAssignmentResponse = Assignment;
 
