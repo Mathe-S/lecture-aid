@@ -14,6 +14,11 @@ import { relations, sql } from "drizzle-orm";
 import { profiles, users } from "./schema"; // Assuming common user/profile schema
 import { Profile } from "./schema"; // Import Profile type
 
+export interface ResourceLink {
+  label: string;
+  url: string;
+}
+
 // --- Final Projects (Created by Admin) ---
 export const finalProjects = pgTable(
   "final_projects",
@@ -25,12 +30,18 @@ export const finalProjects = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     category: text("category").notNull(), // e.g., 'Data-Driven', 'Education'
-    learningObjectives: jsonb("learning_objectives").default(sql`'[]'::jsonb`), // Array of strings
-    expectedDeliverables: jsonb("expected_deliverables").default(
-      sql`'[]'::jsonb`
-    ), // Array of strings
-    resourceLinks: jsonb("resource_links").default(sql`'[]'::jsonb`), // Array of {label: string, url: string}
-    projectTags: jsonb("project_tags").default(sql`'[]'::jsonb`), // Array of strings
+    learningObjectives: jsonb("learning_objectives")
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`), // Array of strings
+    expectedDeliverables: jsonb("expected_deliverables")
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`), // Array of strings
+    resourceLinks: jsonb("resource_links")
+      .$type<ResourceLink[]>()
+      .default(sql`'[]'::jsonb`), // Array of {label: string, url: string}
+    projectTags: jsonb("project_tags")
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`), // Array of strings
     createdByAdminId: uuid("created_by_admin_id")
       .notNull()
       .references(() => users.id, { onDelete: "set null" }), // Keep project if admin deleted, or use "cascade"

@@ -2,6 +2,7 @@ import * as schema from "./drizzle/schema";
 import * as relations from "./drizzle/relations";
 import * as chatSchema from "./drizzle/chat-schema";
 import * as midtermSchema from "./drizzle/midterm-schema";
+import * as finalSchema from "./drizzle/final-schema";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -17,6 +18,7 @@ export const db = drizzle(client, {
     ...relations,
     ...chatSchema,
     ...midtermSchema,
+    ...finalSchema,
   },
 });
 
