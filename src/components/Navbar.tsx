@@ -25,6 +25,7 @@ import {
   CheckSquare,
   Trophy,
   Users,
+  Award,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import NProgress from "nprogress";
@@ -71,6 +72,7 @@ export default function Navbar() {
       icon: CheckSquare,
     },
     { label: "Midterm", href: "/midterm", showWhen: !!user, icon: GitBranch },
+    { label: "Final", href: "/final", showWhen: !!user, icon: Award },
     { label: "Chat", href: "/chat", showWhen: !!user, icon: MessageSquare },
     { label: "Hangout", href: "/hangout", showWhen: !!user, icon: Users },
     {
@@ -93,9 +95,8 @@ export default function Navbar() {
     { label: "Dashboard", href: "/dashboard", icon: User },
     { label: "Quizzes", href: "/quizzes", icon: BookOpen },
     { label: "Assignments", href: "/assignments", icon: BookOpen },
-    // Add Midterm item to the dropdown menu
     { label: "Midterm", href: "/midterm", icon: GitBranch },
-    // Add Chat item to the dropdown menu
+    { label: "Final", href: "/final", icon: GitBranch },
     { label: "Chat", href: "/chat", icon: MessageSquare },
     {
       label: "Leaderboard",
