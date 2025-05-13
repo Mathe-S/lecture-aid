@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { UserRole } from "@/types/general"; // Assuming UserRole type is needed
 
 // Placeholder for Admin Project Management Panel - to be created
 import { AdminProjectPanel } from "@/components/final/admin-project-panel";
@@ -13,7 +12,7 @@ import { AdminProjectPanel } from "@/components/final/admin-project-panel";
 // }
 
 export default function FinalPage() {
-  const { user, role } = useAuth();
+  const { role } = useAuth();
 
   // TODO: Add state and hooks for final projects and groups as needed
 

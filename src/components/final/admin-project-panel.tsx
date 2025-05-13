@@ -17,9 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlusCircle, Edit3, Trash2, MoreVertical } from "lucide-react";
-import { FinalProject } from "@/db/drizzle/final-schema";
 import { ProjectForm, ProjectFormData } from "./project-form";
-import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,9 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { FinalProjectWithAdmin } from "@/lib/final-project-service";
 
-interface AdminProjectPanelProps {}
-
-export function AdminProjectPanel({}: AdminProjectPanelProps) {
+export function AdminProjectPanel() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedProjectForEdit, setSelectedProjectForEdit] =
     useState<FinalProjectWithAdmin | null>(null);
@@ -158,7 +154,8 @@ export function AdminProjectPanel({}: AdminProjectPanelProps) {
 
       {projects.length === 0 && !isLoadingProjects && (
         <p className="text-muted-foreground">
-          No projects created yet. Click "Create New Project" to add one.
+          No projects created yet. Click &quot;Create New Project&quot; to add
+          one.
         </p>
       )}
 
@@ -225,7 +222,7 @@ export function AdminProjectPanel({}: AdminProjectPanelProps) {
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the
-                project "<strong>{showDeleteConfirm.title}</strong>".
+                project &quot;<strong>{showDeleteConfirm.title}</strong>&quot;.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -1,6 +1,5 @@
 import {
   pgTable,
-  foreignKey,
   uuid,
   text,
   timestamp,
@@ -52,7 +51,7 @@ export const finalProjects = pgTable(
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
   },
-  (table) => [
+  () => [
     pgPolicy("Authenticated users can view final projects", {
       as: "permissive",
       for: "select",

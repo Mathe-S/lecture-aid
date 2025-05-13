@@ -19,7 +19,7 @@ const NewFinalProjectSchema = z.object({
 });
 
 // --- GET all Final Projects ---
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const allProjects = await finalProjectService.getAllFinalProjects();
     return NextResponse.json(allProjects);

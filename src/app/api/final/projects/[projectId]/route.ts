@@ -24,14 +24,14 @@ const UpdateFinalProjectSchema = z
   .partial(); // .partial() makes all fields optional for updates
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     projectId: string;
-  };
+  }>;
 }
 
 // --- GET a single Final Project by ID ---
 export async function GET(request: Request, { params }: RouteParams) {
-  const { projectId } = params;
+  const { projectId } = await params;
   if (!projectId) {
     return new NextResponse("Project ID is required", { status: 400 });
   }
@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 // --- PUT (Update) a Final Project (Admin Only) ---
 export async function PUT(request: Request, { params }: RouteParams) {
-  const { projectId } = params;
+  const { projectId } = await params;
   if (!projectId) {
     return new NextResponse("Project ID is required", { status: 400 });
   }
@@ -106,7 +106,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
 // --- DELETE a Final Project (Admin Only) ---
 export async function DELETE(request: Request, { params }: RouteParams) {
-  const { projectId } = params;
+  const { projectId } = await params;
   if (!projectId) {
     return new NextResponse("Project ID is required", { status: 400 });
   }

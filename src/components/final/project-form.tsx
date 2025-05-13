@@ -15,11 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { X, PlusCircle } from "lucide-react";
-import {
-  FinalProject,
-  NewFinalProject,
-  ResourceLink,
-} from "@/db/drizzle/final-schema";
+import { FinalProject, NewFinalProject } from "@/db/drizzle/final-schema";
 import { toast } from "sonner";
 
 export type ProjectFormData = Omit<
@@ -119,7 +115,8 @@ export function ProjectForm({
     // Basic URL validation
     try {
       new URL(currentResourceUrl);
-    } catch (_) {
+    } catch (error) {
+      console.error("Invalid URL format for resource link.", error);
       toast.error("Invalid URL format for resource link.");
       return;
     }

@@ -4,7 +4,6 @@ import {
   NewFinalProject,
   FinalProject,
 } from "@/db/drizzle/final-schema";
-import { profiles } from "@/db/drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface FinalProjectWithAdmin extends FinalProject {
