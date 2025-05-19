@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmissionsByAssignment } from "@/lib/assignmentService";
+import {
+  getSubmissionsByAssignment,
+  SubmissionWithDetails,
+} from "@/lib/assignmentService";
 import { supabaseForServer } from "@/utils/supabase/server";
-import { userRoles } from "@/db/drizzle/schema";
+import { userRoles, AssignmentCustomField } from "@/db/drizzle/schema";
 import db from "@/db";
 import { eq } from "drizzle-orm";
 
@@ -36,22 +39,41 @@ export async function GET(
     }
 
     const { id } = await params;
-    const submissions = await getSubmissionsByAssignment(id);
+    const submissions: SubmissionWithDetails[] =
+      await getSubmissionsByAssignment(id);
 
-    // Format data for CSV
-    const csvData = submissions.map((submission) => ({
-      studentName: submission.profile?.fullName || "Unknown",
-      studentEmail: submission.profile?.email || "Unknown",
-      githubUrl: submission.repositoryUrl || "Not submitted",
-      repositoryName: submission.repositoryName || "Not submitted",
-      submittedAt: submission.submittedAt
-        ? new Date(submission.submittedAt).toLocaleString()
-        : "Not submitted",
-      grade: submission.grade !== null ? submission.grade : "Not graded",
-    }));
+    if (!submissions.length) {
+      // If there are no submissions, or assignment wasn't found by getSubmissionsByAssignment
+      // We might want to return an empty CSV or a message.
+      // For now, let's return an empty CSV with default headers if no assignment info is available.
+      const emptyCsvHeaders = [
+        "Student Name",
+        "Email",
+        "GitHub URL",
+        "Repository Name",
+        "Submitted At",
+        "Grade",
+      ];
+      const emptyCsvString = emptyCsvHeaders.join(",");
+      const emptyBlob = new Blob([emptyCsvString], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const emptyResponse = new NextResponse(emptyBlob);
+      emptyResponse.headers.set("Content-Type", "text/csv");
+      emptyResponse.headers.set(
+        "Content-Disposition",
+        `attachment; filename="assignment_submissions_${id}_empty.csv"`
+      );
+      return emptyResponse;
+    }
 
-    // Convert to CSV string
-    const headers = [
+    // Assuming all submissions belong to the same assignment, get custom field definitions from the first one.
+    // getSubmissionsByAssignment ensures assignment.customFields is populated.
+    const customFieldDefinitions: AssignmentCustomField[] =
+      submissions[0].assignment.customFields || [];
+
+    // Define base headers
+    const baseHeaders = [
       "Student Name",
       "Email",
       "GitHub URL",
@@ -59,24 +81,56 @@ export async function GET(
       "Submitted At",
       "Grade",
     ];
+
+    // Add custom field labels to headers
+    const customFieldHeaders = customFieldDefinitions.map(
+      (cf) => cf.label || "Unnamed Custom Field"
+    );
+    const allHeaders = [...baseHeaders, ...customFieldHeaders];
+
+    // Format data for CSV
+    const csvData = submissions.map((submission) => {
+      const row: { [key: string]: string | number | null } = {
+        "Student Name": submission.profile?.fullName || "Unknown",
+        Email: submission.profile?.email || "Unknown",
+        "GitHub URL": submission.repositoryUrl || "Not submitted",
+        "Repository Name": submission.repositoryName || "Not submitted",
+        "Submitted At": submission.submittedAt
+          ? new Date(submission.submittedAt).toLocaleString()
+          : "Not submitted",
+        Grade: submission.grade !== null ? submission.grade : "Not graded",
+      };
+
+      // Add custom field answers
+      customFieldDefinitions.forEach((cfDefinition) => {
+        const answer = submission.customAnswers.find(
+          (ca) => ca.custom_field_id === cfDefinition.id
+        );
+        row[cfDefinition.label || "Unnamed Custom Field"] = answer
+          ? answer.value
+          : ""; // Use empty string for unanswered
+      });
+      return row;
+    });
+
+    // Convert to CSV string
     const csvString = [
-      headers.join(","),
+      allHeaders.join(","),
       ...csvData.map((row) =>
-        [
-          `"${row.studentName}"`,
-          `"${row.studentEmail}"`,
-          `"${row.githubUrl}"`,
-          `"${row.repositoryName}"`,
-          `"${row.submittedAt}"`,
-          `"${row.grade}"`,
-        ].join(",")
+        allHeaders
+          .map(
+            (header) =>
+              `"${String(
+                row[header] === null || row[header] === undefined
+                  ? ""
+                  : row[header]
+              ).replace(/"/g, '""')}"`
+          )
+          .join(",")
       ),
     ].join("\n");
 
-    // Create a Blob containing the CSV data
     const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-
-    // Create the response with the appropriate headers
     const response = new NextResponse(blob);
     response.headers.set("Content-Type", "text/csv");
     response.headers.set(
@@ -87,9 +141,11 @@ export async function GET(
     return response;
   } catch (error) {
     console.error("Error downloading submissions:", error);
-    return NextResponse.json(
-      { error: "Failed to download submissions" },
-      { status: 500 }
-    );
+    // It's good practice to check if error is an instance of Error
+    let errorMessage = "Failed to download submissions";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

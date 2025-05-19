@@ -23,21 +23,18 @@ export async function getAssignmentById(
 ): Promise<AssignmentWithCustomFields | undefined> {
   const assignment = await db.query.assignments.findFirst({
     where: eq(assignments.id, id),
+    with: {
+      customFields: {
+        orderBy: (fields, helpers) => [helpers.asc(fields.order)],
+      },
+    },
   });
 
   if (!assignment) {
     return undefined;
   }
 
-  const customFields = await db.query.assignmentCustomFields.findMany({
-    where: eq(assignmentCustomFields.assignment_id, id),
-    orderBy: (fields, { asc }) => [asc(fields.order)],
-  });
-
-  return {
-    ...assignment,
-    customFields: customFields || [],
-  };
+  return assignment as AssignmentWithCustomFields;
 }
 
 export async function createAssignment(
@@ -115,15 +112,40 @@ export async function deleteAssignment(id: string) {
   return true;
 }
 
-export async function getSubmissionsByAssignment(assignmentId: string) {
-  return await db.query.assignmentSubmissions.findMany({
+export type SubmissionWithDetails = AssignmentSubmission & {
+  profile: Profile | null;
+  assignment: AssignmentWithCustomFields;
+  customAnswers: AssignmentSubmissionCustomValue[];
+};
+
+export async function getSubmissionsByAssignment(
+  assignmentId: string
+): Promise<SubmissionWithDetails[]> {
+  const assignment = await getAssignmentById(assignmentId);
+
+  if (!assignment) {
+    console.warn(`Assignment with ID ${assignmentId} not found.`);
+    return [];
+  }
+
+  const submissionsData = await db.query.assignmentSubmissions.findMany({
     where: eq(assignmentSubmissions.assignmentId, assignmentId),
-    orderBy: (submissions, { desc }) => [desc(submissions.submittedAt)],
+    orderBy: (submissions, helpers) => [helpers.desc(submissions.submittedAt)],
     with: {
       profile: true,
-      assignment: true,
+      customAnswers: {},
     },
   });
+
+  const detailedSubmissions = submissionsData.map((sub) => {
+    return {
+      ...sub,
+      profile: sub.profile || null,
+      assignment: assignment,
+    };
+  });
+
+  return detailedSubmissions as unknown as SubmissionWithDetails[];
 }
 
 export async function getSubmissionById(id: string): Promise<
@@ -138,7 +160,14 @@ export async function getSubmissionById(id: string): Promise<
     where: eq(assignmentSubmissions.id, id),
     with: {
       profile: true,
-      assignment: true,
+      assignment: {
+        with: {
+          customFields: {
+            orderBy: (fields, helpers) => [helpers.asc(fields.order)],
+          },
+        },
+      },
+      customAnswers: {},
     },
   });
 
@@ -146,35 +175,10 @@ export async function getSubmissionById(id: string): Promise<
     return null;
   }
 
-  let populatedAssignment: AssignmentWithCustomFields | undefined;
-  if (submissionData.assignment) {
-    const customFieldDefinitions =
-      await db.query.assignmentCustomFields.findMany({
-        where: eq(
-          assignmentCustomFields.assignment_id,
-          submissionData.assignment.id
-        ),
-        orderBy: (fields, { asc }) => [asc(fields.order)],
-      });
-    populatedAssignment = {
-      ...submissionData.assignment,
-      customFields: customFieldDefinitions || [],
-    };
-  }
-
-  const customAnswers =
-    await db.query.assignmentSubmissionCustomValues.findMany({
-      where: eq(
-        assignmentSubmissionCustomValues.submission_id,
-        submissionData.id
-      ),
-    });
-
-  return {
-    ...submissionData,
-    profile: submissionData.profile || null,
-    assignment: populatedAssignment!,
-    customAnswers: customAnswers || [],
+  return submissionData as unknown as AssignmentSubmission & {
+    profile: Profile | null;
+    assignment: AssignmentWithCustomFields;
+    customAnswers: AssignmentSubmissionCustomValue[];
   };
 }
 
@@ -275,8 +279,8 @@ export async function updateSubmission(
 
 export async function setGradeAndFeedback(
   submissionId: string,
-  feedback: string | null, // Allow null feedback
-  grade: number | null // Allow null grade (e.g., if clearing a grade)
+  feedback: string | null,
+  grade: number | null
 ) {
   const [gradedSubmission] = await db
     .update(assignmentSubmissions)

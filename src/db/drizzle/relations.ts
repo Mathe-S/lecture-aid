@@ -8,7 +8,9 @@ import {
   quizResults,
   profiles,
   assignments,
+  assignmentCustomFields,
   assignmentSubmissions,
+  assignmentSubmissionCustomValues,
   studentGrades,
 } from "./schema";
 
@@ -84,11 +86,25 @@ export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
     references: [usersInAuth.id],
   }),
   submissions: many(assignmentSubmissions),
+  customFields: many(assignmentCustomFields, {
+    relationName: "AssignmentCustomFields",
+  }),
 }));
+
+export const assignmentCustomFieldsRelations = relations(
+  assignmentCustomFields,
+  ({ one }) => ({
+    assignment: one(assignments, {
+      fields: [assignmentCustomFields.assignment_id],
+      references: [assignments.id],
+      relationName: "AssignmentCustomFields",
+    }),
+  })
+);
 
 export const assignmentSubmissionsRelations = relations(
   assignmentSubmissions,
-  ({ one }) => ({
+  ({ one, many }) => ({
     assignment: one(assignments, {
       relationName: "assignment",
       fields: [assignmentSubmissions.assignmentId],
@@ -103,6 +119,24 @@ export const assignmentSubmissionsRelations = relations(
       relationName: "profile",
       fields: [assignmentSubmissions.userId],
       references: [profiles.id],
+    }),
+    customAnswers: many(assignmentSubmissionCustomValues, {
+      relationName: "SubmissionCustomAnswers",
+    }),
+  })
+);
+
+export const assignmentSubmissionCustomValuesRelations = relations(
+  assignmentSubmissionCustomValues,
+  ({ one }) => ({
+    submission: one(assignmentSubmissions, {
+      fields: [assignmentSubmissionCustomValues.submission_id],
+      references: [assignmentSubmissions.id],
+      relationName: "SubmissionCustomAnswers",
+    }),
+    customField: one(assignmentCustomFields, {
+      fields: [assignmentSubmissionCustomValues.custom_field_id],
+      references: [assignmentCustomFields.id],
     }),
   })
 );

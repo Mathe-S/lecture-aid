@@ -162,10 +162,6 @@ export function useInitializeHangoutStore() {
   useEffect(() => {
     if (!isLoading && user && user.id !== storeUser?.id) {
       // User logged in or changed, and store doesn't match
-      console.log(
-        "[Auth Listener] Initializing hangout store for user:",
-        user.id
-      );
       initializeChannel(user);
     } else if (!isLoading && !user && storeUser) {
       // User logged out, but store still has a channel/user
