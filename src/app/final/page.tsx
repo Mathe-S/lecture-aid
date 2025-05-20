@@ -6,6 +6,7 @@ import { AvailableProjectsList } from "@/components/final/available-projects-lis
 
 // Placeholder for Admin Project Management Panel - to be created
 import { AdminProjectPanel } from "@/components/final/admin-project-panel";
+import { MyFinalGroupPanel } from "@/components/final/my-final-group-panel";
 
 // Placeholder for loading skeletons if needed
 // function FinalPageLoadingSkeleton() {
@@ -62,14 +63,16 @@ export default function FinalPage() {
             <h2 className="text-2xl font-semibold mb-4 text-sky-800">
               My Group & Project
             </h2>
-            <p className="text-muted-foreground">
-              Group formation, project selection, and task management features
-              will appear here.
-            </p>
-            {/* Placeholder for components like: 
-                <MyFinalProjectGroup /> 
-                <SelectFinalProjectButton /> 
-                <FinalProjectTodoUpload /> 
+            <Suspense
+              fallback={
+                <p className="text-muted-foreground">Loading group panel...</p>
+              }
+            >
+              <MyFinalGroupPanel />
+            </Suspense>
+            {/* 
+              The MyFinalGroupPanel will internally decide to show 
+              group creation form or group details.
             */}
           </section>
         )}
