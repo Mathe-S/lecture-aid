@@ -6,6 +6,7 @@ import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 // --- Query Keys ---
 export const finalUserGroupKeys = {
   mine: ["finalUserGroup", "mine"] as const,
+  all: ["finalUserGroup", "all"] as const, // Key for all groups query
 };
 
 // --- API Helper Function for type safety with fetch ---
@@ -97,6 +98,16 @@ async function removeFinalGroupMemberApi(
   return handleGroupResponse<FinalGroupWithDetails>(response);
 }
 
+// Fetch all final groups
+async function fetchAllFinalGroups(): Promise<FinalGroupWithDetails[]> {
+  const response = await fetch("/api/final/groups/all");
+  // handleGroupResponse should correctly return null/empty array or throw error
+  const groups = await handleGroupResponse<FinalGroupWithDetails[] | null>(
+    response
+  );
+  return groups || []; // Ensure it always returns an array
+}
+
 // --- React Query Hooks ---
 
 /**
@@ -109,6 +120,17 @@ export function useUserFinalGroup() {
     queryFn: fetchUserFinalGroup,
     // Stale time can be configured if needed, e.g., 5 minutes
     // staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * Hook to fetch all final project groups.
+ */
+export function useAllFinalGroups() {
+  return useQuery<FinalGroupWithDetails[], Error>({
+    queryKey: finalUserGroupKeys.all,
+    queryFn: fetchAllFinalGroups,
+    // staleTime: 1000 * 60 * 2, // Optional: consider a short stale time
   });
 }
 

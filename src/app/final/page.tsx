@@ -7,6 +7,7 @@ import { AvailableProjectsList } from "@/components/final/available-projects-lis
 // Placeholder for Admin Project Management Panel - to be created
 import { AdminProjectPanel } from "@/components/final/admin-project-panel";
 import { MyFinalGroupPanel } from "@/components/final/my-final-group-panel";
+import { AllFinalGroupsList } from "@/components/final/all-final-groups-list";
 
 // Placeholder for loading skeletons if needed
 // function FinalPageLoadingSkeleton() {
@@ -36,15 +37,38 @@ export default function FinalPage() {
         {user && role === "admin" && (
           <section className="mb-8 p-6 bg-slate-50 rounded-lg shadow">
             <h2 className="text-2xl font-semibold mb-4 text-slate-800">
-              Admin: Project Management
+              Admin Dashboard: Final Projects & Groups
             </h2>
-            <Suspense
-              fallback={
-                <p className="text-muted-foreground">Loading admin panel...</p>
-              }
-            >
-              <AdminProjectPanel />
-            </Suspense>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-700">
+                  Project Management
+                </h3>
+                <Suspense
+                  fallback={
+                    <p className="text-muted-foreground">
+                      Loading admin project panel...
+                    </p>
+                  }
+                >
+                  <AdminProjectPanel />
+                </Suspense>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-3 text-slate-700">
+                  All Student Groups
+                </h3>
+                <Suspense
+                  fallback={
+                    <p className="text-muted-foreground">
+                      Loading all groups list...
+                    </p>
+                  }
+                >
+                  <AllFinalGroupsList />
+                </Suspense>
+              </div>
+            </div>
           </section>
         )}
 

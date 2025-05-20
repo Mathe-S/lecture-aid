@@ -618,3 +618,114 @@ export async function removeMemberFromFinalGroup(
     updatedAt: updatedGroupDetails.updatedAt,
   };
 }
+
+/**
+ * Fetches all final project groups with their details.
+ * @returns A list of all final groups with their members, owner, and selected project.
+ */
+export async function getAllFinalGroupsWithDetails(): Promise<
+  FinalGroupWithDetails[]
+> {
+  const allGroupsFromDb = await db.query.finalGroups.findMany({
+    with: {
+      selectedProject: {
+        columns: { id: true, title: true, category: true },
+      },
+      members: {
+        columns: { role: true, joinedAt: true }, // Columns from final_group_members
+        with: {
+          user: {
+            // Relation from finalGroupMembers to profiles
+            columns: {
+              id: true,
+              email: true,
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
+    // TODO: Add ordering if needed, e.g., by creation date or name
+    // orderBy: (finalGroups, { desc }) => [desc(finalGroups.createdAt)]
+  });
+
+  if (!allGroupsFromDb) {
+    return []; // Should not happen with findMany unless DB error, but good for safety
+  }
+
+  const mappedGroups: FinalGroupWithDetails[] = allGroupsFromDb
+    .map((group) => {
+      if (!group.members || group.members.length === 0) {
+        // This case should ideally not happen for a valid group, but handle defensively
+        // It implies a group exists with no members, not even an owner, which is inconsistent.
+        // Depending on strictness, could filter these out or log an error.
+        // For now, let's assume if it exists, it should have an owner.
+        // If not, the find for ownerMemberData will fail.
+        console.warn(
+          `Group ${group.id} has no members listed in query results.`
+        );
+        // We might need to decide if such a group should be returned or an error thrown/logged more formally.
+        // For now, let's attempt to return it but owner/members will be problematic.
+      }
+
+      const ownerMemberData = group.members?.find((m) => m.role === "owner");
+
+      // Default/fallback owner profile if not found (shouldn't happen for valid groups)
+      const defaultOwnerProfile: ProfileDetails = {
+        id: "unknown",
+        email: "unknown",
+        fullName: "Unknown Owner",
+        avatarUrl: null,
+      };
+      const ownerProfile = ownerMemberData?.user
+        ? {
+            id: ownerMemberData.user.id,
+            email: ownerMemberData.user.email,
+            fullName: ownerMemberData.user.fullName,
+            avatarUrl: ownerMemberData.user.avatarUrl,
+          }
+        : defaultOwnerProfile;
+
+      if (!ownerMemberData || !ownerMemberData.user) {
+        console.warn(
+          `Group ${group.id} is missing a valid owner or owner profile.`
+        );
+      }
+
+      const mappedMembers: FinalGroupMemberWithProfile[] =
+        group.members
+          ?.filter((member) => member.user)
+          .map((member) => ({
+            profile: {
+              id: member.user!.id,
+              email: member.user!.email,
+              fullName: member.user!.fullName,
+              avatarUrl: member.user!.avatarUrl,
+            },
+            role: member.role as "owner" | "member",
+            joinedAt: member.joinedAt,
+          })) || [];
+
+      return {
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        selectedProject: group.selectedProject
+          ? {
+              id: group.selectedProject.id,
+              title: group.selectedProject.title,
+              category: group.selectedProject.category,
+            }
+          : null,
+        repositoryUrl: group.repositoryUrl,
+        owner: ownerProfile, // Use the resolved or default owner profile
+        members: mappedMembers,
+        createdAt: group.createdAt,
+        updatedAt: group.updatedAt,
+      };
+    })
+    .filter((group) => group.members.some((m) => m.role === "owner")); // Ensure only groups with a valid owner are returned
+
+  return mappedGroups;
+}

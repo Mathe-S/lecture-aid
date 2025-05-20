@@ -1,17 +1,11 @@
 "use client";
 
-import {
-  useUserFinalGroup,
-  useJoinFinalGroup,
-} from "@/hooks/useFinalUserGroup";
+import { useUserFinalGroup } from "@/hooks/useFinalUserGroup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, ServerCrash, LogIn } from "lucide-react";
+import { Loader2, ServerCrash } from "lucide-react";
 import { CreateFinalGroupForm } from "./create-final-group-form";
 import { FinalGroupDetailsDisplay } from "./final-group-details-display";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
-import { toast } from "sonner";
+import { AllFinalGroupsList } from "./all-final-groups-list";
 
 export function MyFinalGroupPanel() {
   const {
@@ -22,16 +16,6 @@ export function MyFinalGroupPanel() {
     refetch,
   } = useUserFinalGroup();
   console.log("🚀 ~ MyFinalGroupPanel ~ userGroup:", userGroup);
-  const { mutate: joinGroup, isPending: isJoiningGroup } = useJoinFinalGroup();
-  const [groupIdToJoin, setGroupIdToJoin] = useState("");
-
-  const handleJoinGroup = () => {
-    if (!groupIdToJoin.trim()) {
-      toast.error("Please enter a Group ID to join.");
-      return;
-    }
-    joinGroup({ groupId: groupIdToJoin.trim() });
-  };
 
   if (isLoading) {
     return (
@@ -63,38 +47,15 @@ export function MyFinalGroupPanel() {
     // User is in a group, display its details
     return <FinalGroupDetailsDisplay group={userGroup} />;
   } else {
-    // User is not in a group, show creation form and join group option
+    // User is not in a group, show creation form and the list of all available groups to join
     return (
-      <div className="space-y-8">
+      <div className="space-y-12">
         <CreateFinalGroupForm />
-        <div className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-card">
+        <div>
           <h3 className="text-xl font-semibold mb-4 text-center">
-            Join an Existing Group
+            Or Join an Existing Group
           </h3>
-          <p className="text-sm text-muted-foreground mb-6 text-center">
-            If you have a Group ID, enter it below to send a join request or
-            join directly.
-          </p>
-          <div className="flex space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter Group ID"
-              value={groupIdToJoin}
-              onChange={(e) => setGroupIdToJoin(e.target.value)}
-              disabled={isJoiningGroup}
-            />
-            <Button
-              onClick={handleJoinGroup}
-              disabled={isJoiningGroup || !groupIdToJoin.trim()}
-            >
-              {isJoiningGroup ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <LogIn className="mr-2 h-4 w-4" />
-              )}
-              Join Group
-            </Button>
-          </div>
+          <AllFinalGroupsList />
         </div>
       </div>
     );
