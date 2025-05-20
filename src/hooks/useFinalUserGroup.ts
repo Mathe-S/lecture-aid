@@ -108,6 +108,25 @@ async function fetchAllFinalGroups(): Promise<FinalGroupWithDetails[]> {
   return groups || []; // Ensure it always returns an array
 }
 
+// Select a project for the final group (owner action)
+interface SelectProjectForFinalGroupPayload {
+  groupId: string;
+  projectId: string;
+}
+async function selectProjectForFinalGroupApi(
+  payload: SelectProjectForFinalGroupPayload
+): Promise<FinalGroupWithDetails> {
+  const response = await fetch(
+    `/api/final/groups/${payload.groupId}/select-project`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: payload.projectId }), // Send projectId in body
+    }
+  );
+  return handleGroupResponse<FinalGroupWithDetails>(response);
+}
+
 // --- React Query Hooks ---
 
 /**
@@ -207,6 +226,33 @@ export function useRemoveFinalGroupMember() {
     },
     onError: (error) => {
       toast.error(`Failed to remove member: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Hook for group owners to select a project for their final group.
+ */
+export function useSelectProjectForFinalGroup() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    FinalGroupWithDetails,
+    Error,
+    SelectProjectForFinalGroupPayload
+  >({
+    mutationFn: selectProjectForFinalGroupApi,
+    onSuccess: (data) => {
+      toast.success(
+        `Project "${
+          data.selectedProject?.title || "Unknown"
+        }" selected for group "${data.name}".`
+      );
+      queryClient.invalidateQueries({ queryKey: finalUserGroupKeys.mine });
+      queryClient.invalidateQueries({ queryKey: finalUserGroupKeys.all }); // Invalidate all groups list as well
+      // Optionally, update the specific group in the cache directly for 'allGroups' query
+    },
+    onError: (error) => {
+      toast.error(`Failed to select project: ${error.message}`);
     },
   });
 }

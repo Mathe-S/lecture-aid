@@ -2,6 +2,7 @@ import { db } from "@/db";
 import {
   finalGroups,
   finalGroupMembers,
+  finalProjects,
   NewFinalGroup,
   NewFinalGroupMember,
   FinalProject as FinalProjectType, // Renamed to avoid conflict if FinalProject is used as a var name
@@ -728,4 +729,136 @@ export async function getAllFinalGroupsWithDetails(): Promise<
     .filter((group) => group.members.some((m) => m.role === "owner")); // Ensure only groups with a valid owner are returned
 
   return mappedGroups;
+}
+
+/**
+ * Allows a group owner to select a final project for their group.
+ * @param groupId The ID of the group.
+ * @param projectId The ID of the project to select.
+ * @param userId The ID of the user attempting the action (must be group owner).
+ * @returns The updated group details with the selected project.
+ * @throws Error if user is not owner, group/project not found, or update fails.
+ */
+export async function selectProjectForFinalGroup(
+  groupId: string,
+  projectId: string,
+  userId: string
+): Promise<FinalGroupWithDetails> {
+  // 1. Verify user is the owner of the group
+  const groupMembership = await db.query.finalGroupMembers.findFirst({
+    where: and(
+      eq(finalGroupMembers.groupId, groupId),
+      eq(finalGroupMembers.userId, userId),
+      eq(finalGroupMembers.role, "owner")
+    ),
+  });
+
+  if (!groupMembership) {
+    throw new Error(
+      "Unauthorized: User is not the owner of this group or group not found."
+    );
+  }
+
+  // 2. Verify the project exists
+  const projectExists = await db.query.finalProjects.findFirst({
+    where: eq(finalProjects.id, projectId),
+    columns: { id: true }, // Only need to check for existence
+  });
+
+  if (!projectExists) {
+    throw new Error("Project not found.");
+  }
+
+  // 3. Update the group with the selected project ID
+  const [updatedGroupRaw] = await db
+    .update(finalGroups)
+    .set({ selectedProjectId: projectId, updatedAt: new Date().toISOString() })
+    .where(eq(finalGroups.id, groupId))
+    .returning();
+
+  if (!updatedGroupRaw) {
+    throw new Error("Failed to update group with selected project.");
+  }
+
+  // 4. Fetch and return the complete group details (similar to other service functions)
+  // This ensures the returned data is consistent and includes the populated project details
+  const updatedGroupDetails = await db.query.finalGroups.findFirst({
+    where: eq(finalGroups.id, groupId),
+    with: {
+      selectedProject: {
+        columns: { id: true, title: true, category: true },
+      },
+      members: {
+        columns: { role: true, joinedAt: true },
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (
+    !updatedGroupDetails ||
+    !updatedGroupDetails.members ||
+    updatedGroupDetails.members.length === 0
+  ) {
+    // This should not happen if the update was successful and group exists
+    throw new Error(
+      "Failed to retrieve updated group details after project selection."
+    );
+  }
+
+  const ownerMemberData = updatedGroupDetails.members.find(
+    (m) => m.role === "owner"
+  );
+  if (!ownerMemberData || !ownerMemberData.user) {
+    throw new Error(
+      "Group is missing a valid owner or owner profile after project selection."
+    );
+  }
+  const ownerProfile = ownerMemberData.user;
+
+  const mappedMembers: FinalGroupMemberWithProfile[] =
+    updatedGroupDetails.members
+      .filter((member) => member.user)
+      .map((member) => ({
+        profile: {
+          id: member.user!.id,
+          email: member.user!.email,
+          fullName: member.user!.fullName,
+          avatarUrl: member.user!.avatarUrl,
+        },
+        role: member.role as "owner" | "member",
+        joinedAt: member.joinedAt,
+      }));
+
+  return {
+    id: updatedGroupDetails.id,
+    name: updatedGroupDetails.name,
+    description: updatedGroupDetails.description,
+    selectedProject: updatedGroupDetails.selectedProject
+      ? {
+          id: updatedGroupDetails.selectedProject.id,
+          title: updatedGroupDetails.selectedProject.title,
+          category: updatedGroupDetails.selectedProject.category,
+        }
+      : null,
+    repositoryUrl: updatedGroupDetails.repositoryUrl,
+    owner: {
+      id: ownerProfile.id,
+      email: ownerProfile.email,
+      fullName: ownerProfile.fullName,
+      avatarUrl: ownerProfile.avatarUrl,
+    },
+    members: mappedMembers,
+    createdAt: updatedGroupDetails.createdAt,
+    updatedAt: updatedGroupDetails.updatedAt,
+  };
 }

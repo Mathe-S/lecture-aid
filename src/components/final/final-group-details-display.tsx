@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   useLeaveFinalGroup,
   useRemoveFinalGroupMember,
+  useSelectProjectForFinalGroup,
 } from "@/hooks/useFinalUserGroup";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,8 @@ import {
   UserX,
   Loader2,
 } from "lucide-react";
+import { SelectProjectDialog } from "./select-project-dialog";
+import { useState } from "react";
 
 interface FinalGroupDetailsDisplayProps {
   group: FinalGroupWithDetails;
@@ -149,13 +152,17 @@ export function FinalGroupDetailsDisplay({
   group,
 }: FinalGroupDetailsDisplayProps) {
   const { user } = useAuth();
-  const { owner, members, selectedProject } = group;
+  const { owner, members, selectedProject, id: groupId } = group;
   const isCurrentUserOwner = user?.id === owner.id;
+  const [isSelectProjectDialogOpen, setIsSelectProjectDialogOpen] =
+    useState(false);
 
   const { mutate: leaveGroup, isPending: isLeavingGroup } =
     useLeaveFinalGroup();
   const { mutate: removeMember, isPending: isRemovingMember } =
     useRemoveFinalGroupMember();
+  const { mutate: selectProject, isPending: isSelectingProject } =
+    useSelectProjectForFinalGroup();
 
   const handleLeaveGroup = () => {
     leaveGroup();
@@ -163,6 +170,17 @@ export function FinalGroupDetailsDisplay({
 
   const handleRemoveMember = (memberId: string) => {
     removeMember({ groupId: group.id, memberId });
+  };
+
+  const handleProjectSelected = (projectId: string) => {
+    selectProject(
+      { groupId, projectId },
+      {
+        onSuccess: () => {
+          setIsSelectProjectDialogOpen(false);
+        },
+      }
+    );
   };
 
   const otherMembers = members.filter((m) => m.profile.id !== owner.id);
@@ -248,11 +266,19 @@ export function FinalGroupDetailsDisplay({
               No project selected yet.
             </p>
             {isCurrentUserOwner && (
-              <Button variant="outline" size="sm" className="mt-2" disabled>
-                {" "}
-                {/* TODO: Implement Select Project */}
-                <PlusCircle className="w-4 h-4 mr-1.5 text-green-600" /> Select
-                Project
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => setIsSelectProjectDialogOpen(true)}
+                disabled={isSelectingProject}
+              >
+                {isSelectingProject ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                ) : (
+                  <PlusCircle className="w-4 h-4 mr-1.5 text-green-600" />
+                )}
+                Select Project
               </Button>
             )}
           </div>
@@ -318,6 +344,16 @@ export function FinalGroupDetailsDisplay({
           </Button> */}
         </div>
       </CardFooter>
+
+      {isCurrentUserOwner && (
+        <SelectProjectDialog
+          isOpen={isSelectProjectDialogOpen}
+          onOpenChange={setIsSelectProjectDialogOpen}
+          onProjectSelect={handleProjectSelected}
+          currentSelectedProjectId={selectedProject?.id}
+          isSelectingProject={isSelectingProject}
+        />
+      )}
     </Card>
   );
 }
