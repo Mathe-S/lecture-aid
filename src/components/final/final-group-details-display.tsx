@@ -245,44 +245,64 @@ export function FinalGroupDetailsDisplay({
           </p>
         )}
 
-        {selectedProject && (
-          <div>
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">
-              SELECTED PROJECT
-            </h4>
-            <div className="p-3 border rounded-md bg-slate-50">
-              <p className="font-semibold text-slate-800">
-                {selectedProject.title}
-              </p>
-              <p className="text-xs text-slate-600">
-                Category: {selectedProject.category}
-              </p>
+        {/* Selected Project Section / Project Selection Trigger */}
+        <div>
+          <h4 className="text-sm font-semibold text-muted-foreground mb-2">
+            {selectedProject
+              ? "CURRENTLY SELECTED PROJECT"
+              : "SELECT A PROJECT"}
+          </h4>
+          {selectedProject ? (
+            <div className="p-3 border rounded-md bg-slate-50 flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-slate-800">
+                  {selectedProject.title}
+                </p>
+                <p className="text-xs text-slate-600">
+                  Category: {selectedProject.category}
+                </p>
+              </div>
+              {isCurrentUserOwner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsSelectProjectDialogOpen(true)}
+                  disabled={isSelectingProject}
+                >
+                  {isSelectingProject ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  ) : (
+                    <PlusCircle className="w-4 h-4 mr-1.5 text-orange-600" />
+                  )}
+                  Change Project
+                </Button>
+              )}
             </div>
-          </div>
-        )}
-        {!selectedProject && (
-          <div className="p-3 border border-dashed rounded-md text-center">
-            <p className="text-muted-foreground text-sm">
-              No project selected yet.
-            </p>
-            {isCurrentUserOwner && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={() => setIsSelectProjectDialogOpen(true)}
-                disabled={isSelectingProject}
-              >
-                {isSelectingProject ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                ) : (
-                  <PlusCircle className="w-4 h-4 mr-1.5 text-green-600" />
-                )}
-                Select Project
-              </Button>
-            )}
-          </div>
-        )}
+          ) : (
+            // UI for when no project is selected (owner can select)
+            <div className="p-3 border border-dashed rounded-md text-center">
+              <p className="text-muted-foreground text-sm">
+                No project selected yet.
+              </p>
+              {isCurrentUserOwner && (
+                <Button
+                  variant="default" // Make it more prominent if no project is selected
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setIsSelectProjectDialogOpen(true)}
+                  disabled={isSelectingProject}
+                >
+                  {isSelectingProject ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  ) : (
+                    <PlusCircle className="w-4 h-4 mr-1.5" />
+                  )}
+                  Select Project
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-4 border-t">
         <p className="text-xs text-muted-foreground">
