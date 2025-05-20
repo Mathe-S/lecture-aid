@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { AvailableProjectsList } from "@/components/final/available-projects-list";
 
 // Placeholder for Admin Project Management Panel - to be created
 import { AdminProjectPanel } from "@/components/final/admin-project-panel";
@@ -12,7 +13,7 @@ import { AdminProjectPanel } from "@/components/final/admin-project-panel";
 // }
 
 export default function FinalPage() {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
 
   // TODO: Add state and hooks for final projects and groups as needed
 
@@ -21,30 +22,66 @@ export default function FinalPage() {
       <div className="space-y-8">
         {/* Static Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Final Project</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-6">
+            Final Project Hub
+          </h1>
           <p className="text-muted-foreground">
             Manage final projects, form groups, and select projects for the
             semester.
           </p>
         </div>
 
-        {/* Conditional rendering based on role and state */}
-        {role === "admin" && (
-          <section aria-labelledby="admin-project-management-heading">
-            <h2
-              id="admin-project-management-heading"
-              className="text-2xl font-semibold tracking-tight mb-4"
-            >
+        {/* Admin Section */}
+        {user && role === "admin" && (
+          <section className="mb-8 p-6 bg-slate-50 rounded-lg shadow">
+            <h2 className="text-2xl font-semibold mb-4 text-slate-800">
               Admin: Project Management
             </h2>
-            {/* 
-              Placeholder for AdminProjectPanel. 
-              This will be where admins can CRUD final projects.
-            */}
-            <Suspense fallback={<p>Loading admin panel...</p>}>
+            <Suspense
+              fallback={
+                <p className="text-muted-foreground">Loading admin panel...</p>
+              }
+            >
               <AdminProjectPanel />
             </Suspense>
           </section>
+        )}
+
+        {/* Available Projects List - Visible to ALL LOGGED-IN USERS */}
+        {user && (
+          <section className="mb-8">
+            {/* This heading can be part of AvailableProjectsList or kept here */}
+            {/* <h2 className="text-2xl font-semibold mb-4">Available Projects</h2> */}
+            <AvailableProjectsList />
+          </section>
+        )}
+
+        {/* Student Group Management & Project Selection - Visible to logged-in non-admins */}
+        {user && role !== "admin" && (
+          <section className="mb-8 p-6 bg-sky-50 rounded-lg shadow">
+            <h2 className="text-2xl font-semibold mb-4 text-sky-800">
+              My Group & Project
+            </h2>
+            <p className="text-muted-foreground">
+              Group formation, project selection, and task management features
+              will appear here.
+            </p>
+            {/* Placeholder for components like: 
+                <MyFinalProjectGroup /> 
+                <SelectFinalProjectButton /> 
+                <FinalProjectTodoUpload /> 
+            */}
+          </section>
+        )}
+
+        {/* Fallback for non-logged-in users or when auth state is not yet determined */}
+        {!user && (
+          <div className="text-center py-10">
+            <p className="text-muted-foreground">
+              Please log in to view final project details.
+            </p>
+            {/* Optionally, add a login button here */}
+          </div>
         )}
 
         {/* 
