@@ -15,7 +15,6 @@ export function MyFinalGroupPanel() {
     error,
     refetch,
   } = useUserFinalGroup();
-  console.log("🚀 ~ MyFinalGroupPanel ~ userGroup:", userGroup);
 
   if (isLoading) {
     return (

@@ -4,7 +4,7 @@ import { joinFinalGroup } from "@/lib/final-group-service";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   const supabase = await supabaseForServer();
   const { data: userData, error: authError } = await supabase.auth.getUser();
@@ -13,7 +13,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = userData.user.id;
-  const { id: groupId } = await params;
+  const { groupId } = await params;
 
   if (!groupId) {
     return NextResponse.json(
