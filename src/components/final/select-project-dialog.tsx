@@ -40,7 +40,7 @@ function ProjectListItem({
 }) {
   return (
     <div
-      className={`p-3 mb-2 border rounded-lg hover:bg-slate-50 ${
+      className={`m-1 p-3 mb-2 border rounded-lg hover:bg-slate-50 ${
         isSelected ? "ring-2 ring-blue-500 bg-blue-50" : ""
       } ${isCurrentlySelectedByGroup ? "bg-green-50 border-green-300" : ""}`}
     >
@@ -62,20 +62,14 @@ function ProjectListItem({
             variant={isSelected ? "default" : "outline"}
             size="sm"
             onClick={onSelect}
-            disabled={isProcessingSelection || isCurrentlySelectedByGroup}
+            disabled={isProcessingSelection}
           >
-            {isProcessingSelection && isSelected ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isSelected ? (
-              "Confirm"
-            ) : (
-              "Select"
-            )}
+            {isSelected ? "✓ Selected" : "Select"}
           </Button>
         )}
       </div>
       {project.description && (
-        <p className="text-xs mt-1 text-slate-600 truncate">
+        <p className="text-xs mt-1 text-slate-600 line-clamp-2">
           {project.description}
         </p>
       )}
