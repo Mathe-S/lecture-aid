@@ -256,3 +256,36 @@ export function useSelectProjectForFinalGroup() {
     },
   });
 }
+
+/**
+ * Hook for group owners to update repository information for their final group.
+ */
+export function useUpdateGroupRepository() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    FinalGroupWithDetails,
+    Error,
+    { groupId: string; repositoryUrl: string }
+  >({
+    mutationFn: async ({ groupId, repositoryUrl }) => {
+      const response = await fetch(`/api/final/groups/${groupId}/repository`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repositoryUrl }),
+      });
+      return handleGroupResponse<FinalGroupWithDetails>(response);
+    },
+    onSuccess: (data) => {
+      toast.success(
+        `Repository ${
+          data.repositoryUrl ? "linked" : "unlinked"
+        } successfully for group "${data.name}".`
+      );
+      queryClient.invalidateQueries({ queryKey: finalUserGroupKeys.mine });
+      queryClient.invalidateQueries({ queryKey: finalUserGroupKeys.all });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update repository: ${error.message}`);
+    },
+  });
+}

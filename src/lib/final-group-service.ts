@@ -32,6 +32,8 @@ export interface FinalGroupWithDetails {
   selectedProject: Pick<FinalProjectType, "id" | "title" | "category"> | null;
   projectIdea: string | null; // Markdown content for the group's project idea
   repositoryUrl: string | null;
+  repositoryOwner: string | null; // GitHub repository owner
+  repositoryName: string | null; // GitHub repository name
   // Other finalGroups fields if needed
   owner: ProfileDetails; // Derived owner's profile
   members: FinalGroupMemberWithProfile[];
@@ -162,6 +164,8 @@ export async function createFinalGroup(
       : null,
     projectIdea: groupDetailsFromDb.projectIdea,
     repositoryUrl: groupDetailsFromDb.repositoryUrl,
+    repositoryOwner: groupDetailsFromDb.repositoryOwner,
+    repositoryName: groupDetailsFromDb.repositoryName,
     owner: {
       id: ownerProfile.id,
       email: ownerProfile.email,
@@ -269,6 +273,8 @@ export async function getUserFinalGroup(
       : null,
     projectIdea: groupDetailsFromDb.projectIdea,
     repositoryUrl: groupDetailsFromDb.repositoryUrl,
+    repositoryOwner: groupDetailsFromDb.repositoryOwner,
+    repositoryName: groupDetailsFromDb.repositoryName,
     owner: {
       id: ownerProfile.id,
       email: ownerProfile.email,
@@ -396,6 +402,8 @@ export async function joinFinalGroup(
       : null,
     projectIdea: updatedGroupDetails.projectIdea,
     repositoryUrl: updatedGroupDetails.repositoryUrl,
+    repositoryOwner: updatedGroupDetails.repositoryOwner,
+    repositoryName: updatedGroupDetails.repositoryName,
     owner: {
       id: ownerProfile.id,
       email: ownerProfile.email,
@@ -570,6 +578,8 @@ export async function removeMemberFromFinalGroup(
       selectedProject: updatedGroupDetails?.selectedProject ?? null,
       projectIdea: updatedGroupDetails?.projectIdea ?? null,
       repositoryUrl: updatedGroupDetails?.repositoryUrl ?? null,
+      repositoryOwner: updatedGroupDetails?.repositoryOwner ?? null,
+      repositoryName: updatedGroupDetails?.repositoryName ?? null,
       owner: ownerAsMember.profile,
       members: [ownerAsMember], // Only owner left
       createdAt: updatedGroupDetails?.createdAt ?? new Date().toISOString(),
@@ -614,6 +624,8 @@ export async function removeMemberFromFinalGroup(
       : null,
     projectIdea: updatedGroupDetails.projectIdea,
     repositoryUrl: updatedGroupDetails.repositoryUrl,
+    repositoryOwner: updatedGroupDetails.repositoryOwner,
+    repositoryName: updatedGroupDetails.repositoryName,
     owner: {
       id: ownerProfile.id,
       email: ownerProfile.email,
@@ -727,6 +739,8 @@ export async function getAllFinalGroupsWithDetails(): Promise<
           : null,
         projectIdea: group.projectIdea,
         repositoryUrl: group.repositoryUrl,
+        repositoryOwner: group.repositoryOwner,
+        repositoryName: group.repositoryName,
         owner: ownerProfile, // Use the resolved or default owner profile
         members: mappedMembers,
         createdAt: group.createdAt,
@@ -859,6 +873,8 @@ export async function selectProjectForFinalGroup(
       : null,
     projectIdea: updatedGroupDetails.projectIdea,
     repositoryUrl: updatedGroupDetails.repositoryUrl,
+    repositoryOwner: updatedGroupDetails.repositoryOwner,
+    repositoryName: updatedGroupDetails.repositoryName,
     owner: {
       id: ownerProfile.id,
       email: ownerProfile.email,
@@ -980,6 +996,163 @@ export async function updateProjectIdea(
       : null,
     projectIdea: updatedGroupDetails.projectIdea,
     repositoryUrl: updatedGroupDetails.repositoryUrl,
+    repositoryOwner: updatedGroupDetails.repositoryOwner,
+    repositoryName: updatedGroupDetails.repositoryName,
+    owner: {
+      id: ownerProfile.id,
+      email: ownerProfile.email,
+      fullName: ownerProfile.fullName,
+      avatarUrl: ownerProfile.avatarUrl,
+    },
+    members: mappedMembers,
+    createdAt: updatedGroupDetails.createdAt,
+    updatedAt: updatedGroupDetails.updatedAt,
+  };
+}
+
+/**
+ * Allows a group owner to update the GitHub repository for their group.
+ * @param groupId The ID of the group.
+ * @param repositoryUrl The GitHub repository URL.
+ * @param userId The ID of the user attempting the action (must be group owner).
+ * @returns The updated group details with the new repository information.
+ * @throws Error if user is not owner, group not found, or update fails.
+ */
+export async function updateGroupRepository(
+  groupId: string,
+  repositoryUrl: string,
+  userId: string
+): Promise<FinalGroupWithDetails> {
+  // 1. Verify user is the owner of the group
+  const groupMembership = await db.query.finalGroupMembers.findFirst({
+    where: and(
+      eq(finalGroupMembers.groupId, groupId),
+      eq(finalGroupMembers.userId, userId),
+      eq(finalGroupMembers.role, "owner")
+    ),
+  });
+
+  if (!groupMembership) {
+    throw new Error(
+      "Unauthorized: User is not the owner of this group or group not found."
+    );
+  }
+
+  // 2. Parse GitHub URL to extract owner and repository name
+  let repositoryOwner = null;
+  let repositoryName = null;
+
+  if (repositoryUrl) {
+    try {
+      // Handle various GitHub URL formats:
+      // https://github.com/owner/repo
+      // https://github.com/owner/repo.git
+      // git@github.com:owner/repo.git
+      const githubRegex =
+        /github\.com[\/:]([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/.*)?$/;
+      const match = repositoryUrl.match(githubRegex);
+
+      if (match) {
+        repositoryOwner = match[1];
+        repositoryName = match[2];
+      } else {
+        throw new Error("Invalid GitHub repository URL format");
+      }
+    } catch {
+      throw new Error(
+        "Invalid GitHub repository URL. Please use a valid GitHub repository URL."
+      );
+    }
+  }
+
+  // 3. Update the group with the repository information
+  const [updatedGroupRaw] = await db
+    .update(finalGroups)
+    .set({
+      repositoryUrl: repositoryUrl || null,
+      repositoryOwner,
+      repositoryName,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(finalGroups.id, groupId))
+    .returning();
+
+  if (!updatedGroupRaw) {
+    throw new Error("Failed to update group with repository information.");
+  }
+
+  // 4. Fetch and return the complete group details
+  const updatedGroupDetails = await db.query.finalGroups.findFirst({
+    where: eq(finalGroups.id, groupId),
+    with: {
+      selectedProject: {
+        columns: { id: true, title: true, category: true },
+      },
+      members: {
+        columns: { role: true, joinedAt: true },
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (
+    !updatedGroupDetails ||
+    !updatedGroupDetails.members ||
+    updatedGroupDetails.members.length === 0
+  ) {
+    throw new Error(
+      "Failed to retrieve updated group details after repository update."
+    );
+  }
+
+  const ownerMemberData = updatedGroupDetails.members.find(
+    (m) => m.role === "owner"
+  );
+  if (!ownerMemberData || !ownerMemberData.user) {
+    throw new Error(
+      "Group is missing a valid owner or owner profile after repository update."
+    );
+  }
+  const ownerProfile = ownerMemberData.user;
+
+  const mappedMembers: FinalGroupMemberWithProfile[] =
+    updatedGroupDetails.members
+      .filter((member) => member.user)
+      .map((member) => ({
+        profile: {
+          id: member.user!.id,
+          email: member.user!.email,
+          fullName: member.user!.fullName,
+          avatarUrl: member.user!.avatarUrl,
+        },
+        role: member.role as "owner" | "member",
+        joinedAt: member.joinedAt,
+      }));
+
+  return {
+    id: updatedGroupDetails.id,
+    name: updatedGroupDetails.name,
+    description: updatedGroupDetails.description,
+    selectedProject: updatedGroupDetails.selectedProject
+      ? {
+          id: updatedGroupDetails.selectedProject.id,
+          title: updatedGroupDetails.selectedProject.title,
+          category: updatedGroupDetails.selectedProject.category,
+        }
+      : null,
+    projectIdea: updatedGroupDetails.projectIdea,
+    repositoryUrl: updatedGroupDetails.repositoryUrl,
+    repositoryOwner: updatedGroupDetails.repositoryOwner,
+    repositoryName: updatedGroupDetails.repositoryName,
     owner: {
       id: ownerProfile.id,
       email: ownerProfile.email,

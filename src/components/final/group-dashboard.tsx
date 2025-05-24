@@ -30,6 +30,7 @@ import {
   Target,
 } from "lucide-react";
 import { ProjectIdeaEditor } from "./project-idea-editor";
+import { RepositoryLinkDialog } from "./repository-link-dialog";
 
 interface GroupDashboardProps {
   group: FinalGroupWithDetails;
@@ -44,7 +45,15 @@ function getInitials(name: string | null | undefined): string {
     .toUpperCase();
 }
 
-function ProjectOverviewSection({ group }: { group: FinalGroupWithDetails }) {
+function ProjectOverviewSection({
+  group,
+  isOwner,
+  onLinkRepository,
+}: {
+  group: FinalGroupWithDetails;
+  isOwner: boolean;
+  onLinkRepository: () => void;
+}) {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Group Info Card */}
@@ -138,27 +147,55 @@ function ProjectOverviewSection({ group }: { group: FinalGroupWithDetails }) {
         <CardContent>
           {group.repositoryUrl ? (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground break-all">
-                {group.repositoryUrl}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => window.open(group.repositoryUrl!, "_blank")}
-              >
-                <ExternalLink className="h-4 w-4" />
-                Open Repository
-              </Button>
+              <div>
+                {group.repositoryOwner && group.repositoryName ? (
+                  <p className="text-sm font-medium">
+                    {group.repositoryOwner}/{group.repositoryName}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground break-all">
+                    {group.repositoryUrl}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => window.open(group.repositoryUrl!, "_blank")}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Repository
+                </Button>
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onLinkRepository}
+                    className="gap-2"
+                  >
+                    <GitBranch className="h-4 w-4" />
+                    Update
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="text-center py-8">
               <GitBranch className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
               <p className="text-muted-foreground">No repository linked yet</p>
-              <Button variant="outline" size="sm" className="mt-2 gap-2">
-                <Plus className="h-4 w-4" />
-                Link Repository
-              </Button>
+              {isOwner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 gap-2"
+                  onClick={onLinkRepository}
+                >
+                  <Plus className="h-4 w-4" />
+                  Link Repository
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -306,6 +343,12 @@ export function GroupDashboard({ group }: GroupDashboardProps) {
   const { user } = useAuth();
   const isOwner = user?.id === group.owner.id;
   const [activeTab, setActiveTab] = useState("overview");
+  const [showRepositoryLinkDialog, setShowRepositoryLinkDialog] =
+    useState(false);
+
+  const handleLinkRepository = () => {
+    setShowRepositoryLinkDialog(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -348,7 +391,11 @@ export function GroupDashboard({ group }: GroupDashboardProps) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
-          <ProjectOverviewSection group={group} />
+          <ProjectOverviewSection
+            group={group}
+            isOwner={isOwner}
+            onLinkRepository={handleLinkRepository}
+          />
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-6">
@@ -363,6 +410,13 @@ export function GroupDashboard({ group }: GroupDashboardProps) {
           <TeamActivitySection />
         </TabsContent>
       </Tabs>
+
+      <RepositoryLinkDialog
+        isOpen={showRepositoryLinkDialog}
+        onOpenChange={setShowRepositoryLinkDialog}
+        groupId={group.id}
+        currentRepositoryUrl={group.repositoryUrl}
+      />
     </div>
   );
 }
