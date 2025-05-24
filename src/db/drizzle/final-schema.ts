@@ -7,7 +7,7 @@ import {
   unique,
   jsonb,
   pgPolicy,
-  boolean,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { profiles, users } from "./schema"; // Assuming common user/profile schema
@@ -185,62 +185,87 @@ export const finalGroupMembers = pgTable(
   ]
 );
 
-// --- Final Tasks (Uploaded Markdown TODOs) ---
+// --- Final Tasks (Created by Group Members) ---
 export const finalTasks = pgTable(
   "final_tasks",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    groupId: uuid("group_id")
-      .notNull()
-      .references(() => finalGroups.id, { onDelete: "cascade" }),
-    phase: text("phase").notNull(), // From Markdown structure
-    step: text("step").notNull(), // From Markdown structure
-    taskText: text("task_text").notNull(),
-    isChecked: boolean("is_checked").default(false).notNull(),
-    orderIndex: integer("order_index").notNull(),
-    createdAt: timestamp("created_at", {
-      withTimezone: true,
-      mode: "string",
-    })
-      .default(sql`timezone('utc'::text, now())`)
+    id: uuid("id")
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
       .notNull(),
-    updatedAt: timestamp("updated_at", {
-      withTimezone: true,
-      mode: "string",
-    })
-      .default(sql`timezone('utc'::text, now())`)
+    title: text("title").notNull(),
+    description: text("description"),
+    priority: text("priority", { enum: ["high", "medium", "low"] })
+      .default("medium")
+      .notNull(),
+    status: text("status", { enum: ["todo", "in_progress", "done"] })
+      .default("todo")
+      .notNull(),
+    dueDate: timestamp("due_date", { withTimezone: true, mode: "string" }),
+    estimatedHours: integer("estimated_hours"),
+    groupId: uuid("group_id")
+      .references(() => finalGroups.id, { onDelete: "cascade" })
+      .notNull(),
+    createdById: uuid("created_by_id")
+      .references(() => profiles.id, { onDelete: "cascade" })
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
-  (table) => [
-    pgPolicy("Group members can view tasks", {
-      as: "permissive",
-      for: "select",
-      to: ["authenticated"],
-      using: sql`EXISTS (
-        SELECT 1 FROM final_group_members
-        WHERE final_group_members.group_id = ${table.groupId}
-        AND final_group_members.user_id = auth.uid()
-      )`,
-    }),
-    pgPolicy("Group members can manage tasks (insert, update, delete)", {
-      as: "permissive",
-      for: "all",
-      to: ["authenticated"],
-      using: sql`EXISTS (
-        SELECT 1 FROM final_group_members
-        WHERE final_group_members.group_id = ${table.groupId}
-        AND final_group_members.user_id = auth.uid()
-        AND (final_group_members.role = 'owner'::text OR final_group_members.role = 'member'::text)
-      )`,
-      withCheck: sql`EXISTS (
-        SELECT 1 FROM final_group_members
-        WHERE final_group_members.group_id = ${table.groupId}
-        AND final_group_members.user_id = auth.uid()
-        AND (final_group_members.role = 'owner'::text OR final_group_members.role = 'member'::text)
-      )`,
-    }),
-  ]
+  (table) => ({
+    groupIdIdx: index("final_tasks_group_id_idx").on(table.groupId),
+    statusIdx: index("final_tasks_status_idx").on(table.status),
+    priorityIdx: index("final_tasks_priority_idx").on(table.priority),
+    dueDateIdx: index("final_tasks_due_date_idx").on(table.dueDate),
+  })
 );
+
+// --- Final Task Assignees (Many-to-Many: Tasks ↔ Users) ---
+export const finalTaskAssignees = pgTable(
+  "final_task_assignees",
+  {
+    id: uuid("id")
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    taskId: uuid("task_id")
+      .references(() => finalTasks.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: uuid("user_id")
+      .references(() => profiles.id, { onDelete: "cascade" })
+      .notNull(),
+    assignedById: uuid("assigned_by_id")
+      .references(() => profiles.id, { onDelete: "cascade" })
+      .notNull(),
+    assignedAt: timestamp("assigned_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => ({
+    taskUserUnique: unique("final_task_assignees_task_user_unique").on(
+      table.taskId,
+      table.userId
+    ),
+    taskIdIdx: index("final_task_assignees_task_id_idx").on(table.taskId),
+    userIdIdx: index("final_task_assignees_user_id_idx").on(table.userId),
+  })
+);
+
+// Task-related types for inserts
+export type NewFinalTask = typeof finalTasks.$inferInsert;
+export type FinalTask = typeof finalTasks.$inferSelect;
+export type NewFinalTaskAssignee = typeof finalTaskAssignees.$inferInsert;
+export type FinalTaskAssignee = typeof finalTaskAssignees.$inferSelect;
+
+// Export priority and status enums for use in components
+export const TASK_PRIORITIES = ["high", "medium", "low"] as const;
+export const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 // --- Final Evaluations (Admin Grading) ---
 export const finalEvaluations = pgTable(
@@ -342,19 +367,41 @@ export const finalGroupMembersRelations = relations(
       references: [finalGroups.id],
     }),
     user: one(profiles, {
-      // Changed from users to profiles for profile data
       fields: [finalGroupMembers.userId],
       references: [profiles.id],
     }),
   })
 );
 
-export const finalTasksRelations = relations(finalTasks, ({ one }) => ({
+export const finalTasksRelations = relations(finalTasks, ({ one, many }) => ({
   group: one(finalGroups, {
     fields: [finalTasks.groupId],
     references: [finalGroups.id],
   }),
+  createdBy: one(profiles, {
+    fields: [finalTasks.createdById],
+    references: [profiles.id],
+  }),
+  assignees: many(finalTaskAssignees),
 }));
+
+export const finalTaskAssigneesRelations = relations(
+  finalTaskAssignees,
+  ({ one }) => ({
+    task: one(finalTasks, {
+      fields: [finalTaskAssignees.taskId],
+      references: [finalTasks.id],
+    }),
+    user: one(profiles, {
+      fields: [finalTaskAssignees.userId],
+      references: [profiles.id],
+    }),
+    assignedBy: one(profiles, {
+      fields: [finalTaskAssignees.assignedById],
+      references: [profiles.id],
+    }),
+  })
+);
 
 export const finalEvaluationsRelations = relations(
   finalEvaluations,
@@ -385,9 +432,6 @@ export type NewFinalGroup = typeof finalGroups.$inferInsert;
 
 export type FinalGroupMember = typeof finalGroupMembers.$inferSelect;
 export type NewFinalGroupMember = typeof finalGroupMembers.$inferInsert;
-
-export type FinalTask = typeof finalTasks.$inferSelect;
-export type NewFinalTask = typeof finalTasks.$inferInsert;
 
 export type FinalEvaluation = typeof finalEvaluations.$inferSelect;
 export type NewFinalEvaluation = typeof finalEvaluations.$inferInsert;

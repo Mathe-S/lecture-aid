@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type { FinalGroupWithDetails } from "@/lib/final-group-service";
+import { useTasksByStatus, useTaskStats } from "@/hooks/useFinalTasks";
 import {
   Card,
   CardContent,
@@ -31,18 +32,21 @@ import {
 } from "lucide-react";
 import { ProjectIdeaEditor } from "./project-idea-editor";
 import { RepositoryLinkDialog } from "./repository-link-dialog";
+import { CreateTaskDialog } from "./create-task-dialog";
 
 interface GroupDashboardProps {
   group: FinalGroupWithDetails;
 }
 
-function getInitials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
+// Helper function to get user initials
+function getInitials(fullName: string | null): string {
+  if (!fullName) return "U";
+  return fullName
     .split(" ")
     .map((n) => n[0])
     .join("")
-    .toUpperCase();
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 function ProjectOverviewSection({
@@ -54,6 +58,8 @@ function ProjectOverviewSection({
   isOwner: boolean;
   onLinkRepository: () => void;
 }) {
+  const taskStats = useTaskStats(group.id);
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Group Info Card */}
@@ -213,20 +219,24 @@ function ProjectOverviewSection({
           <div>
             <div className="flex justify-between text-sm mb-2">
               <span>Overall Progress</span>
-              <span>25%</span>
+              <span>{Math.round(taskStats.completionRate)}%</span>
             </div>
-            <Progress value={25} className="h-2" />
+            <Progress value={taskStats.completionRate} className="h-2" />
           </div>
 
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold text-green-600">0</div>
+              <div className="text-2xl font-bold text-green-600">
+                {taskStats.done}
+              </div>
               <div className="text-xs text-muted-foreground">
                 Completed Tasks
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-blue-600">0</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {taskStats.total}
+              </div>
               <div className="text-xs text-muted-foreground">Total Tasks</div>
             </div>
           </div>
@@ -241,12 +251,49 @@ function ProjectOverviewSection({
   );
 }
 
-function TaskBoardSection() {
+function TaskBoardSection({ group }: { group: FinalGroupWithDetails }) {
+  const { tasksByStatus, isLoading, error } = useTasksByStatus(group.id);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Kanban className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p className="text-muted-foreground">Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8 text-red-600">
+            <p>Failed to load tasks: {error.message}</p>
+            <Button
+              variant="outline"
+              className="mt-2"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Quick Actions */}
       <div className="flex gap-2">
-        <Button size="sm" className="gap-2">
+        <Button
+          size="sm"
+          className="gap-2"
+          onClick={() => setShowCreateDialog(true)}
+        >
           <Plus className="h-4 w-4" />
           Add Task
         </Button>
@@ -264,15 +311,64 @@ function TaskBoardSection() {
             <CardTitle className="text-base flex items-center gap-2">
               <Clock className="h-4 w-4" />
               To Do
-              <Badge variant="secondary">0</Badge>
+              <Badge variant="secondary">{tasksByStatus.todo.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-center py-8 text-muted-foreground">
-              <Kanban className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No tasks yet</p>
-              <p className="text-xs">Add tasks to get started</p>
-            </div>
+            {tasksByStatus.todo.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Kanban className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No tasks yet</p>
+                <p className="text-xs">Add tasks to get started</p>
+              </div>
+            ) : (
+              tasksByStatus.todo.map((task) => (
+                <div
+                  key={task.id}
+                  className="p-3 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-medium text-sm">{task.title}</h4>
+                    <Badge
+                      variant={
+                        task.priority === "high"
+                          ? "destructive"
+                          : task.priority === "medium"
+                          ? "default"
+                          : "secondary"
+                      }
+                      className="text-xs"
+                    >
+                      {task.priority}
+                    </Badge>
+                  </div>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                      {task.description}
+                    </p>
+                  )}
+                  {task.assignees.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {task.assignees.slice(0, 3).map((assignee) => (
+                        <Avatar key={assignee.profile.id} className="h-5 w-5">
+                          <AvatarImage
+                            src={assignee.profile.avatarUrl || undefined}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(assignee.profile.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {task.assignees.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{task.assignees.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -282,14 +378,65 @@ function TaskBoardSection() {
             <CardTitle className="text-base flex items-center gap-2">
               <Activity className="h-4 w-4" />
               In Progress
-              <Badge variant="secondary">0</Badge>
+              <Badge variant="secondary">
+                {tasksByStatus.in_progress.length}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-center py-8 text-muted-foreground">
-              <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No active tasks</p>
-            </div>
+            {tasksByStatus.in_progress.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No active tasks</p>
+              </div>
+            ) : (
+              tasksByStatus.in_progress.map((task) => (
+                <div
+                  key={task.id}
+                  className="p-3 border rounded-lg bg-blue-50 hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-medium text-sm">{task.title}</h4>
+                    <Badge
+                      variant={
+                        task.priority === "high"
+                          ? "destructive"
+                          : task.priority === "medium"
+                          ? "default"
+                          : "secondary"
+                      }
+                      className="text-xs"
+                    >
+                      {task.priority}
+                    </Badge>
+                  </div>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                      {task.description}
+                    </p>
+                  )}
+                  {task.assignees.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {task.assignees.slice(0, 3).map((assignee) => (
+                        <Avatar key={assignee.profile.id} className="h-5 w-5">
+                          <AvatarImage
+                            src={assignee.profile.avatarUrl || undefined}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(assignee.profile.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {task.assignees.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{task.assignees.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -299,17 +446,75 @@ function TaskBoardSection() {
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
               Done
-              <Badge variant="secondary">0</Badge>
+              <Badge variant="secondary">{tasksByStatus.done.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No completed tasks</p>
-            </div>
+            {tasksByStatus.done.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No completed tasks</p>
+              </div>
+            ) : (
+              tasksByStatus.done.map((task) => (
+                <div
+                  key={task.id}
+                  className="p-3 border rounded-lg bg-green-50 hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-medium text-sm">{task.title}</h4>
+                    <Badge
+                      variant={
+                        task.priority === "high"
+                          ? "destructive"
+                          : task.priority === "medium"
+                          ? "default"
+                          : "secondary"
+                      }
+                      className="text-xs"
+                    >
+                      {task.priority}
+                    </Badge>
+                  </div>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                      {task.description}
+                    </p>
+                  )}
+                  {task.assignees.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {task.assignees.slice(0, 3).map((assignee) => (
+                        <Avatar key={assignee.profile.id} className="h-5 w-5">
+                          <AvatarImage
+                            src={assignee.profile.avatarUrl || undefined}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(assignee.profile.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {task.assignees.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{task.assignees.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Task Dialog */}
+      {showCreateDialog && (
+        <CreateTaskDialog
+          isOpen={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+          group={group}
+        />
+      )}
     </div>
   );
 }
@@ -399,7 +604,7 @@ export function GroupDashboard({ group }: GroupDashboardProps) {
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-6">
-          <TaskBoardSection />
+          <TaskBoardSection group={group} />
         </TabsContent>
 
         <TabsContent value="idea" className="mt-6">
