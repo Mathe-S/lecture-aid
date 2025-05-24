@@ -30,36 +30,115 @@ interface ProjectIdeaEditorProps {
   isOwner: boolean;
 }
 
-const PROJECT_IDEA_TEMPLATE = `# Project Idea: [Your Project Title]
+const PROJECT_IDEA_TEMPLATE = `# Project: [Your Project Title]
 
-## 📋 Overview
-Write a brief overview of your project idea here. What problem does it solve? Who is your target audience?
+## 👥 Team Information
+- **Team Members**: [Name(s) and roles if group project]
+- **Selected Base Project**: [Which of the 10 admin projects you're extending]
 
-## 🎯 Objectives
-- List your main project objectives
-- What do you want to achieve?
-- What success looks like
+## 🎯 Project Vision
+**Problem Statement**: [What specific problem does your project solve?]
+**Target Users**: [Who will use this application?]
+**Value Proposition**: [Why is this solution valuable?]
 
-## 🔧 Technical Approach
-- What technologies will you use?
-- What is your planned architecture?
-- Any specific tools or frameworks?
+## 🏗️ Architecture & Technical Design
 
-## 📦 Expected Deliverables
-- [ ] Feature 1
-- [ ] Feature 2  
-- [ ] Feature 3
-- [ ] Documentation
-- [ ] Testing
+### Tech Stack
+- **Frontend**: React + TypeScript
+- **Backend**: Node.js + TypeScript  
+- **Database**: [Your choice - PostgreSQL, MongoDB, etc.]
+- **Deployment**: AWS [specify services - EC2, ECS, Lambda, etc.]
+- **Testing**: [Mocha, Jest, Cypress, etc.]
 
-## 🗓️ Timeline
-- **Week 1-2**: Setup and initial development
-- **Week 3-4**: Core features implementation
-- **Week 5-6**: Testing and polish
-- **Week 7**: Final presentation preparation
+### System Architecture
+- **Component Hierarchy**: [Key React components and their relationships]
+- **API Design**: [Main endpoints and data flow]
+- **Database Schema**: [Key entities and relationships]
+- **Authentication**: [How you'll handle user auth]
 
-## 💭 Additional Notes
-Any other thoughts, considerations, or ideas for your project...`;
+### Key Design Decisions
+- [Decision 1 and rationale]
+- [Decision 2 and rationale]
+- [Decision 3 and rationale]
+
+## 🧪 Test-Driven Development Strategy
+- **Core Features to Test**: [List main functionalities requiring tests]
+- **Testing Approach**: [Unit tests for X, integration tests for Y]
+- **Test Coverage Goals**: [What percentage/areas you'll focus on]
+
+## 📦 Feature Breakdown
+
+### Core Features (Must-Have)
+- [ ] [Feature 1 - brief description]
+- [ ] [Feature 2 - brief description]
+- [ ] [Feature 3 - brief description]
+
+### Enhanced Features (Nice-to-Have)
+- [ ] [Enhancement 1]
+- [ ] [Enhancement 2]
+
+## 📅 4-Week Development Plan
+
+### Week 1: Planning & Setup
+- [ ] Project setup (React + Node + TypeScript)
+- [ ] Database design and setup
+- [ ] Basic project structure
+- [ ] Initial test framework setup
+- [ ] Environment configuration
+
+### Week 2: Minimal App + Testing
+- [ ] Core backend API endpoints
+- [ ] Basic frontend components
+- [ ] Write and run initial tests
+- [ ] Database integration
+- [ ] Authentication setup
+
+### Week 3: Deployment + Development
+- [ ] AWS deployment setup
+- [ ] CI/CD pipeline (if applicable)
+- [ ] Core feature development
+- [ ] Test implementation for new features
+- [ ] Performance optimization
+
+### Week 4: Polish + Final Development
+- [ ] Enhanced features implementation
+- [ ] UI/UX improvements
+- [ ] Comprehensive testing
+- [ ] Documentation completion
+- [ ] Final deployment and demo prep
+
+## 🚀 Deployment Strategy
+- **AWS Services**: [EC2, RDS, S3, etc.]
+- **Environment Variables**: [How you'll manage config]
+- **Database Hosting**: [AWS RDS, etc.]
+- **Domain & SSL**: [If applicable]
+
+## 📚 Documentation Plan
+- **README**: Setup and run instructions
+- **API Documentation**: Key endpoints and usage
+- **Architecture Docs**: System design decisions
+- **Testing Docs**: How to run tests and coverage
+
+## 🤔 Potential Challenges & Solutions
+- **Challenge 1**: [Technical challenge you anticipate]
+  - *Solution approach*: [How you plan to address it]
+- **Challenge 2**: [Another potential issue]
+  - *Solution approach*: [Your strategy]
+
+## 📈 Success Metrics
+- **Functionality**: [How you'll measure if features work]
+- **Code Quality**: [Linting, type safety, etc.]
+- **Performance**: [Load times, responsiveness]
+- **User Experience**: [Usability goals]
+
+---
+
+## 🎯 Grading Criteria (450 points total)
+1. **Code Quality & Architecture** (120 pts - 27%)
+2. **Testing Strategy & Implementation** (120 pts - 27%)
+3. **Functionality & User Experience** (80 pts - 18%)
+4. **Documentation & Technical Decisions** (80 pts - 18%)
+5. **Deployment & DevOps** (50 pts - 11%)`;
 
 export function ProjectIdeaEditor({
   groupId,
