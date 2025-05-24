@@ -11,6 +11,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSub,
 } from "@/components/ui/dropdown-menu";
 import {
   Menu,
@@ -26,6 +29,9 @@ import {
   Trophy,
   Users,
   Award,
+  ChevronDown,
+  Kanban,
+  FolderOpen,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import NProgress from "nprogress";
@@ -72,7 +78,17 @@ export default function Navbar() {
       icon: CheckSquare,
     },
     { label: "Midterm", href: "/midterm", showWhen: !!user, icon: GitBranch },
-    { label: "Final", href: "/final", showWhen: !!user, icon: Award },
+    {
+      label: "Final",
+      href: "/final",
+      showWhen: !!user,
+      icon: Award,
+      hasDropdown: true,
+      dropdownItems: [
+        { label: "Projects", href: "/final", icon: FolderOpen },
+        { label: "Group Dashboard", href: "/final/group", icon: Kanban },
+      ],
+    },
     { label: "Chat", href: "/chat", showWhen: !!user, icon: MessageSquare },
     { label: "Hangout", href: "/hangout", showWhen: !!user, icon: Users },
     {
@@ -152,6 +168,53 @@ export default function Navbar() {
                   const isActive =
                     pathname === item.href ||
                     (item.href !== "/" && pathname.startsWith(item.href));
+
+                  // Special handling for Final dropdown
+                  if (item.hasDropdown) {
+                    return (
+                      <DropdownMenu key={index}>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className={`flex items-center rounded-md px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 ease-in-out ${
+                              isActive
+                                ? "bg-blue-50 text-blue-700 font-semibold"
+                                : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                            }`}
+                          >
+                            {item.icon && (
+                              <item.icon className="mr-2 h-4 w-4" />
+                            )}
+                            {item.label}
+                            <ChevronDown className="ml-1 h-3 w-3" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          {item.dropdownItems?.map(
+                            (dropdownItem, dropdownIndex) => {
+                              const isDropdownActive =
+                                pathname === dropdownItem.href;
+                              return (
+                                <DropdownMenuItem
+                                  key={dropdownIndex}
+                                  onClick={() => navigateTo(dropdownItem.href)}
+                                  className={`cursor-pointer ${
+                                    isDropdownActive
+                                      ? "bg-blue-50 text-blue-700 font-medium"
+                                      : ""
+                                  }`}
+                                >
+                                  <dropdownItem.icon className="mr-2 h-4 w-4" />
+                                  <span>{dropdownItem.label}</span>
+                                </DropdownMenuItem>
+                              );
+                            }
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    );
+                  }
+
+                  // Regular navigation items
                   return (
                     <Link
                       key={index}
@@ -249,6 +312,48 @@ export default function Navbar() {
                       const isActive =
                         pathname === item.href ||
                         (item.href !== "/" && pathname.startsWith(item.href));
+
+                      // Special handling for Final dropdown in mobile
+                      if (item.hasDropdown) {
+                        return (
+                          <DropdownMenuSub key={index}>
+                            <DropdownMenuSubTrigger
+                              className={`cursor-pointer ${
+                                isActive ? "bg-slate-100 font-medium" : ""
+                              }`}
+                            >
+                              <item.icon className="mr-2 h-4 w-4" />
+                              <span>{item.label}</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {item.dropdownItems?.map(
+                                (dropdownItem, dropdownIndex) => {
+                                  const isDropdownActive =
+                                    pathname === dropdownItem.href;
+                                  return (
+                                    <DropdownMenuItem
+                                      key={dropdownIndex}
+                                      onClick={() =>
+                                        navigateTo(dropdownItem.href)
+                                      }
+                                      className={`cursor-pointer ${
+                                        isDropdownActive
+                                          ? "bg-slate-100 font-medium"
+                                          : ""
+                                      }`}
+                                    >
+                                      <dropdownItem.icon className="mr-2 h-4 w-4" />
+                                      <span>{dropdownItem.label}</span>
+                                    </DropdownMenuItem>
+                                  );
+                                }
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        );
+                      }
+
+                      // Regular mobile navigation items
                       return (
                         <DropdownMenuItem
                           key={index}
@@ -258,6 +363,7 @@ export default function Navbar() {
                           }`}
                           aria-current={isActive ? "page" : undefined}
                         >
+                          <item.icon className="mr-2 h-4 w-4" />
                           {item.label}
                         </DropdownMenuItem>
                       );
