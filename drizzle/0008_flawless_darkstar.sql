@@ -1,0 +1,1 @@
+ALTER TABLE "final_groups" ADD COLUMN "project_idea" text;

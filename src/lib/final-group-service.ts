@@ -30,6 +30,7 @@ export interface FinalGroupWithDetails {
   name: string;
   description: string | null;
   selectedProject: Pick<FinalProjectType, "id" | "title" | "category"> | null;
+  projectIdea: string | null; // Markdown content for the group's project idea
   repositoryUrl: string | null;
   // Other finalGroups fields if needed
   owner: ProfileDetails; // Derived owner's profile
@@ -159,6 +160,7 @@ export async function createFinalGroup(
           category: groupDetailsFromDb.selectedProject.category,
         }
       : null,
+    projectIdea: groupDetailsFromDb.projectIdea,
     repositoryUrl: groupDetailsFromDb.repositoryUrl,
     owner: {
       id: ownerProfile.id,
@@ -265,6 +267,7 @@ export async function getUserFinalGroup(
           category: groupDetailsFromDb.selectedProject.category,
         }
       : null,
+    projectIdea: groupDetailsFromDb.projectIdea,
     repositoryUrl: groupDetailsFromDb.repositoryUrl,
     owner: {
       id: ownerProfile.id,
@@ -391,6 +394,7 @@ export async function joinFinalGroup(
           category: updatedGroupDetails.selectedProject.category,
         }
       : null,
+    projectIdea: updatedGroupDetails.projectIdea,
     repositoryUrl: updatedGroupDetails.repositoryUrl,
     owner: {
       id: ownerProfile.id,
@@ -564,6 +568,7 @@ export async function removeMemberFromFinalGroup(
       name: updatedGroupDetails?.name ?? "Group Name Not Found",
       description: updatedGroupDetails?.description ?? null,
       selectedProject: updatedGroupDetails?.selectedProject ?? null,
+      projectIdea: updatedGroupDetails?.projectIdea ?? null,
       repositoryUrl: updatedGroupDetails?.repositoryUrl ?? null,
       owner: ownerAsMember.profile,
       members: [ownerAsMember], // Only owner left
@@ -607,6 +612,7 @@ export async function removeMemberFromFinalGroup(
           category: updatedGroupDetails.selectedProject.category,
         }
       : null,
+    projectIdea: updatedGroupDetails.projectIdea,
     repositoryUrl: updatedGroupDetails.repositoryUrl,
     owner: {
       id: ownerProfile.id,
@@ -719,6 +725,7 @@ export async function getAllFinalGroupsWithDetails(): Promise<
               category: group.selectedProject.category,
             }
           : null,
+        projectIdea: group.projectIdea,
         repositoryUrl: group.repositoryUrl,
         owner: ownerProfile, // Use the resolved or default owner profile
         members: mappedMembers,
@@ -850,6 +857,128 @@ export async function selectProjectForFinalGroup(
           category: updatedGroupDetails.selectedProject.category,
         }
       : null,
+    projectIdea: updatedGroupDetails.projectIdea,
+    repositoryUrl: updatedGroupDetails.repositoryUrl,
+    owner: {
+      id: ownerProfile.id,
+      email: ownerProfile.email,
+      fullName: ownerProfile.fullName,
+      avatarUrl: ownerProfile.avatarUrl,
+    },
+    members: mappedMembers,
+    createdAt: updatedGroupDetails.createdAt,
+    updatedAt: updatedGroupDetails.updatedAt,
+  };
+}
+
+/**
+ * Allows a group owner to update the project idea markdown for their group.
+ * @param groupId The ID of the group.
+ * @param projectIdea The markdown content for the project idea.
+ * @param userId The ID of the user attempting the action (must be group owner).
+ * @returns The updated group details with the new project idea.
+ * @throws Error if user is not owner, group not found, or update fails.
+ */
+export async function updateProjectIdea(
+  groupId: string,
+  projectIdea: string,
+  userId: string
+): Promise<FinalGroupWithDetails> {
+  // 1. Verify user is the owner of the group
+  const groupMembership = await db.query.finalGroupMembers.findFirst({
+    where: and(
+      eq(finalGroupMembers.groupId, groupId),
+      eq(finalGroupMembers.userId, userId),
+      eq(finalGroupMembers.role, "owner")
+    ),
+  });
+
+  if (!groupMembership) {
+    throw new Error(
+      "Unauthorized: User is not the owner of this group or group not found."
+    );
+  }
+
+  // 2. Update the group with the project idea
+  const [updatedGroupRaw] = await db
+    .update(finalGroups)
+    .set({ projectIdea: projectIdea, updatedAt: new Date().toISOString() })
+    .where(eq(finalGroups.id, groupId))
+    .returning();
+
+  if (!updatedGroupRaw) {
+    throw new Error("Failed to update group with project idea.");
+  }
+
+  // 3. Fetch and return the complete group details
+  const updatedGroupDetails = await db.query.finalGroups.findFirst({
+    where: eq(finalGroups.id, groupId),
+    with: {
+      selectedProject: {
+        columns: { id: true, title: true, category: true },
+      },
+      members: {
+        columns: { role: true, joinedAt: true },
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (
+    !updatedGroupDetails ||
+    !updatedGroupDetails.members ||
+    updatedGroupDetails.members.length === 0
+  ) {
+    throw new Error(
+      "Failed to retrieve updated group details after project idea update."
+    );
+  }
+
+  const ownerMemberData = updatedGroupDetails.members.find(
+    (m) => m.role === "owner"
+  );
+  if (!ownerMemberData || !ownerMemberData.user) {
+    throw new Error(
+      "Group is missing a valid owner or owner profile after project idea update."
+    );
+  }
+  const ownerProfile = ownerMemberData.user;
+
+  const mappedMembers: FinalGroupMemberWithProfile[] =
+    updatedGroupDetails.members
+      .filter((member) => member.user)
+      .map((member) => ({
+        profile: {
+          id: member.user!.id,
+          email: member.user!.email,
+          fullName: member.user!.fullName,
+          avatarUrl: member.user!.avatarUrl,
+        },
+        role: member.role as "owner" | "member",
+        joinedAt: member.joinedAt,
+      }));
+
+  return {
+    id: updatedGroupDetails.id,
+    name: updatedGroupDetails.name,
+    description: updatedGroupDetails.description,
+    selectedProject: updatedGroupDetails.selectedProject
+      ? {
+          id: updatedGroupDetails.selectedProject.id,
+          title: updatedGroupDetails.selectedProject.title,
+          category: updatedGroupDetails.selectedProject.category,
+        }
+      : null,
+    projectIdea: updatedGroupDetails.projectIdea,
     repositoryUrl: updatedGroupDetails.repositoryUrl,
     owner: {
       id: ownerProfile.id,

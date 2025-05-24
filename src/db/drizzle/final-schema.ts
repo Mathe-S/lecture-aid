@@ -86,6 +86,7 @@ export const finalGroups = pgTable(
       () => finalProjects.id,
       { onDelete: "set null" } // Group remains if project deleted
     ),
+    projectIdea: text("project_idea"), // Markdown content for the group's project idea
     repositoryUrl: text("repository_url"),
     repositoryOwner: text("repository_owner"),
     repositoryName: text("repository_name"),

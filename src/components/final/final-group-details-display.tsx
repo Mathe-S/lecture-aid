@@ -43,6 +43,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { SelectProjectDialog } from "./select-project-dialog";
+import { ProjectIdeaEditor } from "./project-idea-editor";
 import { useState } from "react";
 
 interface FinalGroupDetailsDisplayProps {
@@ -303,6 +304,8 @@ export function FinalGroupDetailsDisplay({
             </div>
           )}
         </div>
+
+        <ProjectIdeaEditor groupId={group.id} isOwner={isCurrentUserOwner} />
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-4 border-t">
         <p className="text-xs text-muted-foreground">
