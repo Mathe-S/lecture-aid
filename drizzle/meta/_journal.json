@@ -71,6 +71,13 @@
       "when": 1748097435027,
       "tag": "0009_closed_screwball",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1748447424154,
+      "tag": "0010_curious_starbolt",
+      "breakpoints": true
     }
   ]
 }

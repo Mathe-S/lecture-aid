@@ -285,20 +285,35 @@ export const finalEvaluations = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "set null" }),
 
-    // Scoring Categories - Total 450 points
-    projectConceptualizationScore: integer(
-      "project_conceptualization_score"
-    ).default(0), // 75 pts
-    technicalImplementationScore: integer(
-      "technical_implementation_score"
-    ).default(0), // 150 pts
-    innovationComplexityScore: integer("innovation_complexity_score").default(
-      0
-    ), // 75 pts
-    documentationPresentationScore: integer(
-      "documentation_presentation_score"
-    ).default(0), // 75 pts
-    testingPolishScore: integer("testing_polish_score").default(0), // 75 pts
+    // Weekly Scoring System - Total 450 points
+    week1Score: integer("week1_score").default(0), // 50 pts max
+    week1Feedback: text("week1_feedback"),
+    week1GitHubContributions: integer("week1_github_contributions").default(0),
+    week1TasksCompleted: integer("week1_tasks_completed").default(0),
+
+    week2Score: integer("week2_score").default(0), // 100 pts max
+    week2Feedback: text("week2_feedback"),
+    week2GitHubContributions: integer("week2_github_contributions").default(0),
+    week2TasksCompleted: integer("week2_tasks_completed").default(0),
+
+    week3Score: integer("week3_score").default(0), // 150 pts max
+    week3Feedback: text("week3_feedback"),
+    week3GitHubContributions: integer("week3_github_contributions").default(0),
+    week3TasksCompleted: integer("week3_tasks_completed").default(0),
+
+    week4Score: integer("week4_score").default(0), // 150 pts max
+    week4Feedback: text("week4_feedback"),
+    week4GitHubContributions: integer("week4_github_contributions").default(0),
+    week4TasksCompleted: integer("week4_tasks_completed").default(0),
+
+    // GitHub Integration Data
+    totalCommits: integer("total_commits").default(0),
+    totalLinesAdded: integer("total_lines_added").default(0),
+    totalLinesDeleted: integer("total_lines_deleted").default(0),
+    lastGitHubSync: timestamp("last_github_sync", {
+      withTimezone: true,
+      mode: "string",
+    }),
 
     totalScore: integer("total_score").default(0), // Calculated sum
     feedback: text("feedback"),

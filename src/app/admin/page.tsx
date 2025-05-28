@@ -17,6 +17,7 @@ import {
   BarChart4,
   ClipboardList,
   GitBranch,
+  Trophy,
 } from "lucide-react";
 import { useEffect } from "react";
 
@@ -62,6 +63,13 @@ export default function AdminPage() {
         "Evaluate and manage student midterm projects and GitHub contributions",
       icon: <GitBranch className="h-8 w-8 text-primary" />,
       href: "/admin/midterm",
+    },
+    {
+      title: "Final Projects",
+      description:
+        "Grade final projects with weekly scoring, GitHub integration, and task completion tracking",
+      icon: <Trophy className="h-8 w-8 text-primary" />,
+      href: "/admin/final",
     },
     // Add other admin modules here
   ];
