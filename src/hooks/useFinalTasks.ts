@@ -165,26 +165,52 @@ export function useUpdateTaskStatus(groupId: string) {
   return useMutation<
     TaskWithDetails,
     Error,
-    { taskId: string; status: TaskStatus }
+    { taskId: string; status: TaskStatus },
+    { previousTasks: TaskWithDetails[] | undefined }
   >({
     mutationFn: ({ taskId, status }) =>
       updateTaskApi(groupId, taskId, { status }),
-    onSuccess: (data) => {
-      // Optimistic update for smoother drag-and-drop
-      queryClient.setQueryData(
+    onMutate: async ({ taskId, status }) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({
+        queryKey: finalTaskKeys.group(groupId),
+      });
+
+      // Snapshot the previous value
+      const previousTasks = queryClient.getQueryData<TaskWithDetails[]>(
+        finalTaskKeys.group(groupId)
+      );
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<TaskWithDetails[]>(
         finalTaskKeys.group(groupId),
-        (oldTasks: TaskWithDetails[] | undefined) => {
+        (oldTasks) => {
           if (!oldTasks) return oldTasks;
           return oldTasks.map((task) =>
-            task.id === data.id ? { ...task, status: data.status } : task
+            task.id === taskId ? { ...task, status } : task
           );
         }
       );
+
+      // Return a context object with the snapshotted value
+      return { previousTasks };
+    },
+    onError: (error, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousTasks) {
+        queryClient.setQueryData(
+          finalTaskKeys.group(groupId),
+          context.previousTasks
+        );
+      }
+      toast.error(`Failed to update task status: ${error.message}`);
+    },
+    onSuccess: (data) => {
+      // Update the individual task query if it exists
       queryClient.invalidateQueries({ queryKey: finalTaskKeys.task(data.id) });
     },
-    onError: (error) => {
-      toast.error(`Failed to update task status: ${error.message}`);
-      // Invalidate to revert optimistic update
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: finalTaskKeys.group(groupId) });
     },
   });
