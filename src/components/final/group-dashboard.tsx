@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type { FinalGroupWithDetails } from "@/lib/final-group-service";
-import { useTasksByStatus, useTaskStats } from "@/hooks/useFinalTasks";
+import { useTaskStats } from "@/hooks/useFinalTasks";
 import {
   Card,
   CardContent,
@@ -17,14 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import {
-  Kanban,
   Users,
   FolderOpen,
   GitBranch,
   Activity,
   Calendar,
-  CheckCircle,
-  Clock,
   Plus,
   ExternalLink,
   Lightbulb,
@@ -32,7 +29,7 @@ import {
 } from "lucide-react";
 import { ProjectIdeaEditor } from "./project-idea-editor";
 import { RepositoryLinkDialog } from "./repository-link-dialog";
-import { CreateTaskDialog } from "./create-task-dialog";
+import { DraggableTaskBoard } from "./draggable-task-board";
 
 interface GroupDashboardProps {
   group: FinalGroupWithDetails;
@@ -252,271 +249,7 @@ function ProjectOverviewSection({
 }
 
 function TaskBoardSection({ group }: { group: FinalGroupWithDetails }) {
-  const { tasksByStatus, isLoading, error } = useTasksByStatus(group.id);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Kanban className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="text-muted-foreground">Loading tasks...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-8 text-red-600">
-            <p>Failed to load tasks: {error.message}</p>
-            <Button
-              variant="outline"
-              className="mt-2"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Quick Actions */}
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          className="gap-2"
-          onClick={() => setShowCreateDialog(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Add Task
-        </Button>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Calendar className="h-4 w-4" />
-          Sprint Planning
-        </Button>
-      </div>
-
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* To Do Column */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              To Do
-              <Badge variant="secondary">{tasksByStatus.todo.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {tasksByStatus.todo.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Kanban className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No tasks yet</p>
-                <p className="text-xs">Add tasks to get started</p>
-              </div>
-            ) : (
-              tasksByStatus.todo.map((task) => (
-                <div
-                  key={task.id}
-                  className="p-3 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-sm">{task.title}</h4>
-                    <Badge
-                      variant={
-                        task.priority === "high"
-                          ? "destructive"
-                          : task.priority === "medium"
-                          ? "default"
-                          : "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {task.priority}
-                    </Badge>
-                  </div>
-                  {task.description && (
-                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                      {task.description}
-                    </p>
-                  )}
-                  {task.assignees.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      {task.assignees.slice(0, 3).map((assignee) => (
-                        <Avatar key={assignee.profile.id} className="h-5 w-5">
-                          <AvatarImage
-                            src={assignee.profile.avatarUrl || undefined}
-                          />
-                          <AvatarFallback className="text-xs">
-                            {getInitials(assignee.profile.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {task.assignees.length > 3 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{task.assignees.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        {/* In Progress Column */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              In Progress
-              <Badge variant="secondary">
-                {tasksByStatus.in_progress.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {tasksByStatus.in_progress.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No active tasks</p>
-              </div>
-            ) : (
-              tasksByStatus.in_progress.map((task) => (
-                <div
-                  key={task.id}
-                  className="p-3 border rounded-lg bg-blue-50 hover:shadow-md transition-shadow cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-sm">{task.title}</h4>
-                    <Badge
-                      variant={
-                        task.priority === "high"
-                          ? "destructive"
-                          : task.priority === "medium"
-                          ? "default"
-                          : "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {task.priority}
-                    </Badge>
-                  </div>
-                  {task.description && (
-                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                      {task.description}
-                    </p>
-                  )}
-                  {task.assignees.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      {task.assignees.slice(0, 3).map((assignee) => (
-                        <Avatar key={assignee.profile.id} className="h-5 w-5">
-                          <AvatarImage
-                            src={assignee.profile.avatarUrl || undefined}
-                          />
-                          <AvatarFallback className="text-xs">
-                            {getInitials(assignee.profile.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {task.assignees.length > 3 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{task.assignees.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Done Column */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Done
-              <Badge variant="secondary">{tasksByStatus.done.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {tasksByStatus.done.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No completed tasks</p>
-              </div>
-            ) : (
-              tasksByStatus.done.map((task) => (
-                <div
-                  key={task.id}
-                  className="p-3 border rounded-lg bg-green-50 hover:shadow-md transition-shadow cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-sm">{task.title}</h4>
-                    <Badge
-                      variant={
-                        task.priority === "high"
-                          ? "destructive"
-                          : task.priority === "medium"
-                          ? "default"
-                          : "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {task.priority}
-                    </Badge>
-                  </div>
-                  {task.description && (
-                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                      {task.description}
-                    </p>
-                  )}
-                  {task.assignees.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      {task.assignees.slice(0, 3).map((assignee) => (
-                        <Avatar key={assignee.profile.id} className="h-5 w-5">
-                          <AvatarImage
-                            src={assignee.profile.avatarUrl || undefined}
-                          />
-                          <AvatarFallback className="text-xs">
-                            {getInitials(assignee.profile.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {task.assignees.length > 3 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{task.assignees.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Create Task Dialog */}
-      {showCreateDialog && (
-        <CreateTaskDialog
-          isOpen={showCreateDialog}
-          onOpenChange={setShowCreateDialog}
-          group={group}
-        />
-      )}
-    </div>
-  );
+  return <DraggableTaskBoard group={group} />;
 }
 
 function TeamActivitySection() {
@@ -582,7 +315,7 @@ export function GroupDashboard({ group }: GroupDashboardProps) {
             Overview
           </TabsTrigger>
           <TabsTrigger value="tasks" className="gap-2">
-            <Kanban className="h-4 w-4" />
+            <FolderOpen className="h-4 w-4" />
             Tasks
           </TabsTrigger>
           <TabsTrigger value="idea" className="gap-2">
