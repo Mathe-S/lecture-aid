@@ -109,7 +109,9 @@ export default function AssignmentsPage() {
               </CardHeader>
               <CardContent>
                 {assignment.description && (
-                  <p className="text-slate-600">{assignment.description}</p>
+                  <p className="text-slate-600 whitespace-pre-wrap">
+                    {assignment.description}
+                  </p>
                 )}
                 <div className="flex flex-col sm:flex-row sm:gap-6 mt-2">
                   {assignment.due_date && (
