@@ -142,6 +142,8 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
             icon={Clock}
             tasks={tasksByStatus.todo}
             canDragTask={canDragTask}
+            group={group}
+            userId={user?.id}
           />
 
           {/* In Progress Column */}
@@ -151,6 +153,8 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
             icon={Activity}
             tasks={tasksByStatus.in_progress}
             canDragTask={canDragTask}
+            group={group}
+            userId={user?.id}
           />
 
           {/* Done Column */}
@@ -160,6 +164,8 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
             icon={CheckCircle}
             tasks={tasksByStatus.done}
             canDragTask={canDragTask}
+            group={group}
+            userId={user?.id}
           />
         </div>
 

@@ -2,6 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import type { TaskWithDetails } from "@/lib/final-task-service";
+import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TaskCard } from "./task-card";
@@ -14,6 +15,8 @@ interface DroppableColumnProps {
   icon: LucideIcon;
   tasks: TaskWithDetails[];
   canDragTask: (task: TaskWithDetails) => boolean;
+  group: FinalGroupWithDetails;
+  userId?: string;
 }
 
 export function DroppableColumn({
@@ -22,6 +25,8 @@ export function DroppableColumn({
   icon: Icon,
   tasks,
   canDragTask,
+  group,
+  userId,
 }: DroppableColumnProps) {
   const { isOver, setNodeRef } = useDroppable({
     id,
@@ -64,7 +69,13 @@ export function DroppableColumn({
           </div>
         ) : (
           tasks.map((task) => (
-            <TaskCard key={task.id} task={task} canDrag={canDragTask(task)} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              canDrag={canDragTask(task)}
+              group={group}
+              userId={userId}
+            />
           ))
         )}
       </CardContent>
