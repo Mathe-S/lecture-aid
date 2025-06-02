@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUpdateTask } from "@/hooks/useFinalTasks";
+import { useUpdateTask, useAssignUsersToTask } from "@/hooks/useFinalTasks";
 import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import type { TaskWithDetails, TaskPriority } from "@/lib/final-task-service";
 import {
@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CalendarIcon, Loader2, Edit } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -63,9 +64,11 @@ export function EditTaskDialog({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [estimatedHours, setEstimatedHours] = useState("");
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [showCalendar, setShowCalendar] = useState(false);
 
   const updateTaskMutation = useUpdateTask(group.id);
+  const assignUsersMutation = useAssignUsersToTask(group.id);
 
   // Initialize form with task data when dialog opens
   useEffect(() => {
@@ -75,6 +78,9 @@ export function EditTaskDialog({
       setPriority(task.priority);
       setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
       setEstimatedHours(task.estimatedHours?.toString() || "");
+      setSelectedAssignees(
+        task.assignees.map((assignee) => assignee.profile.id)
+      );
     }
   }, [isOpen, task]);
 
@@ -86,6 +92,7 @@ export function EditTaskDialog({
     }
 
     try {
+      // First update the task details
       await updateTaskMutation.mutateAsync({
         taskId: task.id,
         payload: {
@@ -97,11 +104,37 @@ export function EditTaskDialog({
         },
       });
 
+      // Then update assignees if they changed
+      const currentAssigneeIds = task.assignees.map(
+        (assignee) => assignee.profile.id
+      );
+      const assigneesChanged =
+        selectedAssignees.length !== currentAssigneeIds.length ||
+        selectedAssignees.some((id) => !currentAssigneeIds.includes(id));
+
+      if (assigneesChanged) {
+        await assignUsersMutation.mutateAsync({
+          taskId: task.id,
+          assigneeIds: selectedAssignees,
+        });
+      }
+
       onOpenChange(false);
     } catch {
-      // Error is handled by the mutation
+      // Error is handled by the mutations
     }
   };
+
+  const handleAssigneeToggle = (userId: string) => {
+    setSelectedAssignees((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const isLoading =
+    updateTaskMutation.isPending || assignUsersMutation.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -112,8 +145,8 @@ export function EditTaskDialog({
             Edit Task
           </DialogTitle>
           <DialogDescription>
-            Update task details. You can modify all aspects of this task since
-            you&apos;re assigned to it.
+            Update task details and assignees. You can modify all aspects of
+            this task since you&apos;re assigned to it.
           </DialogDescription>
         </DialogHeader>
 
@@ -206,32 +239,52 @@ export function EditTaskDialog({
             </Popover>
           </div>
 
-          {/* Current Assignees Display */}
+          {/* Assignees */}
           <div className="space-y-3">
-            <Label>Current Assignees</Label>
-            <div className="p-3 bg-muted rounded-lg">
-              <div className="flex flex-wrap gap-2">
-                {task.assignees.map((assignee) => (
-                  <div
-                    key={assignee.profile.id}
-                    className="flex items-center gap-2 bg-background px-2 py-1 rounded-md"
-                  >
-                    <Avatar className="h-5 w-5">
+            <Label>Assign to Team Members</Label>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {group.members.map((member) => (
+                <div
+                  key={member.profile.id}
+                  className="flex items-center space-x-3"
+                >
+                  <Checkbox
+                    id={`assignee-${member.profile.id}`}
+                    checked={selectedAssignees.includes(member.profile.id)}
+                    onCheckedChange={() =>
+                      handleAssigneeToggle(member.profile.id)
+                    }
+                  />
+                  <div className="flex items-center gap-2 flex-1">
+                    <Avatar className="h-6 w-6">
                       <AvatarImage
-                        src={assignee.profile.avatarUrl || undefined}
+                        src={member.profile.avatarUrl || undefined}
                       />
                       <AvatarFallback className="text-xs">
-                        {getInitials(assignee.profile.fullName)}
+                        {getInitials(member.profile.fullName)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{assignee.profile.fullName}</span>
+                    <Label
+                      htmlFor={`assignee-${member.profile.id}`}
+                      className="text-sm font-normal cursor-pointer flex-1"
+                    >
+                      {member.profile.fullName}
+                      {member.role === "owner" && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          (Owner)
+                        </span>
+                      )}
+                    </Label>
                   </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Note: To change assignees, ask your group owner or task creator.
-              </p>
+                </div>
+              ))}
             </div>
+            {selectedAssignees.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {selectedAssignees.length} member
+                {selectedAssignees.length === 1 ? "" : "s"} selected
+              </p>
+            )}
           </div>
 
           <DialogFooter>
@@ -239,18 +292,16 @@ export function EditTaskDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={updateTaskMutation.isPending}
+              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={!title.trim() || updateTaskMutation.isPending}
+              disabled={!title.trim() || isLoading}
               className="gap-2"
             >
-              {updateTaskMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              )}
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
               Update Task
             </Button>
           </DialogFooter>
