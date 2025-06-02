@@ -7,9 +7,10 @@ import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EditTaskDialog } from "./edit-task-dialog";
+import { DeleteTaskDialog } from "./delete-task-dialog";
 
 interface TaskCardProps {
   task: TaskWithDetails;
@@ -31,6 +32,7 @@ function getInitials(fullName: string | null): string {
 
 export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
@@ -47,9 +49,33 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
   const canEdit =
     userId && task.assignees.some((assignee) => assignee.profile.id === userId);
 
+  // Check if current user can delete this task
+  const canDelete =
+    userId &&
+    (() => {
+      const hasAssignees = task.assignees.length > 0;
+      if (hasAssignees) {
+        // If task has assignees, only assignees can delete it
+        return task.assignees.some(
+          (assignee) => assignee.profile.id === userId
+        );
+      } else {
+        // If task has no assignees, only group owner can delete it
+        const userMembership = group.members.find(
+          (member) => member.profile.id === userId
+        );
+        return userMembership?.role === "owner";
+      }
+    })();
+
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent drag from starting
     setShowEditDialog(true);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent drag from starting
+    setShowDeleteDialog(true);
   };
 
   return (
@@ -71,16 +97,32 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
           !canDrag && "opacity-60"
         )}
       >
-        {/* Edit Button - Only visible to assigned users */}
-        {canEdit && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute bottom-2 right-2 h-8 w-8 p-0 opacity-20 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white shadow-sm border border-gray-200"
-            onClick={handleEditClick}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
+        {/* Action Buttons - Only visible to users with permissions */}
+        {(canEdit || canDelete) && (
+          <div className="absolute bottom-2 right-2 flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-white/80 hover:bg-white shadow-sm border border-gray-200"
+                onClick={handleEditClick}
+                title="Edit task"
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-white/80 hover:bg-red-50 shadow-sm border border-gray-200 hover:border-red-200"
+                onClick={handleDeleteClick}
+                title="Delete task"
+              >
+                <Trash2 className="h-3 w-3 text-red-600" />
+              </Button>
+            )}
+          </div>
         )}
 
         <div className="flex items-start justify-between mb-2">
@@ -148,6 +190,16 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
           onOpenChange={setShowEditDialog}
           task={task}
           group={group}
+        />
+      )}
+
+      {/* Delete Task Dialog */}
+      {showDeleteDialog && canDelete && (
+        <DeleteTaskDialog
+          isOpen={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          task={task}
+          groupId={group.id}
         />
       )}
     </>

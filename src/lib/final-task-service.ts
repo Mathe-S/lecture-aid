@@ -293,24 +293,27 @@ export async function updateTask(
 }
 
 /**
- * Deletes a task (only creator or group owner can delete)
+ * Deletes a task (assignees can delete if assigned, otherwise only group owner can delete)
  */
 export async function deleteTask(
   taskId: string,
   userId: string
 ): Promise<void> {
-  // Get the task and verify permissions
+  // Get the task with its assignees
   const task = await db.query.finalTasks.findFirst({
     where: eq(finalTasks.id, taskId),
+    with: {
+      assignees: {
+        columns: { userId: true },
+      },
+    },
   });
 
   if (!task) {
     throw new Error("Task not found.");
   }
 
-  // Check if user is task creator or group owner
-  const isCreator = task.createdById === userId;
-
+  // Verify user is a member of the group
   const groupMembership = await db.query.finalGroupMembers.findFirst({
     where: and(
       eq(finalGroupMembers.groupId, task.groupId),
@@ -318,12 +321,31 @@ export async function deleteTask(
     ),
   });
 
-  const isOwner = groupMembership?.role === "owner";
+  if (!groupMembership) {
+    throw new Error("Unauthorized: User is not a member of this group.");
+  }
 
-  if (!isCreator && !isOwner) {
-    throw new Error(
-      "Unauthorized: Only task creator or group owner can delete tasks."
+  // Check permissions based on assignment status
+  const hasAssignees = task.assignees.length > 0;
+
+  if (hasAssignees) {
+    // If task has assignees, only assignees can delete it
+    const isAssignee = task.assignees.some(
+      (assignee) => assignee.userId === userId
     );
+    if (!isAssignee) {
+      throw new Error(
+        "Unauthorized: Only assigned users can delete this task."
+      );
+    }
+  } else {
+    // If task has no assignees, only group owner can delete it
+    const isOwner = groupMembership.role === "owner";
+    if (!isOwner) {
+      throw new Error(
+        "Unauthorized: Only group owner can delete unassigned tasks."
+      );
+    }
   }
 
   // Delete task (assignments will be deleted by cascade)
