@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryState } from "nuqs";
 import { useAuth } from "@/context/AuthContext";
 import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import { useTaskStats } from "@/hooks/useFinalTasks";
@@ -280,7 +281,10 @@ function TeamActivitySection() {
 export function GroupDashboard({ group }: GroupDashboardProps) {
   const { user } = useAuth();
   const isOwner = user?.id === group.owner.id;
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useQueryState("tab", {
+    defaultValue: "overview",
+    clearOnDefault: true,
+  });
   const [showRepositoryLinkDialog, setShowRepositoryLinkDialog] =
     useState(false);
 
