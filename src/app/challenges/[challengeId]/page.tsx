@@ -1,20 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  ArrowLeft,
-  Trophy,
-  Clock,
-  Target,
-  AlertCircle,
-  CheckCircle,
-} from "lucide-react";
+import { ArrowLeft, Trophy, Clock, Target, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 // For now, static challenge data - later from API/database
@@ -58,14 +50,10 @@ export default function ChallengePage() {
   const { user } = useAuth();
   const challengeId = params.challengeId as string;
 
-  // Check if challenge was just completed
-  const [showCompletionMessage, setShowCompletionMessage] = useState(false);
-
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("completed") === "true") {
-        setShowCompletionMessage(true);
         // Update the challenge as completed in localStorage
         if (user) {
           const savedProgress = localStorage.getItem(
@@ -137,18 +125,6 @@ export default function ChallengePage() {
         </div>
 
         <div className="max-w-4xl mx-auto">
-          {/* Completion Message */}
-          {showCompletionMessage && (
-            <Alert className="mb-8 bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <strong>🎉 Congratulations!</strong> You&apos;ve successfully
-                completed the Encryptions and Devtools challenge and earned 50
-                points!
-              </AlertDescription>
-            </Alert>
-          )}
-
           {/* Challenge Header */}
           <Card className="mb-8 bg-white shadow-xl border-0">
             <CardHeader className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-t-lg">

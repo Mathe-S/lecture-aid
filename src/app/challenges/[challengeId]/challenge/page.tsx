@@ -214,19 +214,6 @@ export default function ChallengeInterface() {
           onToggleHint={() => toggleHint("step5")}
         />
       </div>
-
-      {progress.completedSteps.length === 5 && (
-        <div className="mt-8 text-center">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-green-800 mb-2">
-              🎉 Congratulations!
-            </h2>
-            <p className="text-green-700">
-              You&apos;ve successfully completed all security challenges!
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

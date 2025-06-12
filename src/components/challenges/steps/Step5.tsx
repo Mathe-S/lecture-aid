@@ -509,14 +509,35 @@ export function Step5({
                     Your Encryption and Devtools number:
                   </p>
                   <code className="text-lg font-mono text-green-900 break-all">
-                    SECURITY_EXPERT_{userData.userHash}
+                    {userData.userHash
+                      .split("")
+                      .map((char) => {
+                        if (char.match(/[A-Za-z]/)) {
+                          const isUpperCase = char === char.toUpperCase();
+                          const base = isUpperCase ? 65 : 97;
+                          return String.fromCharCode(
+                            ((char.charCodeAt(0) - base + 1) % 26) + base
+                          );
+                        }
+                        return char;
+                      })
+                      .join("")}
                   </code>
                 </div>
-                <p className="text-sm text-green-600 mt-4">
-                  You've mastered JWT analysis, repository investigation,
-                  DevTools forensics, API security testing, and advanced
-                  cryptographic techniques!
-                </p>
+
+                <div className="bg-red-50 border border-red-300 rounded p-4 mt-4">
+                  <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+                    <p className="font-medium text-red-800">
+                      ⚠️ IMPORTANT: Don't forget to submit this number!
+                    </p>
+                  </div>
+                  <p className="text-red-700 text-sm mt-2">
+                    Copy your encrypted number above and paste it into{" "}
+                    <strong>"Assignment 5: Encryptions and devtools"</strong> to
+                    receive credit for completing this challenge.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
