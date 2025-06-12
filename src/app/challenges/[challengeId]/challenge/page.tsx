@@ -8,7 +8,7 @@ import { AlertCircle } from "lucide-react";
 
 // Import our new components and hooks
 import { ChallengeHeader } from "@/components/challenges/ChallengeHeader";
-import { Step1, Step2, Step3 } from "@/components/challenges/steps";
+import { Step1, Step2, Step3, Step4 } from "@/components/challenges/steps";
 import { useUserData } from "@/components/challenges/hooks/useUserData";
 import { useChallengeProgress } from "@/components/challenges/hooks/useChallengeProgress";
 import { createStepHandlers } from "@/components/challenges/handlers/stepHandlers";
@@ -172,12 +172,28 @@ export default function ChallengeInterface() {
           onToggleHint={() => toggleHint("step3")}
         />
 
-        {/* TODO: Add Step4, Step5 components */}
-        {progress.currentStep >= 4 && (
+        <Step4
+          userData={userData}
+          progress={progress}
+          apiInput={inputs.step4Api}
+          authInput={inputs.step4Auth}
+          endpointInput={inputs.step4Endpoint}
+          onApiInputChange={(value) => updateInput("step4Api", value)}
+          onAuthInputChange={(value) => updateInput("step4Auth", value)}
+          onEndpointInputChange={(value) => updateInput("step4Endpoint", value)}
+          onSubmit={stepHandlers.handleStep4Submit}
+          loading={loading.step4}
+          error={errors.step4}
+          showHint={showHints.step4}
+          onToggleHint={() => toggleHint("step4")}
+        />
+
+        {/* TODO: Add Step5 component */}
+        {progress.currentStep >= 5 && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Steps 4-5 are being refactored. Please check back soon!
+              Step 5 is being refactored. Please check back soon!
             </AlertDescription>
           </Alert>
         )}

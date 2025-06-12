@@ -252,12 +252,14 @@ export const createStepHandlers = (
     const expectedAuth = userData.authToken;
     const expectedEndpoint = userData.apiEndpoint;
 
-    if (
+    // Check each input individually
+    const apiCorrect =
       inputs.step4Api.includes(userData.userHash) &&
-      inputs.step4Api.includes("API challenge complete") &&
-      inputs.step4Auth.includes(expectedAuth) &&
-      inputs.step4Endpoint.includes(expectedEndpoint)
-    ) {
+      inputs.step4Api.includes("API challenge complete");
+    const authCorrect = inputs.step4Auth.includes(expectedAuth);
+    const endpointCorrect = inputs.step4Endpoint.includes(expectedEndpoint);
+
+    if (apiCorrect && authCorrect && endpointCorrect) {
       saveProgress({
         ...progress,
         currentStep: 5,
@@ -270,9 +272,36 @@ export const createStepHandlers = (
         },
       });
     } else {
+      // Provide specific feedback for each area
+      const errorMessages: string[] = [];
+
+      if (!apiCorrect) {
+        errorMessages.push(
+          "❌ API Response: Incorrect or missing. Make sure you received a response containing your user hash and 'API challenge complete'."
+        );
+      } else {
+        errorMessages.push("✅ API Response: Correct!");
+      }
+
+      if (!authCorrect) {
+        errorMessages.push(
+          "❌ Auth Token: Incorrect or missing. Use the exact authorization token provided."
+        );
+      } else {
+        errorMessages.push("✅ Auth Token: Correct!");
+      }
+
+      if (!endpointCorrect) {
+        errorMessages.push(
+          "❌ Endpoint URL: Incorrect or missing. Use the exact API endpoint provided."
+        );
+      } else {
+        errorMessages.push("✅ Endpoint URL: Correct!");
+      }
+
       setErrors((prev: StepErrors) => ({
         ...prev,
-        step4: "API response, auth token, or endpoint URL is incorrect.",
+        step4: errorMessages.join("\n"),
       }));
     }
     setLoading((prev: any) => ({ ...prev, step4: false }));
