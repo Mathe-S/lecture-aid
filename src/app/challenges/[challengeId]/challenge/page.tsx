@@ -126,7 +126,7 @@ export default function ChallengeInterface() {
 
     const payload = {
       user_id: userId,
-      message: `Step 1 complete! For step 2, find file 'config-${userHash}.json' in the KIU-lecture-aid repository under /assets/challenge-data/. This contains your DevTools clue.`,
+      message: `Step 1 complete! For step 2, find the file 'challenge-config.json' in the KIU-lecture-aid repository under /assets/challenge-data/. This contains your DevTools clue.`,
       step: 2,
       timestamp: Date.now(),
     };
@@ -204,34 +204,77 @@ export default function ChallengeInterface() {
   };
 
   const handleStep2Submit = async () => {
-    if (!userData) return;
+    if (!userData || !user) return;
     setLoading((prev) => ({ ...prev, step2: true }));
     setErrors((prev) => ({ ...prev, step2: "" }));
 
     try {
-      if (
-        inputs.step2.includes(userData.userHash) &&
-        inputs.step2.includes("config-")
-      ) {
-        saveProgress({
-          ...progress,
-          currentStep: 3,
-          completedSteps: [...progress.completedSteps, 2],
-          step2Data: {
-            foundKey: inputs.step2,
-            repositoryUrl: "https://github.com/KIU-lecture-aid",
-            submitted: true,
-          },
-        });
-      } else {
+      // Check if input looks like a JWT (3 parts separated by dots)
+      const jwtParts = inputs.step2.trim().split(".");
+      if (jwtParts.length !== 3) {
         setErrors((prev) => ({
           ...prev,
           step2:
-            "Invalid config file. Find the correct file for your user hash.",
+            "Invalid JWT format. JWT should have 3 parts separated by dots.",
+        }));
+        setLoading((prev) => ({ ...prev, step2: false }));
+        return;
+      }
+
+      // Decode the JWT header and payload
+      try {
+        const header = JSON.parse(atob(jwtParts[0]));
+        const payload = JSON.parse(atob(jwtParts[1]));
+
+        // Check if payload contains expected config data
+        if (
+          !payload.challenge ||
+          payload.challenge !== "step2-complete" ||
+          !payload.completion_status ||
+          payload.completion_status !== "step2-complete"
+        ) {
+          setErrors((prev) => ({
+            ...prev,
+            step2:
+              "JWT payload doesn't contain the expected config file content.",
+          }));
+          setLoading((prev) => ({ ...prev, step2: false }));
+          return;
+        }
+
+        // Verify JWT format and algorithm
+        // For educational purposes, we'll accept any properly formatted JWT with HS256
+        // In a real system, we'd use a proper JWT library to verify the signature
+        if (header.alg === "HS256" && header.typ === "JWT") {
+          saveProgress({
+            ...progress,
+            currentStep: 3,
+            completedSteps: [...progress.completedSteps, 2],
+            step2Data: {
+              foundKey: inputs.step2,
+              repositoryUrl: "https://github.com/KIU-lecture-aid",
+              submitted: true,
+            },
+          });
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            step2:
+              "JWT header is incorrect. Make sure you're using HS256 algorithm.",
+          }));
+        }
+      } catch {
+        setErrors((prev) => ({
+          ...prev,
+          step2:
+            "Invalid JWT. Cannot decode header or payload. Check your JWT format.",
         }));
       }
     } catch {
-      setErrors((prev) => ({ ...prev, step2: "Error processing submission." }));
+      setErrors((prev) => ({
+        ...prev,
+        step2: "Error processing JWT submission.",
+      }));
     }
     setLoading((prev) => ({ ...prev, step2: false }));
   };
@@ -633,9 +676,16 @@ export default function ChallengeInterface() {
                   </div>
 
                   <p className="text-gray-700">
-                    Use the clue from Step 1 to find the correct configuration
-                    file in the KIU-lecture-aid repository. Look for a file
-                    matching your user hash in the specified directory.
+                    Use the clue from Step 1 to find the configuration file in
+                    the KIU-lecture-aid repository:{" "}
+                    <a
+                      href="https://github.com/Mathe-S/lecture-aid"
+                      target="_blank"
+                      rel="noopener"
+                      className="text-blue-600 underline"
+                    >
+                      https://github.com/Mathe-S/lecture-aid
+                    </a>
                   </p>
 
                   <Alert>
@@ -643,20 +693,42 @@ export default function ChallengeInterface() {
                     <AlertDescription>
                       <strong>Repository:</strong> KIU-lecture-aid |{" "}
                       <strong>Directory:</strong> /assets/challenge-data/ |
-                      <strong>File:</strong> config-{userData.userHash}.json
+                      <strong>File:</strong> challenge-config.json |{" "}
+                      <strong>Your User ID:</strong>{" "}
+                      {user?.id || "Check Dashboard"}
                     </AlertDescription>
                   </Alert>
+
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2">🔐 JWT Creation Task</h4>
+                    <p className="text-sm text-gray-700 mb-2">
+                      After finding the config file, create a JWT token where:
+                    </p>
+                    <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
+                      <li>
+                        <strong>Payload:</strong> The entire JSON content from
+                        the config file
+                      </li>
+                      <li>
+                        <strong>Secret:</strong> Your User ID (shown above or in
+                        Dashboard)
+                      </li>
+                      <li>
+                        <strong>Algorithm:</strong> HS256 (default)
+                      </li>
+                    </ul>
+                  </div>
 
                   {!progress.completedSteps.includes(2) && (
                     <>
                       <div>
                         <label className="block text-sm font-medium mb-2">
-                          Paste the contents of the config file you found:
+                          Paste the JWT token you created from the config file:
                         </label>
                         <Textarea
                           value={inputs.step2}
                           onChange={(e) => updateInput("step2", e.target.value)}
-                          placeholder="Paste the JSON config file contents here..."
+                          placeholder="Paste your JWT token here (e.g., eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGFsbGVuZ2UiOi...)"
                           className="min-h-32 font-mono text-sm"
                         />
                       </div>
@@ -692,10 +764,20 @@ export default function ChallengeInterface() {
                         <Alert>
                           <Github className="h-4 w-4" />
                           <AlertDescription>
-                            <strong>Hint:</strong> Navigate to the GitHub
-                            repository and look in the assets/challenge-data/
-                            directory. Your file should contain your user hash:{" "}
-                            {userData.userHash}
+                            <strong>Hint:</strong> 1) Find
+                            &apos;challenge-config.json&apos; in the GitHub
+                            repo. 2) Use{" "}
+                            <a
+                              href="https://jwt.io"
+                              target="_blank"
+                              rel="noopener"
+                              className="text-blue-600 underline"
+                            >
+                              jwt.io
+                            </a>{" "}
+                            to create a JWT. 3) Payload = entire JSON content,
+                            Secret = your User ID, Algorithm = HS256. 4) Your
+                            User ID is in the Dashboard or shown above.
                           </AlertDescription>
                         </Alert>
                       )}
@@ -708,7 +790,8 @@ export default function ChallengeInterface() {
                         ✅ Step 2 Complete!
                       </h4>
                       <p className="text-green-700 text-sm">
-                        Config file successfully located and validated!
+                        JWT token successfully created and validated! Repository
+                        investigation complete.
                       </p>
                     </div>
                   )}
