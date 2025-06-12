@@ -1,11 +1,20 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trophy, Clock, Target, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ArrowLeft,
+  Trophy,
+  Clock,
+  Target,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 import Link from "next/link";
 
 // For now, static challenge data - later from API/database
@@ -16,18 +25,29 @@ const challengeDetails = {
     description:
       "Master encryption techniques through interactive command-line challenges. Each student receives unique commands leading to their personal final answer.",
     longDescription: `
-      Welcome to the Encryptions and Devtools challenge! 
+      Welcome to the comprehensive Encryptions and Devtools challenge! 
       
-      In this challenge, you&apos;ll work through a series of 5 unique commands that will test your understanding of:
-      • Basic encryption and decryption techniques
-      • Developer tools and browser inspection
-      • Command-line operations
-      • Problem-solving skills
+      This 5-step challenge simulates real-world development scenarios you&apos;ll encounter as a professional developer:
+
+      🔓 Step 1: JWT Security Analysis
+      Learn how JSON Web Tokens work in authentication systems. You&apos;ll decode production-style JWTs to understand how modern web applications handle user sessions securely.
+
+      📂 Step 2: Repository Investigation  
+      Master Git and GitHub workflows by finding hidden configuration files. This mirrors how developers locate API keys, configuration files, and documentation in team repositories.
+
+      🔍 Step 3: Browser DevTools Mastery
+      Use Chrome/Firefox developer tools to investigate network requests, examine DOM elements, and debug web applications - essential skills for frontend development and security testing.
+
+      🌐 Step 4: API Interaction & Authentication
+      Simulate real API interactions with proper authentication headers. Learn how modern applications communicate with backend services and handle API security.
+
+      🔐 Step 5: Advanced Encryption Implementation
+      Apply RSA encryption techniques used in production systems to secure sensitive data transmission between client and server.
       
-      Each step will unlock the next, leading you to your unique final answer. Your commands are personalized based on your user profile, ensuring a unique experience for every student.
+      Each step builds upon the previous one and includes real code examples, best practices, and links to industry documentation.
     `,
     points: 50,
-    estimatedTime: "30-45 minutes",
+    estimatedTime: "45-60 minutes",
     steps: 5,
     isCompleted: false,
   },
@@ -37,6 +57,43 @@ export default function ChallengePage() {
   const params = useParams();
   const { user } = useAuth();
   const challengeId = params.challengeId as string;
+
+  // Check if challenge was just completed
+  const [showCompletionMessage, setShowCompletionMessage] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("completed") === "true") {
+        setShowCompletionMessage(true);
+        // Update the challenge as completed in localStorage
+        if (user) {
+          const savedProgress = localStorage.getItem(
+            `challenges_progress_${user.id}`
+          );
+          if (savedProgress) {
+            const progress = JSON.parse(savedProgress);
+            progress[challengeId] = { isCompleted: true, completionRate: 100 };
+            localStorage.setItem(
+              `challenges_progress_${user.id}`,
+              JSON.stringify(progress)
+            );
+          } else {
+            // Create new progress entry
+            const newProgress = {
+              [challengeId]: { isCompleted: true, completionRate: 100 },
+            };
+            localStorage.setItem(
+              `challenges_progress_${user.id}`,
+              JSON.stringify(newProgress)
+            );
+          }
+        }
+        // Clean up URL
+        window.history.replaceState({}, "", `/challenges/${challengeId}`);
+      }
+    }
+  }, [challengeId, user]);
 
   const challenge =
     challengeDetails[challengeId as keyof typeof challengeDetails];
@@ -80,6 +137,18 @@ export default function ChallengePage() {
         </div>
 
         <div className="max-w-4xl mx-auto">
+          {/* Completion Message */}
+          {showCompletionMessage && (
+            <Alert className="mb-8 bg-green-50 border-green-200">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <strong>🎉 Congratulations!</strong> You&apos;ve successfully
+                completed the Encryptions and Devtools challenge and earned 50
+                points!
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Challenge Header */}
           <Card className="mb-8 bg-white shadow-xl border-0">
             <CardHeader className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-t-lg">
@@ -157,27 +226,14 @@ export default function ChallengePage() {
                     Your unique challenge commands will be generated based on
                     your profile. Each step will unlock the next one.
                   </p>
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                    onClick={() => {
-                      // TODO: This will redirect to the actual challenge interface
-                      alert(
-                        "Challenge interface coming soon! This will start your personalized challenge."
-                      );
-                    }}
-                  >
-                    Start Challenge
-                  </Button>
-
-                  {/* Placeholder for future challenge steps */}
-                  <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">
-                      <strong>Coming Soon:</strong> Interactive challenge
-                      interface with step-by-step guidance, command execution,
-                      and real-time feedback.
-                    </p>
-                  </div>
+                  <Link href={`/challenges/${challengeId}/challenge`}>
+                    <Button
+                      size="lg"
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                    >
+                      Start Challenge
+                    </Button>
+                  </Link>
                 </div>
               ) : (
                 <div className="text-center">
@@ -189,7 +245,7 @@ export default function ChallengePage() {
                     You need to be signed in to access personalized challenges
                     and track your progress.
                   </p>
-                  <Link href="/auth">
+                  <Link href="/">
                     <Button
                       size="lg"
                       className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"

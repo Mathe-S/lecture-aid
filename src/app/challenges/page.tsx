@@ -239,7 +239,7 @@ export default function ChallengesPage() {
                 Sign in to track your progress, earn points, and unlock
                 achievements!
               </p>
-              <Link href="/auth">
+              <Link href="/">
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
