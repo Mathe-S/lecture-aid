@@ -37,6 +37,7 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GroupDetailsDialog } from "./group-details-dialog";
 
 // Types
 interface GroupMember {
@@ -55,6 +56,8 @@ interface Group {
   currentScore: number;
   maxScore: number;
   githubUrl?: string;
+  createdAt: string;
+  lastActive: string;
 }
 
 interface GroupsOverviewProps {
@@ -87,6 +90,7 @@ export function GroupsOverview({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
   // Filter and sort groups
   const filteredGroups = groups
@@ -228,13 +232,17 @@ export function GroupsOverview({
           </TableHeader>
           <TableBody>
             {filteredGroups.map((group) => (
-              <TableRow key={group.id}>
+              <TableRow
+                key={group.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => setSelectedGroup(group)}
+              >
                 <TableCell className="font-medium">{group.name}</TableCell>
                 <TableCell>
                   <div className="flex -space-x-2">
-                    {group.members.map((member) => (
+                    {group.members.map((member, index) => (
                       <Avatar
-                        key={member.id}
+                        key={member.id || `${group.id}-member-${index}`}
                         className="h-8 w-8 border-2 border-background"
                       >
                         <AvatarImage src={member.avatarUrl || undefined} />
@@ -284,7 +292,11 @@ export function GroupsOverview({
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -323,6 +335,13 @@ export function GroupsOverview({
           <p>No groups found matching your criteria</p>
         </div>
       )}
+
+      {/* Group Details Dialog */}
+      <GroupDetailsDialog
+        group={selectedGroup}
+        isOpen={!!selectedGroup}
+        onOpenChange={(open: boolean) => !open && setSelectedGroup(null)}
+      />
     </div>
   );
 }
