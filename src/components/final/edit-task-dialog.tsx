@@ -61,6 +61,8 @@ export function EditTaskDialog({
 }: EditTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [commitLink, setCommitLink] = useState("");
+  const [mergeRequestLink, setMergeRequestLink] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [estimatedHours, setEstimatedHours] = useState("");
@@ -75,6 +77,8 @@ export function EditTaskDialog({
     if (isOpen && task) {
       setTitle(task.title);
       setDescription(task.description || "");
+      setCommitLink(task.commitLink || "");
+      setMergeRequestLink(task.mergeRequestLink || "");
       setPriority(task.priority);
       setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
       setEstimatedHours(task.estimatedHours?.toString() || "");
@@ -98,6 +102,8 @@ export function EditTaskDialog({
         payload: {
           title: title.trim(),
           description: description.trim() || undefined,
+          commitLink: commitLink.trim() || undefined,
+          mergeRequestLink: mergeRequestLink.trim() || undefined,
           priority,
           dueDate: dueDate?.toISOString(),
           estimatedHours: estimatedHours ? parseInt(estimatedHours) : undefined,
@@ -173,6 +179,32 @@ export function EditTaskDialog({
               placeholder="Describe the task in detail..."
               rows={3}
             />
+          </div>
+
+          {/* Links */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="commitLink">Commit Link (Optional)</Label>
+              <Input
+                id="commitLink"
+                type="url"
+                value={commitLink}
+                onChange={(e) => setCommitLink(e.target.value)}
+                placeholder="https://github.com/..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mergeRequestLink">
+                Merge Request Link (Optional)
+              </Label>
+              <Input
+                id="mergeRequestLink"
+                type="url"
+                value={mergeRequestLink}
+                onChange={(e) => setMergeRequestLink(e.target.value)}
+                placeholder="https://github.com/..."
+              />
+            </div>
           </div>
 
           {/* Priority and Estimated Hours */}

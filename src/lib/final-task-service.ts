@@ -30,6 +30,8 @@ export interface TaskWithDetails {
   id: string;
   title: string;
   description: string | null;
+  commitLink: string | null;
+  mergeRequestLink: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   dueDate: string | null;
@@ -44,6 +46,8 @@ export interface TaskWithDetails {
 export interface CreateTaskPayload {
   title: string;
   description?: string;
+  commitLink?: string;
+  mergeRequestLink?: string;
   priority?: TaskPriority;
   dueDate?: string;
   estimatedHours?: number;
@@ -53,6 +57,8 @@ export interface CreateTaskPayload {
 export interface UpdateTaskPayload {
   title?: string;
   description?: string;
+  commitLink?: string;
+  mergeRequestLink?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
   dueDate?: string;
@@ -127,6 +133,8 @@ export async function getGroupTasks(
     id: task.id,
     title: task.title,
     description: task.description,
+    commitLink: task.commitLink,
+    mergeRequestLink: task.mergeRequestLink,
     priority: task.priority as TaskPriority,
     status: task.status as TaskStatus,
     dueDate: task.dueDate,
@@ -185,6 +193,8 @@ export async function createTask(
   const newTaskData: NewFinalTask = {
     title: payload.title.trim(),
     description: payload.description?.trim() || null,
+    commitLink: payload.commitLink || null,
+    mergeRequestLink: payload.mergeRequestLink || null,
     priority: payload.priority || "medium",
     status: "todo",
     dueDate: payload.dueDate || null,
@@ -279,6 +289,10 @@ export async function updateTask(
   if (payload.title !== undefined) updateData.title = payload.title.trim();
   if (payload.description !== undefined)
     updateData.description = payload.description?.trim() || null;
+  if (payload.commitLink !== undefined)
+    updateData.commitLink = payload.commitLink || null;
+  if (payload.mergeRequestLink !== undefined)
+    updateData.mergeRequestLink = payload.mergeRequestLink || null;
   if (payload.priority !== undefined) updateData.priority = payload.priority;
   if (payload.status !== undefined) updateData.status = payload.status;
   if (payload.dueDate !== undefined)
@@ -465,6 +479,8 @@ export async function getTaskById(
     id: task.id,
     title: task.title,
     description: task.description,
+    commitLink: task.commitLink,
+    mergeRequestLink: task.mergeRequestLink,
     priority: task.priority as TaskPriority,
     status: task.status as TaskStatus,
     dueDate: task.dueDate,

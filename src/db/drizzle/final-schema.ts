@@ -195,6 +195,8 @@ export const finalTasks = pgTable(
       .notNull(),
     title: text("title").notNull(),
     description: text("description"),
+    commitLink: text("commit_link"),
+    mergeRequestLink: text("merge_request_link"),
     priority: text("priority", { enum: ["high", "medium", "low"] })
       .default("medium")
       .notNull(),
