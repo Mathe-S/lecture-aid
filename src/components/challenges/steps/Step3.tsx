@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,13 +79,55 @@ export function Step3({
 
             <div className="bg-blue-50 p-4 rounded-lg mb-4">
               <h4 className="font-medium text-blue-900 mb-2">
-                DevTools Tasks:
+                DevTools Investigation Tasks:
               </h4>
               <ol className="list-decimal list-inside text-blue-800 space-y-1 text-sm">
-                <li>Find a hidden HTML element (Elements tab)</li>
-                <li>Locate network request data (Network tab)</li>
-                <li>Discover a console secret (Console tab)</li>
+                <li>Find the hidden element using Elements/Inspector tab</li>
+                <li>Discover network data in the Network tab</li>
+                <li>Locate console messages in the Console tab</li>
+                <li>Submit all three pieces of evidence</li>
               </ol>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+              <h4 className="font-medium text-green-900 mb-2">
+                🏢 How This Skill is Used in Real Jobs
+              </h4>
+              <div className="text-green-800 text-sm space-y-2">
+                <p>
+                  <strong>Website Bug Hunter:</strong> You use browser tools to
+                  find hidden problems in websites - like secret forms that
+                  hackers could abuse, or hidden data that shouldn't be visible
+                  to users.
+                </p>
+                <p>
+                  <strong>Freelance Security Tester:</strong> Companies pay you
+                  to find security bugs in their websites. You analyze the
+                  website's code and network requests to discover problems worth
+                  hundreds or thousands of dollars.
+                </p>
+                <p>
+                  <strong>Bad Website Investigator:</strong> You examine
+                  suspicious or harmful websites to understand how they work,
+                  what data they steal, and how they try to trick people.
+                </p>
+                <p>
+                  <strong>Cyber Crime Helper:</strong> When companies get hacked
+                  through their websites, you help investigate by looking at
+                  browser evidence, network logs, and website behavior to
+                  understand what happened.
+                </p>
+                <p>
+                  <strong>App Security Reviewer:</strong> Before websites go
+                  live, you check their code using browser tools to make sure
+                  the security features work correctly and can't be bypassed.
+                </p>
+                <p>
+                  <strong>Phishing Site Tracker:</strong> You analyze fake
+                  websites that try to steal passwords, tracking how they work
+                  and gathering information to help shut them down.
+                </p>
+              </div>
             </div>
 
             {/* DevTools clues are dynamically created by useDevToolsEffects hook */}

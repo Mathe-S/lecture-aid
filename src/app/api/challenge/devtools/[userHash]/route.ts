@@ -61,7 +61,7 @@ export async function POST(
       message: "Advanced DevTools challenge completed",
       data: body,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }

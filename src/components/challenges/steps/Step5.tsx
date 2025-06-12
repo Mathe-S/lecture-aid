@@ -59,8 +59,23 @@ export function Step5({
   // Generate complex encrypted data for this user
   const secretMessage = `MASTER_KEY_${userData.userHash}_VERIFIED`;
 
-  // Caesar cipher with user-specific shift
-  const shift = (parseInt(userData.userHash.slice(-2), 16) % 25) + 1; // 1-25
+  // Caesar cipher with user-specific shift (with proper validation)
+  const getShiftValue = (userHash: string): number => {
+    // Get last 2 characters and ensure they're valid hex
+    const lastTwo = userHash.slice(-2);
+    const hexValue = parseInt(lastTwo, 16);
+
+    // If NaN or invalid, use a fallback based on the hash length
+    if (isNaN(hexValue)) {
+      // Use hash length and first character as fallback
+      const firstChar = userHash.charCodeAt(0);
+      return (firstChar % 25) + 1; // 1-25
+    }
+
+    return (hexValue % 25) + 1; // 1-25
+  };
+
+  const shift = getShiftValue(userData.userHash);
   const caesarEncrypted = secretMessage
     .split("")
     .map((char) => {
@@ -213,6 +228,52 @@ export function Step5({
                   snippet
                 </li>
               </ol>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+              <h4 className="font-medium text-green-900 mb-2">
+                🏢 How This Skill is Used in Real Jobs
+              </h4>
+              <div className="text-green-800 text-sm space-y-2">
+                <p>
+                  <strong>Virus Detective:</strong> When companies find
+                  suspicious files, you decode and decrypt them to understand
+                  what they do - like finding hidden commands or stolen data
+                  inside malware.
+                </p>
+                <p>
+                  <strong>Digital Crime Investigator:</strong> You help solve
+                  cyber crimes by recovering encrypted evidence from computers
+                  and phones, and analyzing hidden messages used by criminals.
+                </p>
+                <p>
+                  <strong>Encryption Security Checker:</strong> Companies hire
+                  you to test if their encryption (data scrambling) systems are
+                  strong enough and can't be easily broken by attackers.
+                </p>
+                <p>
+                  <strong>Advanced Threat Hunter:</strong> You analyze
+                  communications from sophisticated hacking groups, decoding
+                  their secret messages and understanding their attack methods
+                  to help defend against them.
+                </p>
+                <p>
+                  <strong>Elite Bug Hunter:</strong> You combine encryption
+                  knowledge with browser hacking skills to find the most complex
+                  and valuable security bugs that pay the highest rewards.
+                </p>
+                <p>
+                  <strong>Cryptocurrency Security Expert:</strong> You analyze
+                  blockchain code and smart contracts (digital agreements) to
+                  find security problems that could lead to millions of dollars
+                  being stolen.
+                </p>
+                <p>
+                  <strong>Government Security Analyst:</strong> You work for
+                  government agencies to decode enemy communications and analyze
+                  cyber weapons used by other countries.
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

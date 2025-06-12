@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +107,19 @@ export function Step1({
               </code>
             </div>
 
+            <div className="bg-blue-50 p-4 rounded-lg mb-4">
+              <h4 className="font-medium text-blue-900 mb-2">
+                JWT Analysis Tasks:
+              </h4>
+              <ol className="list-decimal list-inside text-blue-800 space-y-1 text-sm">
+                <li>
+                  Decode the JWT token using jwt.io or manual base64 decoding
+                </li>
+                <li>Extract the payload information</li>
+                <li>Submit the decoded payload content</li>
+              </ol>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -143,6 +157,40 @@ export function Step1({
             <Button onClick={onSubmit} disabled={loading || !input.trim()}>
               {loading ? "Validating..." : "Submit Step 1"}
             </Button>
+
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4 mt-4">
+              <h4 className="font-medium text-green-900 mb-2">
+                🏢 How This Skill is Used in Real Jobs
+              </h4>
+              <div className="text-green-800 text-sm space-y-2">
+                <p>
+                  <strong>Website Security Tester:</strong> Companies hire
+                  people to check if their login systems are secure. You'd look
+                  at JWT tokens to see if they accidentally show private
+                  information like passwords or personal data.
+                </p>
+                <p>
+                  <strong>Bug Hunter (Freelance):</strong> You can earn money by
+                  finding security problems in websites. Many companies pay
+                  $500-$5,000+ when you find issues with their login tokens.
+                </p>
+                <p>
+                  <strong>IT Security Helper:</strong> When a company gets
+                  hacked, you help figure out what happened by examining the
+                  login records and tokens to trace the attack.
+                </p>
+                <p>
+                  <strong>App Security Checker:</strong> Before companies
+                  release their mobile apps or websites, you test if the login
+                  system can be broken or bypassed by analyzing the tokens.
+                </p>
+                <p>
+                  <strong>Privacy Compliance:</strong> You help companies follow
+                  privacy laws (like GDPR in Europe) by making sure their tokens
+                  don't accidentally leak personal information.
+                </p>
+              </div>
+            </div>
           </>
         )}
 

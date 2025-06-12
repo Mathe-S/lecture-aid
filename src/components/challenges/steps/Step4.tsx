@@ -86,6 +86,48 @@ export function Step4({
               </ol>
             </div>
 
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+              <h4 className="font-medium text-green-900 mb-2">
+                🏢 How This Skill is Used in Real Jobs
+              </h4>
+              <div className="text-green-800 text-sm space-y-2">
+                <p>
+                  <strong>API Security Tester:</strong> Many websites use APIs
+                  (like services that apps talk to). You test these to make sure
+                  only authorized users can access them and that they don't leak
+                  private information.
+                </p>
+                <p>
+                  <strong>Bug Bounty Hunter:</strong> You can earn money by
+                  finding problems in company APIs - like when you can access
+                  other users' data or perform actions you shouldn't be allowed
+                  to do.
+                </p>
+                <p>
+                  <strong>Automated Security Checker:</strong> You set up
+                  systems that automatically test APIs every time developers
+                  make changes, catching security problems before the website
+                  goes live.
+                </p>
+                <p>
+                  <strong>Privacy Law Helper:</strong> You check that APIs
+                  follow privacy rules (like asking permission before collecting
+                  data) and meet legal requirements for handling personal
+                  information.
+                </p>
+                <p>
+                  <strong>Incident Response Specialist:</strong> When APIs get
+                  abused or hacked, you investigate the logs to understand what
+                  data was accessed and help stop the attack.
+                </p>
+                <p>
+                  <strong>Ethical Hacker:</strong> Companies hire you to pretend
+                  to be a bad guy and try to break their APIs, helping them find
+                  and fix security problems before real attackers do.
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
