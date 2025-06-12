@@ -242,20 +242,70 @@ export default function ChallengeInterface() {
           return;
         }
 
-        // Verify JWT format and algorithm
-        // For educational purposes, we'll accept any properly formatted JWT with HS256
-        // In a real system, we'd use a proper JWT library to verify the signature
+        // Verify JWT signature was created with user's ID as secret
         if (header.alg === "HS256" && header.typ === "JWT") {
-          saveProgress({
-            ...progress,
-            currentStep: 3,
-            completedSteps: [...progress.completedSteps, 2],
-            step2Data: {
-              foundKey: inputs.step2,
-              repositoryUrl: "https://github.com/KIU-lecture-aid",
-              submitted: true,
-            },
-          });
+          try {
+            // Verify JWT signature using proper HMAC-SHA256
+            const encoder = new TextEncoder();
+            const algorithm = { name: "HMAC", hash: "SHA-256" };
+
+            // Import the user's ID as the signing key
+            const keyData = encoder.encode(user.id);
+            const key = await crypto.subtle.importKey(
+              "raw",
+              keyData,
+              algorithm,
+              false,
+              ["verify"]
+            );
+
+            // Create the data that should have been signed (header.payload)
+            const dataToVerify = encoder.encode(
+              `${jwtParts[0]}.${jwtParts[1]}`
+            );
+
+            // Convert base64url signature to ArrayBuffer
+            const signature = Uint8Array.from(
+              atob(
+                jwtParts[2].replace(/-/g, "+").replace(/_/g, "/") +
+                  "==".slice(0, (4 - (jwtParts[2].length % 4)) % 4)
+              ),
+              (c) => c.charCodeAt(0)
+            );
+
+            // Verify the signature
+            const isValid = await crypto.subtle.verify(
+              algorithm,
+              key,
+              signature,
+              dataToVerify
+            );
+
+            if (isValid) {
+              saveProgress({
+                ...progress,
+                currentStep: 3,
+                completedSteps: [...progress.completedSteps, 2],
+                step2Data: {
+                  foundKey: inputs.step2,
+                  repositoryUrl: "https://github.com/KIU-lecture-aid",
+                  submitted: true,
+                },
+              });
+            } else {
+              setErrors((prev) => ({
+                ...prev,
+                step2:
+                  "JWT signature verification failed. The JWT was not signed with your User ID as the secret. Please use jwt.io with your exact User ID.",
+              }));
+            }
+          } catch {
+            setErrors((prev) => ({
+              ...prev,
+              step2:
+                "Error verifying JWT signature. Please ensure you created a valid JWT using jwt.io with your User ID as the secret.",
+            }));
+          }
         } else {
           setErrors((prev) => ({
             ...prev,
