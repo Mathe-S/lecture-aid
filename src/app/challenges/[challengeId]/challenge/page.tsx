@@ -8,7 +8,7 @@ import { AlertCircle } from "lucide-react";
 
 // Import our new components and hooks
 import { ChallengeHeader } from "@/components/challenges/ChallengeHeader";
-import { Step1, Step2 } from "@/components/challenges/steps";
+import { Step1, Step2, Step3 } from "@/components/challenges/steps";
 import { useUserData } from "@/components/challenges/hooks/useUserData";
 import { useChallengeProgress } from "@/components/challenges/hooks/useChallengeProgress";
 import { createStepHandlers } from "@/components/challenges/handlers/stepHandlers";
@@ -21,7 +21,7 @@ import {
 export default function ChallengeInterface() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const challengeId = params.challengeId as string;
 
   // Use our custom hooks
@@ -90,13 +90,28 @@ export default function ChallengeInterface() {
     setShowHints((prev) => ({ ...prev, [step]: !prev[step] }));
   };
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (but wait for auth to load)
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
+  // Show loading state while auth is loading
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading challenge...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
   if (!user || !userData) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -141,12 +156,28 @@ export default function ChallengeInterface() {
           onToggleHint={() => toggleHint("step2")}
         />
 
-        {/* TODO: Add Step3, Step4, Step5 components */}
-        {progress.currentStep >= 3 && (
+        <Step3
+          userData={userData}
+          progress={progress}
+          hiddenInput={inputs.step3Hidden}
+          networkInput={inputs.step3Network}
+          consoleInput={inputs.step3Console}
+          onHiddenInputChange={(value) => updateInput("step3Hidden", value)}
+          onNetworkInputChange={(value) => updateInput("step3Network", value)}
+          onConsoleInputChange={(value) => updateInput("step3Console", value)}
+          onSubmit={stepHandlers.handleStep3Submit}
+          loading={loading.step3}
+          error={errors.step3}
+          showHint={showHints.step3}
+          onToggleHint={() => toggleHint("step3")}
+        />
+
+        {/* TODO: Add Step4, Step5 components */}
+        {progress.currentStep >= 4 && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Steps 3-5 are being refactored. Please check back soon!
+              Steps 4-5 are being refactored. Please check back soon!
             </AlertDescription>
           </Alert>
         )}

@@ -188,13 +188,15 @@ export const createStepHandlers = (
     setErrors((prev: StepErrors) => ({ ...prev, step3: "" }));
 
     const expectedHidden = `hidden-element-${userData.userHash}`;
-    const expectedNetwork = userData.devToolsClue;
+    const expectedNetwork = userData.userHash;
+    const expectedConsole = `challenge_${userData.userHash}_complete`;
 
-    if (
-      inputs.step3Hidden.includes(expectedHidden) &&
-      inputs.step3Network.includes(expectedNetwork) &&
-      inputs.step3Console.includes(`challenge_${userData.userHash}_complete`)
-    ) {
+    // Check each input individually
+    const hiddenCorrect = inputs.step3Hidden.includes(expectedHidden);
+    const networkCorrect = inputs.step3Network.includes(expectedNetwork);
+    const consoleCorrect = inputs.step3Console.includes(expectedConsole);
+
+    if (hiddenCorrect && networkCorrect && consoleCorrect) {
       saveProgress({
         ...progress,
         currentStep: 4,
@@ -207,10 +209,36 @@ export const createStepHandlers = (
         },
       });
     } else {
+      // Provide specific feedback for each area
+      const errorMessages: string[] = [];
+
+      if (!hiddenCorrect) {
+        errorMessages.push(
+          "❌ Hidden Element: Incorrect or missing. Look for an element with ID containing your user hash."
+        );
+      } else {
+        errorMessages.push("✅ Hidden Element: Correct!");
+      }
+
+      if (!networkCorrect) {
+        errorMessages.push(
+          "❌ Network Data: Incorrect or missing. Check the Network tab for requests with your DevTools clue."
+        );
+      } else {
+        errorMessages.push("✅ Network Data: Correct!");
+      }
+
+      if (!consoleCorrect) {
+        errorMessages.push(
+          "❌ Console Secret: Incorrect or missing. Look for console messages containing your user hash."
+        );
+      } else {
+        errorMessages.push("✅ Console Secret: Correct!");
+      }
+
       setErrors((prev: StepErrors) => ({
         ...prev,
-        step3:
-          "One or more DevTools findings are incorrect. Please check all three areas.",
+        step3: errorMessages.join("\n"),
       }));
     }
     setLoading((prev: any) => ({ ...prev, step3: false }));
