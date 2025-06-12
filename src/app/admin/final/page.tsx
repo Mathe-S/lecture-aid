@@ -19,6 +19,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { GroupsOverview } from "@/components/admin/final/groups-overview";
 
 // Types for the admin final projects data
 interface FinalProjectsData {
@@ -313,10 +314,7 @@ export default function AdminFinalProjectsPage() {
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Groups overview component will be implemented next</p>
-                </div>
+                <GroupsOverview groups={groups} isLoading={isLoading} />
               </CardContent>
             </Card>
           </TabsContent>
