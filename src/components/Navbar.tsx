@@ -32,6 +32,7 @@ import {
   ChevronDown,
   Kanban,
   FolderOpen,
+  Code,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import NProgress from "nprogress";
@@ -63,6 +64,7 @@ export default function Navbar() {
   const navItems = [
     // Always visible
     { label: "Home", href: "/", showWhen: !user, icon: Home },
+    { label: "Challenges", href: "/challenges", showWhen: true, icon: Code },
     // Only when logged in
     {
       label: "Dashboard",
@@ -89,8 +91,17 @@ export default function Navbar() {
         { label: "Group Dashboard", href: "/final/group", icon: Kanban },
       ],
     },
-    { label: "Chat", href: "/chat", showWhen: !!user, icon: MessageSquare },
-    { label: "Hangout", href: "/hangout", showWhen: !!user, icon: Users },
+    {
+      label: "Communication",
+      href: "/chat", // Default href for active state detection
+      showWhen: !!user,
+      icon: MessageSquare,
+      hasDropdown: true,
+      dropdownItems: [
+        { label: "Chat", href: "/chat", icon: MessageSquare },
+        { label: "Hangout", href: "/hangout", icon: Users },
+      ],
+    },
     {
       label: "Leaderboard",
       href: "/leaderboard",
@@ -165,11 +176,21 @@ export default function Navbar() {
               {navItems
                 .filter((item) => item.showWhen)
                 .map((item, index) => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/" && pathname.startsWith(item.href));
+                  // Special active state detection for dropdown items
+                  let isActive = false;
+                  if (item.hasDropdown && item.dropdownItems) {
+                    // Check if any dropdown item is active
+                    isActive = item.dropdownItems.some(
+                      (dropdownItem) => pathname === dropdownItem.href
+                    );
+                  } else {
+                    // Regular active state detection
+                    isActive =
+                      pathname === item.href ||
+                      (item.href !== "/" && pathname.startsWith(item.href));
+                  }
 
-                  // Special handling for Final dropdown
+                  // Special handling for dropdown items
                   if (item.hasDropdown) {
                     return (
                       <DropdownMenu key={index}>
@@ -205,6 +226,10 @@ export default function Navbar() {
                                 >
                                   <dropdownItem.icon className="mr-2 h-4 w-4" />
                                   <span>{dropdownItem.label}</span>
+                                  {/* Conditionally render the count for Hangout link */}
+                                  {dropdownItem.label === "Hangout" && (
+                                    <HangoutUsersCountMinimal />
+                                  )}
                                 </DropdownMenuItem>
                               );
                             }
@@ -228,8 +253,6 @@ export default function Navbar() {
                     >
                       {item.icon && <item.icon className="mr-2 h-4 w-4" />}
                       {item.label}
-                      {/* Conditionally render the count for Hangout link */}
-                      {item.label === "Hangout" && <HangoutUsersCountMinimal />}
                     </Link>
                   );
                 })}
@@ -309,11 +332,21 @@ export default function Navbar() {
                   {navItems
                     .filter((item) => item.showWhen)
                     .map((item, index) => {
-                      const isActive =
-                        pathname === item.href ||
-                        (item.href !== "/" && pathname.startsWith(item.href));
+                      // Special active state detection for dropdown items
+                      let isActive = false;
+                      if (item.hasDropdown && item.dropdownItems) {
+                        // Check if any dropdown item is active
+                        isActive = item.dropdownItems.some(
+                          (dropdownItem) => pathname === dropdownItem.href
+                        );
+                      } else {
+                        // Regular active state detection
+                        isActive =
+                          pathname === item.href ||
+                          (item.href !== "/" && pathname.startsWith(item.href));
+                      }
 
-                      // Special handling for Final dropdown in mobile
+                      // Special handling for dropdown items in mobile
                       if (item.hasDropdown) {
                         return (
                           <DropdownMenuSub key={index}>
@@ -344,6 +377,10 @@ export default function Navbar() {
                                     >
                                       <dropdownItem.icon className="mr-2 h-4 w-4" />
                                       <span>{dropdownItem.label}</span>
+                                      {/* Conditionally render the count for Hangout link */}
+                                      {dropdownItem.label === "Hangout" && (
+                                        <HangoutUsersCountMinimal />
+                                      )}
                                     </DropdownMenuItem>
                                   );
                                 }
