@@ -16,8 +16,10 @@ export interface ChallengeProgress {
     submitted: boolean;
   };
   step5Data: {
-    encryptedMessage: string;
-    originalMessage: string;
+    decryptedMessage: string;
+    xorKey: string;
+    messageHash: string;
+    verificationSnippet: string;
     submitted: boolean;
   };
 }
@@ -41,8 +43,10 @@ export interface ChallengeInputs {
   step4Api: string;
   step4Auth: string;
   step4Endpoint: string;
-  step5Message: string;
-  step5Encrypted: string;
+  step5Cipher: string;
+  step5Key: string;
+  step5Hash: string;
+  step5Snippet: string;
 }
 
 export interface StepState {

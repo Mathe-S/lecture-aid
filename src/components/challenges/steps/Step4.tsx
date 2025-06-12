@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -138,9 +139,11 @@ export function Step4({
                     </p>
                     <code className="block bg-gray-100 p-2 rounded text-sm">
                       curl -X POST {userData.apiEndpoint} \<br />
-                      &nbsp;&nbsp;-H "Authorization: {userData.authToken}" \
+                      &nbsp;&nbsp;-H &quot;Authorization: {userData.authToken}
+                      &quot; \
                       <br />
-                      &nbsp;&nbsp;-H "Content-Type: application/json" \<br />
+                      &nbsp;&nbsp;-H &quot;Content-Type: application/json&quot;
+                      \<br />
                       &nbsp;&nbsp;-d '{`{"action": "validate"}`}'
                     </code>
                     <p>

@@ -8,7 +8,13 @@ import { AlertCircle } from "lucide-react";
 
 // Import our new components and hooks
 import { ChallengeHeader } from "@/components/challenges/ChallengeHeader";
-import { Step1, Step2, Step3, Step4 } from "@/components/challenges/steps";
+import {
+  Step1,
+  Step2,
+  Step3,
+  Step4,
+  Step5,
+} from "@/components/challenges/steps";
 import { useUserData } from "@/components/challenges/hooks/useUserData";
 import { useChallengeProgress } from "@/components/challenges/hooks/useChallengeProgress";
 import { createStepHandlers } from "@/components/challenges/handlers/stepHandlers";
@@ -42,8 +48,10 @@ export default function ChallengeInterface() {
     step4Api: "",
     step4Auth: "",
     step4Endpoint: "",
-    step5Message: "",
-    step5Encrypted: "",
+    step5Cipher: "",
+    step5Key: "",
+    step5Hash: "",
+    step5Snippet: "",
   });
 
   // UI states
@@ -188,15 +196,23 @@ export default function ChallengeInterface() {
           onToggleHint={() => toggleHint("step4")}
         />
 
-        {/* TODO: Add Step5 component */}
-        {progress.currentStep >= 5 && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Step 5 is being refactored. Please check back soon!
-            </AlertDescription>
-          </Alert>
-        )}
+        <Step5
+          userData={userData}
+          progress={progress}
+          cipherInput={inputs.step5Cipher}
+          keyInput={inputs.step5Key}
+          hashInput={inputs.step5Hash}
+          snippetInput={inputs.step5Snippet}
+          onCipherInputChange={(value) => updateInput("step5Cipher", value)}
+          onKeyInputChange={(value) => updateInput("step5Key", value)}
+          onHashInputChange={(value) => updateInput("step5Hash", value)}
+          onSnippetInputChange={(value) => updateInput("step5Snippet", value)}
+          onSubmit={stepHandlers.handleStep5Submit}
+          loading={loading.step5}
+          error={errors.step5}
+          showHint={showHints.step5}
+          onToggleHint={() => toggleHint("step5")}
+        />
       </div>
 
       {progress.completedSteps.length === 5 && (

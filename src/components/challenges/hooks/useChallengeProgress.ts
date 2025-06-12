@@ -19,7 +19,13 @@ const initialProgress: ChallengeProgress = {
     endpointUrl: "",
     submitted: false,
   },
-  step5Data: { encryptedMessage: "", originalMessage: "", submitted: false },
+  step5Data: {
+    decryptedMessage: "",
+    xorKey: "",
+    messageHash: "",
+    verificationSnippet: "",
+    submitted: false,
+  },
 };
 
 export function useChallengeProgress(

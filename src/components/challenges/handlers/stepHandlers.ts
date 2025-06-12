@@ -312,27 +312,77 @@ export const createStepHandlers = (
     setLoading((prev: any) => ({ ...prev, step5: true }));
     setErrors((prev: StepErrors) => ({ ...prev, step5: "" }));
 
-    const expectedMessage = `Congratulations! You've completed the security challenge. Your final code is: SECURITY_MASTER_${userData.userHash}`;
-    const expectedEncrypted = btoa(expectedMessage);
+    const expectedMessage = `MASTER_KEY_${userData.userHash}_VERIFIED`;
+    const expectedXorKey = userData.userHash.slice(0, 8);
+    const expectedSnippet = `SECURITY_SNIPPET_${userData.userHash}`;
 
-    if (
-      inputs.step5Message.includes(expectedMessage) &&
-      inputs.step5Encrypted.includes(expectedEncrypted)
-    ) {
+    // Generate expected SHA-256 hash
+    const encoder = new TextEncoder();
+    const data = encoder.encode(expectedMessage);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const expectedHash = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Check each input individually
+    const cipherCorrect = inputs.step5Cipher.includes(expectedMessage);
+    const keyCorrect = inputs.step5Key.includes(expectedXorKey);
+    const hashCorrect = inputs.step5Hash.includes(expectedHash);
+    const snippetCorrect = inputs.step5Snippet.includes(expectedSnippet);
+
+    if (cipherCorrect && keyCorrect && hashCorrect && snippetCorrect) {
       saveProgress({
         ...progress,
         currentStep: 6,
         completedSteps: [...progress.completedSteps, 5],
         step5Data: {
-          encryptedMessage: inputs.step5Encrypted,
-          originalMessage: inputs.step5Message,
+          decryptedMessage: inputs.step5Cipher,
+          xorKey: inputs.step5Key,
+          messageHash: inputs.step5Hash,
+          verificationSnippet: inputs.step5Snippet,
           submitted: true,
         },
       });
     } else {
+      // Provide specific feedback for each area
+      const errorMessages: string[] = [];
+
+      if (!cipherCorrect) {
+        errorMessages.push(
+          "❌ Decrypted Message: Incorrect. Should be MASTER_KEY_[your_hash]_VERIFIED"
+        );
+      } else {
+        errorMessages.push("✅ Decrypted Message: Correct!");
+      }
+
+      if (!keyCorrect) {
+        errorMessages.push(
+          "❌ XOR Key: Incorrect. Check localStorage for the key with your hash."
+        );
+      } else {
+        errorMessages.push("✅ XOR Key: Correct!");
+      }
+
+      if (!hashCorrect) {
+        errorMessages.push(
+          "❌ SHA-256 Hash: Incorrect. Hash the decrypted message using crypto.subtle."
+        );
+      } else {
+        errorMessages.push("✅ SHA-256 Hash: Correct!");
+      }
+
+      if (!snippetCorrect) {
+        errorMessages.push(
+          "❌ Verification Snippet: Incorrect. Execute the verification function in console."
+        );
+      } else {
+        errorMessages.push("✅ Verification Snippet: Correct!");
+      }
+
       setErrors((prev: StepErrors) => ({
         ...prev,
-        step5: "Encrypted message or original message is incorrect.",
+        step5: errorMessages.join("\n"),
       }));
     }
     setLoading((prev: any) => ({ ...prev, step5: false }));

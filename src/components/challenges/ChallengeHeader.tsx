@@ -22,13 +22,13 @@ export function ChallengeHeader({ progress }: ChallengeHeaderProps) {
         </Link>
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-yellow-500" />
-          <span className="font-medium">Security Challenge</span>
+          <span className="font-medium">Encryprion and devtools</span>
         </div>
       </div>
 
       <div className="text-center mb-6">
         <h1 className="text-3xl font-bold mb-2">
-          Multi-Step Security Challenge
+          Multi-Step Encryprion and devtools
         </h1>
         <p className="text-gray-600">
           Complete all 5 steps to master web security fundamentals
