@@ -33,6 +33,7 @@ import {
   Kanban,
   FolderOpen,
   Code,
+  FileText,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import NProgress from "nprogress";
@@ -64,7 +65,6 @@ export default function Navbar() {
   const navItems = [
     // Always visible
     { label: "Home", href: "/", showWhen: !user, icon: Home },
-    { label: "Challenges", href: "/challenges", showWhen: true, icon: Code },
     // Only when logged in
     {
       label: "Dashboard",
@@ -72,12 +72,32 @@ export default function Navbar() {
       showWhen: !!user,
       icon: LayoutDashboard,
     },
-    { label: "Quizzes", href: "/quizzes", showWhen: !!user, icon: CheckSquare },
     {
-      label: "Assignments",
-      href: "/assignments",
-      showWhen: !!user,
-      icon: CheckSquare,
+      label: "Coursework",
+      href: "/assignments", // Default href for active state detection
+      showWhen: true,
+      icon: BookOpen,
+      hasDropdown: true,
+      dropdownItems: [
+        {
+          label: "Quizzes",
+          href: "/quizzes",
+          icon: CheckSquare,
+          showWhen: !!user,
+        },
+        {
+          label: "Assignments",
+          href: "/assignments",
+          icon: FileText,
+          showWhen: !!user,
+        },
+        {
+          label: "Challenges",
+          href: "/challenges",
+          icon: Code,
+          showWhen: true,
+        },
+      ],
     },
     { label: "Midterm", href: "/midterm", showWhen: !!user, icon: GitBranch },
     {
@@ -210,8 +230,12 @@ export default function Navbar() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-48">
-                          {item.dropdownItems?.map(
-                            (dropdownItem, dropdownIndex) => {
+                          {item.dropdownItems
+                            ?.filter(
+                              (dropdownItem) =>
+                                (dropdownItem as any).showWhen !== false
+                            )
+                            .map((dropdownItem, dropdownIndex) => {
                               const isDropdownActive =
                                 pathname === dropdownItem.href;
                               return (
@@ -232,8 +256,7 @@ export default function Navbar() {
                                   )}
                                 </DropdownMenuItem>
                               );
-                            }
-                          )}
+                            })}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     );
@@ -359,8 +382,12 @@ export default function Navbar() {
                               <span>{item.label}</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuSubContent>
-                              {item.dropdownItems?.map(
-                                (dropdownItem, dropdownIndex) => {
+                              {item.dropdownItems
+                                ?.filter(
+                                  (dropdownItem) =>
+                                    (dropdownItem as any).showWhen !== false
+                                )
+                                .map((dropdownItem, dropdownIndex) => {
                                   const isDropdownActive =
                                     pathname === dropdownItem.href;
                                   return (
@@ -383,8 +410,7 @@ export default function Navbar() {
                                       )}
                                     </DropdownMenuItem>
                                   );
-                                }
-                              )}
+                                })}
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
                         );
