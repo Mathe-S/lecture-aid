@@ -8,6 +8,7 @@ import {
   jsonb,
   pgPolicy,
   index,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { profiles, users } from "./schema"; // Assuming common user/profile schema
@@ -200,7 +201,7 @@ export const finalTasks = pgTable(
     priority: text("priority", { enum: ["high", "medium", "low"] })
       .default("medium")
       .notNull(),
-    status: text("status", { enum: ["todo", "in_progress", "done"] })
+    status: text("status", { enum: ["todo", "in_progress", "done", "graded"] })
       .default("todo")
       .notNull(),
     dueDate: timestamp("due_date", { withTimezone: true, mode: "string" }),
@@ -265,11 +266,87 @@ export type FinalTaskAssignee = typeof finalTaskAssignees.$inferSelect;
 
 // Export priority and status enums for use in components
 export const TASK_PRIORITIES = ["high", "medium", "low"] as const;
-export const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
+export const TASK_STATUSES = ["todo", "in_progress", "done", "graded"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-// --- Final Evaluations (Admin Grading) ---
+// --- Final Task Grades ---
+export const finalTaskGrades = pgTable(
+  "final_task_grades",
+  {
+    id: uuid("id")
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    taskId: uuid("task_id")
+      .references(() => finalTasks.id, { onDelete: "cascade" })
+      .notNull(),
+    studentId: uuid("student_id")
+      .references(() => profiles.id, { onDelete: "cascade" })
+      .notNull(),
+    graderId: uuid("grader_id")
+      .references(() => profiles.id, { onDelete: "cascade" })
+      .notNull(),
+    points: integer("points").notNull(), // Points awarded for this task
+    maxPoints: integer("max_points").notNull(), // Maximum possible points
+    feedback: text("feedback"),
+    gradedAt: timestamp("graded_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => ({
+    taskStudentUnique: unique("final_task_grades_task_student_unique").on(
+      table.taskId,
+      table.studentId
+    ),
+    taskIdIdx: index("final_task_grades_task_id_idx").on(table.taskId),
+    studentIdIdx: index("final_task_grades_student_id_idx").on(table.studentId),
+    graderIdIdx: index("final_task_grades_grader_id_idx").on(table.graderId),
+  })
+);
+
+// --- Feedback Templates ---
+export const feedbackTemplates = pgTable(
+  "feedback_templates",
+  {
+    id: uuid("id")
+      .default(sql`uuid_generate_v4()`)
+      .primaryKey()
+      .notNull(),
+    name: text("name").notNull(),
+    category: text("category").notNull(), // e.g., 'code_quality', 'documentation', 'testing'
+    content: text("content").notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+    createdById: uuid("created_by_id")
+      .references(() => profiles.id, { onDelete: "cascade" })
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => ({
+    categoryIdx: index("feedback_templates_category_idx").on(table.category),
+    createdByIdx: index("feedback_templates_created_by_idx").on(
+      table.createdById
+    ),
+  })
+);
+
+// Task grade types
+export type NewFinalTaskGrade = typeof finalTaskGrades.$inferInsert;
+export type FinalTaskGrade = typeof finalTaskGrades.$inferSelect;
+
+// Feedback template types
+export type NewFeedbackTemplate = typeof feedbackTemplates.$inferInsert;
+export type FeedbackTemplate = typeof feedbackTemplates.$inferSelect;
+
+// --- Final Evaluations (Simple Task Points Summary) ---
 export const finalEvaluations = pgTable(
   "final_evaluations",
   {
@@ -283,42 +360,13 @@ export const finalEvaluations = pgTable(
     userId: uuid("user_id") // Student being evaluated
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    evaluatorId: uuid("evaluator_id") // Admin who evaluated
-      .notNull()
-      .references(() => users.id, { onDelete: "set null" }),
 
-    // Weekly Scoring System - Total 450 points
-    week1Score: integer("week1_score").default(0), // 50 pts max
-    week1Feedback: text("week1_feedback"),
-    week1GitHubContributions: integer("week1_github_contributions").default(0),
-    week1TasksCompleted: integer("week1_tasks_completed").default(0),
+    // Just the total points earned - simple addition
+    totalPoints: integer("total_points").default(0).notNull(), // Sum of all task points earned
 
-    week2Score: integer("week2_score").default(0), // 100 pts max
-    week2Feedback: text("week2_feedback"),
-    week2GitHubContributions: integer("week2_github_contributions").default(0),
-    week2TasksCompleted: integer("week2_tasks_completed").default(0),
+    // Optional overall feedback
+    overallFeedback: text("overall_feedback"),
 
-    week3Score: integer("week3_score").default(0), // 150 pts max
-    week3Feedback: text("week3_feedback"),
-    week3GitHubContributions: integer("week3_github_contributions").default(0),
-    week3TasksCompleted: integer("week3_tasks_completed").default(0),
-
-    week4Score: integer("week4_score").default(0), // 150 pts max
-    week4Feedback: text("week4_feedback"),
-    week4GitHubContributions: integer("week4_github_contributions").default(0),
-    week4TasksCompleted: integer("week4_tasks_completed").default(0),
-
-    // GitHub Integration Data
-    totalCommits: integer("total_commits").default(0),
-    totalLinesAdded: integer("total_lines_added").default(0),
-    totalLinesDeleted: integer("total_lines_deleted").default(0),
-    lastGitHubSync: timestamp("last_github_sync", {
-      withTimezone: true,
-      mode: "string",
-    }),
-
-    totalScore: integer("total_score").default(0), // Calculated sum
-    feedback: text("feedback"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
@@ -400,7 +448,36 @@ export const finalTasksRelations = relations(finalTasks, ({ one, many }) => ({
     references: [profiles.id],
   }),
   assignees: many(finalTaskAssignees),
+  grades: many(finalTaskGrades),
 }));
+
+export const finalTaskGradesRelations = relations(
+  finalTaskGrades,
+  ({ one }) => ({
+    task: one(finalTasks, {
+      fields: [finalTaskGrades.taskId],
+      references: [finalTasks.id],
+    }),
+    student: one(profiles, {
+      fields: [finalTaskGrades.studentId],
+      references: [profiles.id],
+    }),
+    grader: one(profiles, {
+      fields: [finalTaskGrades.graderId],
+      references: [profiles.id],
+    }),
+  })
+);
+
+export const feedbackTemplatesRelations = relations(
+  feedbackTemplates,
+  ({ one }) => ({
+    createdBy: one(profiles, {
+      fields: [feedbackTemplates.createdById],
+      references: [profiles.id],
+    }),
+  })
+);
 
 export const finalTaskAssigneesRelations = relations(
   finalTaskAssignees,
@@ -428,13 +505,7 @@ export const finalEvaluationsRelations = relations(
       references: [finalGroups.id],
     }),
     student: one(profiles, {
-      // Changed from users to profiles for profile data
       fields: [finalEvaluations.userId],
-      references: [profiles.id],
-    }),
-    evaluator: one(profiles, {
-      // Changed from users to profiles for profile data
-      fields: [finalEvaluations.evaluatorId],
       references: [profiles.id],
     }),
   })

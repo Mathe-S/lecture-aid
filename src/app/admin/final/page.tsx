@@ -132,6 +132,12 @@ export default function AdminFinalProjectsPage() {
   const completedTasks = tasks.filter(
     (task: any) => task.status === "done"
   ).length;
+  // const gradedTasks = tasks.filter(
+  //   (task: any) => task.status === "graded"
+  // ).length;
+  const pendingGradingTasks = tasks.filter(
+    (task: any) => task.status === "done"
+  ).length;
   const taskCompletionRate =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -149,6 +155,21 @@ export default function AdminFinalProjectsPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              className="gap-2 relative"
+              onClick={() => (window.location.href = "/admin/final/grading")}
+            >
+              <Star className="h-4 w-4" />
+              Grade Tasks
+              {pendingGradingTasks > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 px-1.5 py-0.5 text-xs"
+                >
+                  {pendingGradingTasks}
+                </Badge>
+              )}
+            </Button>
             <Button variant="outline" className="gap-2">
               <Download className="h-4 w-4" />
               Export Grades
@@ -288,9 +309,22 @@ export default function AdminFinalProjectsPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button className="h-20 flex-col gap-2">
+                  <Button
+                    className="h-20 flex-col gap-2 relative"
+                    onClick={() =>
+                      (window.location.href = "/admin/final/grading")
+                    }
+                  >
                     <Star className="h-6 w-6" />
-                    Grade Students
+                    <span>Grade Students</span>
+                    {pendingGradingTasks > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs"
+                      >
+                        {pendingGradingTasks}
+                      </Badge>
+                    )}
                   </Button>
                   <Button variant="outline" className="h-20 flex-col gap-2">
                     <GitBranch className="h-6 w-6" />
@@ -324,13 +358,29 @@ export default function AdminFinalProjectsPage() {
               <CardHeader>
                 <CardTitle>Student Evaluations</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Grade students with weekly scoring system (450 points total)
+                  Grade student task submissions with points and feedback
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Star className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Evaluation interface will be implemented next</p>
+                <div className="text-center py-12">
+                  <Star className="h-16 w-16 mx-auto mb-4 text-primary" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    Task Grading System
+                  </h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    Grade individual tasks submitted by students. Review their
+                    commit/merge request links and provide detailed feedback.
+                  </p>
+                  <Button
+                    size="lg"
+                    className="gap-2"
+                    onClick={() =>
+                      (window.location.href = "/admin/final/grading")
+                    }
+                  >
+                    <Star className="h-5 w-5" />
+                    Open Grading Interface
+                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -21,6 +21,7 @@ import {
   Clock,
   Plus,
   Calendar,
+  Award,
 } from "lucide-react";
 import { CreateTaskDialog } from "./create-task-dialog";
 import { DroppableColumn } from "@/components/final/droppable-column";
@@ -68,6 +69,11 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
     // Don't update if status hasn't changed
     if (task.status === newStatus) return;
 
+    // Prevent students from moving tasks to "graded" status
+    if (newStatus === "graded") {
+      return; // Only admins can grade tasks through the grading interface
+    }
+
     // Update task status with optimistic update
     updateTaskStatusMutation.mutate({
       taskId,
@@ -80,6 +86,7 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
       ...tasksByStatus.todo,
       ...tasksByStatus.in_progress,
       ...tasksByStatus.done,
+      ...tasksByStatus.graded,
     ];
     return allTasks.find((task) => task.id === taskId);
   };
@@ -134,7 +141,7 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
         </div>
 
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* To Do Column */}
           <DroppableColumn
             id="todo"
@@ -164,6 +171,17 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
             icon={CheckCircle}
             tasks={tasksByStatus.done}
             canDragTask={canDragTask}
+            group={group}
+            userId={user?.id}
+          />
+
+          {/* Graded Column */}
+          <DroppableColumn
+            id="graded"
+            title="Graded"
+            icon={Award}
+            tasks={tasksByStatus.graded}
+            canDragTask={() => false} // Students cannot drag graded tasks
             group={group}
             userId={user?.id}
           />
