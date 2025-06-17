@@ -1141,37 +1141,172 @@ async function processData(url: string) {
       title: "Mutual Exclusion",
       description: "Ensuring thread-safe access to shared resources.",
       content: `
-         <h3>Mutual Exclusion</h3>
-         <p>Mutual exclusion prevents multiple threads from accessing shared resources simultaneously.</p>
+         <p>Mutual exclusion is a fundamental concept in concurrent programming that ensures only one thread can access a shared resource at a time. This prevents data corruption and maintains consistency in multi-threaded applications.</p>
          
+         <br />
+         <h4>Core Problem: Shared Resource Access</h4>
+         <p>When multiple threads access shared data simultaneously, we can get unpredictable results due to race conditions. Mutual exclusion mechanisms solve this by providing controlled access.</p>
+
+         <br />
          <h4>Synchronization Primitives:</h4>
          <ul>
-           <li><strong>Mutex:</strong> Binary lock for exclusive access</li>
-           <li><strong>Semaphore:</strong> Counter-based access control</li>
-           <li><strong>Monitor:</strong> High-level synchronization construct</li>
-           <li><strong>Atomic operations:</strong> Indivisible operations</li>
+           <li><strong>Mutex (Mutual Exclusion):</strong> Binary lock ensuring only one thread can enter a critical section</li>
+           <li><strong>Semaphore:</strong> Counter-based mechanism allowing N threads to access a resource</li>
+           <li><strong>Monitor:</strong> High-level construct combining data and synchronization methods</li>
+           <li><strong>Atomic Operations:</strong> Hardware-level indivisible operations</li>
+           <li><strong>Read-Write Locks:</strong> Allow multiple readers or one writer</li>
          </ul>
 
-         <h4>Problems to Avoid:</h4>
+         <br />
+         <h4>JavaScript/Node.js Context:</h4>
+         <p>While JavaScript is single-threaded, mutual exclusion concepts apply to:</p>
          <ul>
-           <li><strong>Race conditions:</strong> Outcome depends on timing</li>
-           <li><strong>Deadlock:</strong> Circular waiting for resources</li>
-           <li><strong>Starvation:</strong> Thread never gets access</li>
+           <li><strong>Web Workers:</strong> True parallelism in browsers</li>
+           <li><strong>SharedArrayBuffer:</strong> Shared memory between workers</li>
+           <li><strong>Node.js Worker Threads:</strong> CPU-intensive parallel processing</li>
+           <li><strong>Async Operations:</strong> Preventing concurrent modifications</li>
+         </ul>
+
+         <br />
+         <h4>Async Mutual Exclusion Example:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// Problem: Multiple async operations modifying shared state
+class BankAccount {
+  private balance = 1000;
+  private lock = new AsyncMutex();
+
+  async withdraw(amount: number): Promise<boolean> {
+    // CRITICAL SECTION: Must be protected!
+    await this.lock.acquire();
+    try {
+      if (this.balance >= amount) {
+        // Simulate async operation (database update, etc.)
+        await new Promise(resolve => setTimeout(resolve, 100));
+        this.balance -= amount;
+        return true;
+      }
+      return false;
+    } finally {
+      this.lock.release(); // Always release the lock!
+    }
+  }
+
+  getBalance(): number {
+    return this.balance;
+  }
+}
+
+// Simple Async Mutex Implementation
+class AsyncMutex {
+  private isLocked = false;
+  private waitQueue: (() => void)[] = [];
+
+  async acquire(): Promise<void> {
+    if (!this.isLocked) {
+      this.isLocked = true;
+      return;
+    }
+    
+    // Wait in queue if locked
+    return new Promise<void>(resolve => {
+      this.waitQueue.push(resolve);
+    });
+  }
+
+  release(): void {
+    if (this.waitQueue.length > 0) {
+      const next = this.waitQueue.shift()!;
+      next(); // Wake up next waiter
+    } else {
+      this.isLocked = false;
+    }
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Web Workers with SharedArrayBuffer:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// Shared memory between workers requires careful synchronization
+const sharedBuffer = new SharedArrayBuffer(1024);
+const sharedArray = new Int32Array(sharedBuffer);
+
+// Atomic operations for thread-safe access
+function atomicIncrement(index: number): number {
+  return Atomics.add(sharedArray, index, 1);
+}
+
+// Mutex using atomic operations
+class AtomicMutex {
+  private lockIndex: number;
+
+  constructor(sharedArray: Int32Array, index: number) {
+    this.lockIndex = index;
+    Atomics.store(sharedArray, index, 0); // 0 = unlocked
+  }
+
+  tryLock(): boolean {
+    // Atomic compare-and-swap: if 0, set to 1
+    return Atomics.compareExchange(sharedArray, this.lockIndex, 0, 1) === 0;
+  }
+
+  unlock(): void {
+    Atomics.store(sharedArray, this.lockIndex, 0);
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Common Synchronization Problems:</h4>
+         <ul>
+           <li><strong>Deadlock:</strong> Two threads waiting for each other's locks</li>
+           <li><strong>Livelock:</strong> Threads keep changing state but make no progress</li>
+           <li><strong>Starvation:</strong> A thread never gets access to the resource</li>
+           <li><strong>Priority Inversion:</strong> High-priority thread blocked by low-priority thread</li>
+         </ul>
+
+         <br />
+         <h4>Best Practices:</h4>
+         <ul>
+           <li><strong>Always use try/finally:</strong> Ensure locks are released even if exceptions occur</li>
+           <li><strong>Keep critical sections small:</strong> Minimize time holding locks</li>
+           <li><strong>Avoid nested locks:</strong> Prevents deadlock situations</li>
+           <li><strong>Use timeouts:</strong> Prevent indefinite waiting</li>
+           <li><strong>Consider lock-free algorithms:</strong> Use atomic operations when possible</li>
          </ul>
        `,
       question: {
-        type: "multiple-choice",
+        type: "click-code",
         question:
-          "What is the main difference between a mutex and a semaphore?",
-        options: [
-          "Mutex is faster than semaphore",
-          "Mutex allows only one thread, semaphore allows multiple",
-          "Semaphore is only for inter-process communication",
-          "Mutex works with any number of threads",
+          "Click on the lines where mutual exclusion (synchronization) is most critically needed:",
+        codeLines: [
+          "class Counter {",
+          "  private count = 0;",
+          "  private operations: string[] = [];",
+          "",
+          "  async increment(): Promise<void> {",
+          "    const currentCount = this.count;",
+          "    await new Promise(r => setTimeout(r, 10)); // Simulate async work",
+          "    this.count = currentCount + 1;",
+          "    this.operations.push(`Incremented to ${this.count}`);",
+          "  }",
+          "",
+          "  async decrement(): Promise<void> {",
+          "    const currentCount = this.count;",
+          "    await new Promise(r => setTimeout(r, 10)); // Simulate async work",
+          "    this.count = currentCount - 1;",
+          "    this.operations.push(`Decremented to ${this.count}`);",
+          "  }",
+          "",
+          "  getCount(): number {",
+          "    return this.count;",
+          "  }",
+          "}",
         ],
-        correctAnswer: 1,
+        correctLines: [5, 6, 7, 8, 12, 13, 14, 15],
+        multiSelect: true,
         explanation:
-          "A mutex is binary (0 or 1), allowing only one thread access. A semaphore can allow multiple threads based on its counter value.",
+          "Lines 6-9 and 13-16 contain critical sections where shared state (this.count and this.operations) is read and modified. The async delay between reading and writing creates a race condition window where multiple concurrent calls can interfere with each other. These sections need mutual exclusion to ensure atomic read-modify-write operations.",
       } as Question,
     },
 

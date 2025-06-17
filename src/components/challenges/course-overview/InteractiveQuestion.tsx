@@ -5,7 +5,7 @@ import hljs from "highlight.js";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Code2, Move, Target } from "lucide-react";
+import { CheckCircle, XCircle, Move, Target } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -262,7 +262,6 @@ export function InteractiveQuestion({
         return (
           <SequenceOrderRenderer
             question={question as SequenceOrderQuestion}
-            userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
             sensors={sensors}
           />
@@ -275,7 +274,6 @@ export function InteractiveQuestion({
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
             showResult={showResult || localShowResult}
-            isCorrect={isCorrect || localIsCorrect}
           />
         );
 
@@ -410,7 +408,6 @@ function MultipleChoiceRenderer({
 
 function DragDropCodeRenderer({
   question,
-  userAnswer,
   setUserAnswer,
   sensors,
 }: {
@@ -487,7 +484,6 @@ function SequenceOrderRenderer({
   sensors,
 }: {
   question: SequenceOrderQuestion;
-  userAnswer: number[] | null;
   setUserAnswer: (answer: number[]) => void;
   sensors: any;
 }) {
@@ -564,13 +560,11 @@ function ClickCodeRenderer({
   userAnswer,
   setUserAnswer,
   showResult,
-  isCorrect,
 }: {
   question: ClickCodeQuestion;
   userAnswer: number[] | null;
   setUserAnswer: (answer: number[]) => void;
   showResult: boolean;
-  isCorrect: boolean;
 }) {
   const selectedLines = userAnswer || [];
 

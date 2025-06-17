@@ -30,6 +30,7 @@ interface StepProgress {
 
 interface ChallengeProgress {
   steps: StepProgress;
+  currentStep: number;
   startedAt: string;
   lastUpdated: string;
 }
@@ -82,6 +83,7 @@ export default function CourseOverviewChallengePage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState<ChallengeProgress>({
     steps: {},
+    currentStep: 0,
     startedAt: new Date().toISOString(),
     lastUpdated: new Date().toISOString(),
   });
@@ -101,10 +103,16 @@ export default function CourseOverviewChallengePage() {
         `challenge_course-overview_${user.id}`
       );
       if (savedProgress) {
-        setProgress(JSON.parse(savedProgress));
+        const parsedProgress = JSON.parse(savedProgress);
+        setProgress(parsedProgress);
+        // Restore the current step if it exists
+        if (parsedProgress.currentStep !== undefined) {
+          setCurrentStep(parsedProgress.currentStep);
+        }
       } else {
         const initialProgress: ChallengeProgress = {
           steps: {},
+          currentStep: 0,
           startedAt: new Date().toISOString(),
           lastUpdated: new Date().toISOString(),
         };
@@ -123,10 +131,36 @@ export default function CourseOverviewChallengePage() {
     hljs.highlightAll();
   }, [currentStep]);
 
+  // Save current step to localStorage whenever it changes (without updating React state)
+  useEffect(() => {
+    if (user) {
+      // Get the latest progress from localStorage to avoid stale closures
+      const savedProgress = localStorage.getItem(
+        `challenge_course-overview_${user.id}`
+      );
+      const latestProgress = savedProgress
+        ? JSON.parse(savedProgress)
+        : progress;
+
+      if (latestProgress.currentStep !== currentStep) {
+        const updatedProgress = {
+          ...latestProgress,
+          currentStep,
+          lastUpdated: new Date().toISOString(),
+        };
+        localStorage.setItem(
+          `challenge_course-overview_${user.id}`,
+          JSON.stringify(updatedProgress)
+        );
+      }
+    }
+  }, [currentStep, user]);
+
   const saveProgress = (updatedProgress: ChallengeProgress) => {
     if (user) {
       const progressToSave = {
         ...updatedProgress,
+        currentStep,
         lastUpdated: new Date().toISOString(),
       };
       setProgress(progressToSave);
