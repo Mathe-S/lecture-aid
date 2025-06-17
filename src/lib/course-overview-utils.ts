@@ -231,16 +231,24 @@ export function getStepContent(stepId: string) {
           <li>Implementation details in specs</li>
           <li>Inconsistent terminology</li>
         </ul>
+
+        <h4>Problematic Specification Example:</h4>
+        <p><em>"Sort the array using quicksort and return it in ascending order, unless the array has duplicates."</em></p>
       `,
-      question:
-        "Identify two problems with this specification: 'Sort the array using quicksort and return it in ascending order, unless the array has duplicates.'",
-      correctAnswer:
-        "specifies implementation details, unclear behavior with duplicates",
-      hints: [
-        "Look for implementation details that shouldn't be in a specification",
-        "Consider what happens when the condition about duplicates is met",
-        "Think about whether the specification is clear and unambiguous",
-      ],
+      question: {
+        type: "multiple-choice",
+        question:
+          "What are the TWO main problems with the specification above?",
+        options: [
+          "It's too short and lacks detail",
+          "It specifies implementation (quicksort) and has unclear behavior with duplicates",
+          "It doesn't mention performance requirements",
+          "It uses technical jargon that's hard to understand",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "The specification has two critical flaws: (1) It specifies HOW to implement (quicksort) rather than WHAT the result should be, and (2) It's unclear what happens when duplicates are present - should it not sort at all, or handle duplicates differently? Good specifications describe the desired outcome, not the implementation method.",
+      } as Question,
     },
 
     "abstract-data-types": {
