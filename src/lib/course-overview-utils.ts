@@ -706,37 +706,139 @@ function evaluateExpression(expr: Expression): number {
       title: "Grammars & Parsing",
       description: "Understanding formal grammars and parsing techniques.",
       content: `
-         <h3>Grammars & Parsing</h3>
-         <p>Grammars define the syntax of languages, while parsers convert text into structured data.</p>
+         <p>Formal grammars provide the mathematical foundation for defining programming language syntax, while parsers transform source code text into structured Abstract Syntax Trees (ASTs) that compilers can process.</p>
          
-         <h4>Grammar Components:</h4>
+         <br />
+         <h4>Grammar Fundamentals:</h4>
+         <p>A formal grammar consists of four components:</p>
          <ul>
-           <li><strong>Terminals:</strong> Basic symbols (tokens)</li>
-           <li><strong>Non-terminals:</strong> Abstract symbols</li>
-           <li><strong>Productions:</strong> Rules for rewriting</li>
-           <li><strong>Start symbol:</strong> Root of the grammar</li>
+           <li><strong>Terminals:</strong> Actual symbols/tokens that appear in the language (keywords, operators, literals)</li>
+           <li><strong>Non-terminals:</strong> Abstract symbols representing language constructs (expressions, statements)</li>
+           <li><strong>Productions:</strong> Rules defining how non-terminals can be rewritten</li>
+           <li><strong>Start symbol:</strong> The root non-terminal from which all derivations begin</li>
          </ul>
 
-         <h4>Parsing Approaches:</h4>
+         <br />
+         <h4>Example Grammar in BNF (Backus-Naur Form):</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>// Simple arithmetic expression grammar
+&lt;expression&gt; ::= &lt;term&gt; (('+' | '-') &lt;term&gt;)*
+&lt;term&gt;       ::= &lt;factor&gt; (('*' | '/') &lt;factor&gt;)*
+&lt;factor&gt;     ::= &lt;number&gt; | '(' &lt;expression&gt; ')'
+&lt;number&gt;     ::= [0-9]+
+
+// This grammar defines operator precedence:
+// Multiplication/division has higher precedence than addition/subtraction</code></pre>
+         </div>
+
+         <br />
+         <h4>TypeScript Parser Implementation:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>// AST Node Types
+type ASTNode = 
+  | { type: 'number'; value: number }
+  | { type: 'binary'; op: '+' | '-' | '*' | '/'; left: ASTNode; right: ASTNode };
+
+// Tokenizer
+interface Token {
+  type: 'NUMBER' | 'PLUS' | 'MINUS' | 'MULTIPLY' | 'DIVIDE' | 'LPAREN' | 'RPAREN' | 'EOF';
+  value: string;
+}
+
+// Recursive Descent Parser Class
+class ExpressionParser {
+  private tokens: Token[];
+  private current = 0;
+
+  constructor(input: string) {
+    this.tokens = this.tokenize(input);
+  }
+
+  // Each non-terminal becomes a method
+  parseExpression(): ASTNode {
+    let left = this.parseTerm();
+    
+    while (this.match('PLUS', 'MINUS')) {
+      const op = this.previous().type === 'PLUS' ? '+' : '-';
+      const right = this.parseTerm();
+      left = { type: 'binary', op, left, right };
+    }
+    
+    return left;
+  }
+
+  parseTerm(): ASTNode {
+    let left = this.parseFactor();
+    
+    while (this.match('MULTIPLY', 'DIVIDE')) {
+      const op = this.previous().type === 'MULTIPLY' ? '*' : '/';
+      const right = this.parseFactor();
+      left = { type: 'binary', op, left, right };
+    }
+    
+    return left;
+  }
+
+  parseFactor(): ASTNode {
+    if (this.match('NUMBER')) {
+      return { type: 'number', value: parseFloat(this.previous().value) };
+    }
+    
+    if (this.match('LPAREN')) {
+      const expr = this.parseExpression();
+      this.consume('RPAREN', "Expected ')' after expression");
+      return expr;
+    }
+    
+    throw new Error('Expected number or parenthesized expression');
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Parsing Strategies:</h4>
          <ul>
-           <li><strong>Top-down:</strong> Start from root, work to leaves</li>
-           <li><strong>Bottom-up:</strong> Start from leaves, build to root</li>
-           <li><strong>Recursive descent:</strong> Each non-terminal becomes a method</li>
+           <li><strong>Recursive Descent:</strong> Top-down, each grammar rule becomes a function</li>
+           <li><strong>LR Parsing:</strong> Bottom-up, uses shift-reduce operations with lookahead</li>
+           <li><strong>LALR:</strong> Optimized LR parser, used by tools like Yacc/Bison</li>
+           <li><strong>Packrat Parsing:</strong> Memoized recursive descent for PEG grammars</li>
+         </ul>
+
+         <br />
+         <h4>Parser Generator Tools:</h4>
+         <ul>
+           <li><strong>ANTLR:</strong> Generates parsers from grammar files</li>
+           <li><strong>PEG.js:</strong> JavaScript parser generator for PEG grammars</li>
+           <li><strong>Nearley:</strong> Fast, feature-rich parser toolkit for JavaScript</li>
+           <li><strong>TypeScript Compiler API:</strong> Built-in parsing for TypeScript/JavaScript</li>
+         </ul>
+
+         <br />
+         <h4>Common Parsing Challenges:</h4>
+         <ul>
+           <li><strong>Left Recursion:</strong> Can cause infinite loops in recursive descent</li>
+           <li><strong>Operator Precedence:</strong> Ensuring mathematical order of operations</li>
+           <li><strong>Ambiguous Grammars:</strong> Multiple valid parse trees for same input</li>
+           <li><strong>Error Recovery:</strong> Continuing parsing after syntax errors</li>
          </ul>
        `,
       question: {
-        type: "multiple-choice",
+        type: "drag-drop-code",
         question:
-          "Which parsing approach matches non-terminals to methods in the parser?",
-        options: [
-          "Bottom-up parsing",
-          "Recursive descent parsing",
-          "LR parsing",
-          "Shift-reduce parsing",
+          "Arrange the recursive descent parser method calls in the correct order for parsing '2 + 3 * 4':",
+        codeBlocks: [
+          "Binary AST node created for 2 + (3 * 4)",
+          "parseExpression() starts",
+          "parseTerm() called for left operand",
+          "parseFactor() returns number 2",
+          "'+' operator found, parseTerm() called for right operand",
+          "parseFactor() returns number 3, then '*' found",
+          "parseFactor() returns number 4",
+          "Binary AST node created for 3 * 4",
         ],
-        correctAnswer: 1,
+        correctOrder: [1, 2, 3, 4, 5, 6, 7, 0],
         explanation:
-          "Recursive descent parsing creates a method for each non-terminal in the grammar.",
+          "Recursive descent follows grammar structure: parseExpression → parseTerm → parseFactor. The parser respects operator precedence by having multiplication bind tighter than addition, creating the correct AST structure where '3 * 4' is evaluated before adding to 2.",
       } as Question,
     },
 
