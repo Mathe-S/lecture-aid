@@ -509,43 +509,168 @@ export function getStepContent(stepId: string) {
       title: "Debugging",
       description: "Systematic approaches to finding and fixing bugs.",
       content: `
-         <h3>Debugging Strategies</h3>
-         <p>Effective debugging requires systematic approaches and good tools.</p>
+         <p>Debugging is a critical software engineering skill that combines systematic methodology with technical tools to identify, understand, and fix software defects efficiently.</p>
          
-         <h4>Debugging Process:</h4>
+         <br />
+         <h4>The Scientific Debugging Process:</h4>
          <ol>
-           <li><strong>Reproduce:</strong> Create a minimal test case</li>
-           <li><strong>Localize:</strong> Narrow down where the bug occurs</li>
-           <li><strong>Understand:</strong> Figure out why the bug happens</li>
-           <li><strong>Fix:</strong> Make the minimal necessary change</li>
-           <li><strong>Test:</strong> Verify the fix works and doesn't break anything</li>
+           <li><strong>Reproduce:</strong> Create a minimal, consistent test case that triggers the bug</li>
+           <li><strong>Isolate:</strong> Narrow down the problem to the smallest possible scope</li>
+           <li><strong>Hypothesize:</strong> Form theories about what might be causing the issue</li>
+           <li><strong>Test:</strong> Validate hypotheses through controlled experiments</li>
+           <li><strong>Fix:</strong> Implement the minimal necessary change</li>
+           <li><strong>Verify:</strong> Ensure the fix works and doesn't introduce new bugs</li>
          </ol>
 
-         <h4>Debugging Techniques:</h4>
+         <br />
+         <h4>Modern Debugging Techniques:</h4>
+         
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>// 1. Strategic Logging with Context
+function processUserData(users: User[]): ProcessedUser[] {
+  console.log(\`🔍 Processing \${users.length} users\`);
+  
+  return users.map((user, index) => {
+    console.log(\`📝 Processing user \${index}: \${user.id}\`);
+    
+    try {
+      const processed = transformUser(user);
+      console.log(\`✅ Successfully processed user \${user.id}\`);
+      return processed;
+    } catch (error) {
+      console.error(\`❌ Failed to process user \${user.id}:\`, error);
+      throw error;
+    }
+  });
+}
+
+// 2. Assertion-Based Debugging
+function calculateTotal(items: CartItem[]): number {
+  console.assert(items.length > 0, 'Cart should not be empty');
+  
+  const total = items.reduce((sum, item) => {
+    console.assert(item.price >= 0, \`Invalid price: \${item.price}\`);
+    console.assert(item.quantity > 0, \`Invalid quantity: \${item.quantity}\`);
+    return sum + (item.price * item.quantity);
+  }, 0);
+  
+  console.assert(total >= 0, \`Total cannot be negative: \${total}\`);
+  return total;
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Advanced Debugging Strategies:</h4>
          <ul>
-           <li><strong>Print Debugging:</strong> Add logging statements</li>
-           <li><strong>Debugger:</strong> Step through code execution</li>
-           <li><strong>Binary Search:</strong> Divide and conquer approach</li>
-           <li><strong>Rubber Duck:</strong> Explain the problem out loud</li>
+           <li><strong>Binary Search Debugging:</strong> Systematically eliminate half the code until bug is isolated</li>
+           <li><strong>Time-Travel Debugging:</strong> Step backwards through execution history</li>
+           <li><strong>Differential Debugging:</strong> Compare working vs. broken versions</li>
+           <li><strong>Statistical Debugging:</strong> Analyze patterns across multiple bug reports</li>
+           <li><strong>Rubber Duck Debugging:</strong> Explain the problem step-by-step to clarify thinking</li>
          </ul>
 
-         <h4>Common Bug Types:</h4>
+         <br />
+         <h4>TypeScript-Specific Debugging:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>// Type Guards for Runtime Debugging
+function isValidUser(obj: unknown): obj is User {
+  return typeof obj === 'object' && 
+         obj !== null && 
+         'id' in obj && 
+         'email' in obj;
+}
+
+function processApiResponse(response: unknown) {
+  if (!isValidUser(response)) {
+    console.error('Invalid user data received:', response);
+    throw new Error('Invalid user data structure');
+  }
+  
+  // TypeScript now knows response is User
+  console.log(\`Processing user: \${response.email}\`);
+}
+
+// Exhaustive Switch for Debugging Union Types
+type Status = 'loading' | 'success' | 'error';
+
+function handleStatus(status: Status): string {
+  switch (status) {
+    case 'loading':
+      return 'Loading...';
+    case 'success':
+      return 'Success!';
+    case 'error':
+      return 'Error occurred';
+    default:
+      // This will cause a TypeScript error if we miss a case
+      const exhaustiveCheck: never = status;
+      throw new Error(\`Unhandled status: \${exhaustiveCheck}\`);
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Common Bug Categories & Solutions:</h4>
          <ul>
-           <li>Off-by-one errors</li>
-           <li>Null pointer exceptions</li>
-           <li>Race conditions</li>
-           <li>Memory leaks</li>
+           <li><strong>Logic Errors:</strong> Incorrect algorithms or business logic</li>
+           <li><strong>Boundary Conditions:</strong> Off-by-one errors, empty collections</li>
+           <li><strong>Null/Undefined Issues:</strong> Missing null checks, optional chaining</li>
+           <li><strong>Async/Concurrency:</strong> Race conditions, promise handling</li>
+           <li><strong>Type Mismatches:</strong> Runtime type errors, API contract violations</li>
+           <li><strong>Performance Issues:</strong> Memory leaks, inefficient algorithms</li>
+         </ul>
+
+         <br />
+         <h4>Professional Debugging Tools:</h4>
+         <ul>
+           <li><strong>Browser DevTools:</strong> Chrome/Firefox debugging, network analysis</li>
+           <li><strong>VS Code Debugger:</strong> Breakpoints, variable inspection, call stack</li>
+           <li><strong>Node.js Inspector:</strong> Server-side debugging with \`--inspect\`</li>
+           <li><strong>Testing Frameworks:</strong> Jest, Vitest for systematic bug reproduction</li>
+           <li><strong>Logging Libraries:</strong> Winston, Pino for structured logging</li>
+           <li><strong>Error Monitoring:</strong> Sentry, Rollbar for production debugging</li>
+         </ul>
+
+         <br />
+         <h4>Debugging Best Practices:</h4>
+         <ul>
+           <li><strong>Start with the simplest explanation</strong> (Occam's Razor)</li>
+           <li><strong>Change one thing at a time</strong> to isolate cause and effect</li>
+           <li><strong>Keep detailed notes</strong> of what you've tried</li>
+           <li><strong>Take breaks</strong> to avoid tunnel vision</li>
+           <li><strong>Ask for help</strong> when stuck - fresh eyes catch different things</li>
          </ul>
        `,
-      question:
-        "You have a function that works for small inputs but fails for large ones. What debugging strategy would you use?",
-      correctAnswer:
-        "binary search to find threshold, check boundary conditions and resource limits",
-      hints: [
-        "Think about finding the boundary between working and failing",
-        "Consider what changes between small and large inputs",
-        "Look for resource limitations or algorithmic complexity issues",
-      ],
+      question: {
+        type: "click-code",
+        question:
+          "Click on the lines that represent good debugging practices in this TypeScript function:",
+        codeLines: [
+          "function processPayment(amount: number, userId: string): Promise<PaymentResult> {",
+          "  console.log(`💰 Processing payment: $${amount} for user ${userId}`);",
+          "  ",
+          "  if (amount <= 0) {",
+          "    throw new Error('Invalid amount');",
+          "  }",
+          "  ",
+          "  const user = await getUserById(userId);",
+          "  console.log(`👤 User found: ${user.email}`);",
+          "  ",
+          "  try {",
+          "    const result = await chargeCard(user.cardId, amount);",
+          "    console.log(`✅ Payment successful: ${result.transactionId}`);",
+          "    return result;",
+          "  } catch (error) {",
+          "    console.error(`❌ Payment failed for user ${userId}:`, error);",
+          "    throw error;",
+          "  }",
+          "}",
+        ],
+        correctLines: [1, 4, 8, 12, 15],
+        multiSelect: true,
+        explanation:
+          "Good debugging practices include: strategic logging with context (line 1, 8, 12), input validation with clear error messages (line 4), and comprehensive error handling with detailed context (line 15). These practices help track execution flow and identify issues quickly.",
+      } as Question,
     },
 
     concurrency: {
