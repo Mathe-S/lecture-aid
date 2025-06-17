@@ -404,41 +404,46 @@ export function getStepContent(stepId: string) {
       title: "Functional Programming",
       description: "Functional programming concepts and immutability.",
       content: `
-         <h3>Functional Programming</h3>
-         <p>Functional programming emphasizes immutability and pure functions.</p>
-         
+         <p>Functional programming emphasizes immutability and pure functions, avoiding side effects and mutable state.</p>
+         <br />
          <h4>Core Principles:</h4>
          <ul>
-           <li><strong>Immutability:</strong> Objects cannot be modified after creation</li>
+           <li><strong>Immutability:</strong> Data cannot be modified after creation</li>
            <li><strong>Pure Functions:</strong> No side effects, same input always produces same output</li>
            <li><strong>Higher-Order Functions:</strong> Functions that take or return other functions</li>
-           <li><strong>Recursion:</strong> Preferred over iteration</li>
+           <li><strong>Function Composition:</strong> Chaining operations together</li>
          </ul>
-
-         <h4>Benefits:</h4>
-         <ul>
-           <li>Easier to reason about and test</li>
-           <li>Better for concurrent programming</li>
-           <li>Fewer bugs related to shared mutable state</li>
-         </ul>
-
-         <h4>Example:</h4>
-         <div class="bg-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// Immutable list operations
-const numbers = [1, 2, 3, 4, 5];
-const doubled = numbers.map(x => x * 2);  // Pure function
-const evens = numbers.filter(x => x % 2 === 0);  // Pure function</code></pre>
+         <br />
+         <h4>Imperative vs Functional Challenge:</h4>
+         <p>Convert this imperative TypeScript code to functional style:</p>
+         <br />
+         <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; font-family: monospace;">
+           <strong>Imperative (mutable):</strong><br />
+           let sum = 0;<br />
+           for (let i = 0; i < numbers.length; i++) {<br />
+           &nbsp;&nbsp;if (numbers[i] % 2 === 0) {<br />
+           &nbsp;&nbsp;&nbsp;&nbsp;sum += numbers[i];<br />
+           &nbsp;&nbsp;}<br />
+           }<br />
+           return sum;
          </div>
+         <br />
+         <p>Arrange the functional operations in the correct order to achieve the same result:</p>
        `,
-      question:
-        "Convert this imperative code to functional style: 'sum all even numbers in an array using a for loop'.",
-      correctAnswer:
-        "array.filter(x => x % 2 === 0).reduce((sum, x) => sum + x, 0)",
-      hints: [
-        "Use filter to get even numbers",
-        "Use reduce to sum the results",
-        "Avoid mutating variables or using loops",
-      ],
+      question: {
+        type: "drag-drop-code",
+        question:
+          "Drag the functional programming operations into the correct order:",
+        codeBlocks: [
+          ".reduce((sum, x) => sum + x, 0)",
+          "numbers",
+          ".filter(x => x % 2 === 0)",
+          "// Result: sum of all even numbers",
+        ],
+        correctOrder: [1, 2, 0, 3],
+        explanation:
+          "The functional approach: (1) Start with 'numbers' array, (2) Filter to get only even numbers using '.filter(x => x % 2 === 0)', (3) Reduce to sum them with '.reduce((sum, x) => sum + x, 0)', (4) Result is the sum. This creates: numbers.filter(x => x % 2 === 0).reduce((sum, x) => sum + x, 0). No mutable variables, no loops, just pure function composition!",
+      } as Question,
     },
 
     equality: {
