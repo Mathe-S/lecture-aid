@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import hljs from "highlight.js";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -409,6 +410,7 @@ function MultipleChoiceRenderer({
 
 function DragDropCodeRenderer({
   question,
+  userAnswer,
   setUserAnswer,
   sensors,
 }: {
@@ -424,6 +426,11 @@ function DragDropCodeRenderer({
       originalIndex: index,
     }))
   );
+
+  useEffect(() => {
+    // This effect runs once when the component mounts
+    hljs.highlightAll();
+  }, []);
 
   // Initialize the answer with the default order
   useEffect(() => {
@@ -444,43 +451,28 @@ function DragDropCodeRenderer({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <div className="flex items-center gap-2 mb-3">
-          <Code2 className="h-4 w-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">
-            Drag to reorder the code blocks:
-          </span>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={items.map((item) => item.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-2">
+          {items.map(
+            (item: { id: string; content: string; originalIndex: number }) => (
+              <SortableItem key={item.id} id={item.id}>
+                <pre className="text-sm font-mono text-gray-800 whitespace-pre-wrap">
+                  <code className="language-typescript">{item.content}</code>
+                </pre>
+              </SortableItem>
+            )
+          )}
         </div>
-
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={items.map((item) => item.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-2">
-              {items.map(
-                (item: {
-                  id: string;
-                  content: string;
-                  originalIndex: number;
-                }) => (
-                  <SortableItem key={item.id} id={item.id}>
-                    <pre className="text-sm font-mono text-gray-800 whitespace-pre-wrap">
-                      {item.content}
-                    </pre>
-                  </SortableItem>
-                )
-              )}
-            </div>
-          </SortableContext>
-        </DndContext>
-      </div>
-    </div>
+      </SortableContext>
+    </DndContext>
   );
 }
 
@@ -559,6 +551,7 @@ function ClickCodeRenderer({
   userAnswer,
   setUserAnswer,
   showResult,
+  isCorrect,
 }: {
   question: ClickCodeQuestion;
   userAnswer: number[] | null;
@@ -569,47 +562,58 @@ function ClickCodeRenderer({
   const selectedLines = userAnswer || [];
 
   const toggleLine = (lineIndex: number) => {
-    if (showResult) return;
-
-    const newSelection = selectedLines.includes(lineIndex)
-      ? selectedLines.filter((i) => i !== lineIndex)
-      : question.multiSelect
-      ? [...selectedLines, lineIndex]
-      : [lineIndex];
-
+    let newSelection;
+    if (question.multiSelect) {
+      newSelection = selectedLines.includes(lineIndex)
+        ? selectedLines.filter((i) => i !== lineIndex)
+        : [...selectedLines, lineIndex];
+    } else {
+      // If multiSelect is false, clicking a new line deselects the old one
+      newSelection = selectedLines.includes(lineIndex) ? [] : [lineIndex];
+    }
     setUserAnswer(newSelection);
   };
 
   return (
-    <div className="bg-gray-900 rounded-lg p-4">
-      <div className="text-white font-mono text-sm">
-        {question.codeLines.map((line, index) => (
+    <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-white overflow-x-auto">
+      {question.codeLines.map((line, index) => {
+        const isSelected = selectedLines.includes(index);
+        const isCorrectLine = question.correctLines.includes(index);
+
+        const lineClasses = `
+          block -mx-4 px-4 py-1 border-l-4 
+          ${
+            showResult
+              ? isSelected && isCorrectLine
+                ? "border-green-500 bg-green-500/10"
+                : isSelected && !isCorrectLine
+                ? "border-red-500 bg-red-500/10"
+                : "border-transparent"
+              : isSelected
+              ? "border-blue-500 bg-blue-500/10 cursor-pointer"
+              : "border-transparent cursor-pointer hover:bg-gray-700/50"
+          }
+        `;
+
+        const highlightedLine = hljs.highlight(line, {
+          language: "typescript",
+          ignoreIllegals: true,
+        }).value;
+
+        return (
           <div
             key={index}
-            onClick={() => toggleLine(index)}
-            className={`cursor-pointer px-2 py-1 rounded transition-all ${
-              selectedLines.includes(index)
-                ? showResult
-                  ? question.correctLines.includes(index)
-                    ? "bg-green-600"
-                    : "bg-red-600"
-                  : "bg-blue-600"
-                : showResult && question.correctLines.includes(index)
-                ? "bg-green-600"
-                : "hover:bg-gray-700"
-            }`}
+            onClick={() => !showResult && toggleLine(index)}
+            className={lineClasses}
           >
-            <span className="text-gray-400 mr-4">
-              {(index + 1).toString().padStart(2, " ")}
-            </span>
-            <span>{line}</span>
+            <span
+              dangerouslySetInnerHTML={{
+                __html: highlightedLine || "&nbsp;",
+              }}
+            />
           </div>
-        ))}
-      </div>
-      <div className="mt-2 text-xs text-gray-400">
-        Click on the{" "}
-        {question.multiSelect ? "problematic lines" : "problematic line"}
-      </div>
+        );
+      })}
     </div>
   );
 }

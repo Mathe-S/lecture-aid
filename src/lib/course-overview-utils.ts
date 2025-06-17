@@ -526,7 +526,7 @@ export function getStepContent(stepId: string) {
          <h4>Modern Debugging Techniques:</h4>
          
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// 1. Strategic Logging with Context
+           <pre><code class="language-typescript">// 1. Strategic Logging with Context
 function processUserData(users: User[]): ProcessedUser[] {
   console.log(\`🔍 Processing \${users.length} users\`);
   
@@ -572,7 +572,7 @@ function calculateTotal(items: CartItem[]): number {
          <br />
          <h4>TypeScript-Specific Debugging:</h4>
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// Type Guards for Runtime Debugging
+           <pre><code class="language-typescript">// Type Guards for Runtime Debugging
 function isValidUser(obj: unknown): obj is User {
   return typeof obj === 'object' && 
          obj !== null && 
@@ -700,7 +700,7 @@ function handleStatus(status: Status): string {
          <p>The classic "read-modify-write" race condition. Two async operations fetch a value, increment it, and write it back. The final value will be wrong.</p>
          
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>let sharedCounter = 0;
+           <pre><code class="language-typescript">let sharedCounter = 0;
 
 async function increment() {
   const currentValue = sharedCounter; // Read
@@ -728,7 +728,7 @@ async function increment() {
          <br />
          <h4>Solving Race Conditions with a Lock:</h4>
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// A simple async lock implementation
+           <pre><code class="language-typescript">// A simple async lock implementation
 class AsyncLock {
   private isLocked = false;
   private queue: (() => void)[] = [];
@@ -807,7 +807,7 @@ async function safeIncrement() {
          <h4>TypeScript Implementation Examples:</h4>
          
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// Binary Tree - Classic recursive structure
+           <pre><code class="language-typescript">// Binary Tree - Classic recursive structure
 interface TreeNode&lt;T&gt; {
   value: T;
   left: TreeNode&lt;T&gt; | null;   // Recursive reference
@@ -839,7 +839,7 @@ type Expression =
          <br />
          <h4>Processing Recursive Data:</h4>
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// Structural recursion follows data structure
+           <pre><code class="language-typescript">// Structural recursion follows data structure
 function treeHeight&lt;T&gt;(node: TreeNode&lt;T&gt; | null): number {
   if (node === null) return 0;              // Base case
   
@@ -913,7 +913,7 @@ function evaluateExpression(expr: Expression): number {
          <br />
          <h4>Example Grammar in BNF (Backus-Naur Form):</h4>
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// Simple arithmetic expression grammar
+           <pre><code class="language-ebnf">// Simple arithmetic expression grammar
 &lt;expression&gt; ::= &lt;term&gt; (('+' | '-') &lt;term&gt;)*
 &lt;term&gt;       ::= &lt;factor&gt; (('*' | '/') &lt;factor&gt;)*
 &lt;factor&gt;     ::= &lt;number&gt; | '(' &lt;expression&gt; ')'
@@ -926,7 +926,7 @@ function evaluateExpression(expr: Expression): number {
          <br />
          <h4>TypeScript Parser Implementation:</h4>
          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// AST Node Types
+           <pre><code class="language-typescript">// AST Node Types
 type ASTNode = 
   | { type: 'number'; value: number }
   | { type: 'binary'; op: '+' | '-' | '*' | '/'; left: ASTNode; right: ASTNode };
@@ -1035,42 +1035,105 @@ class ExpressionParser {
     },
 
     promises: {
-      title: "Promises",
-      description: "Asynchronous programming with promises and async/await.",
+      title: "Promises & Async/Await",
+      description:
+        "Mastering asynchronous operations in modern JavaScript and TypeScript.",
       content: `
-         <h3>Promises in JavaScript</h3>
-         <p>Promises provide a cleaner way to handle asynchronous operations than callbacks.</p>
+         <p>Promises are objects representing the eventual completion or failure of an asynchronous operation. <strong><code>async/await</code></strong> is modern syntactic sugar built on top of promises, making async code look and behave more like synchronous code.</p>
          
+         <br />
          <h4>Promise States:</h4>
          <ul>
-           <li><strong>Pending:</strong> Initial state, not fulfilled or rejected</li>
-           <li><strong>Fulfilled:</strong> Operation completed successfully</li>
-           <li><strong>Rejected:</strong> Operation failed</li>
+           <li><strong>Pending:</strong> The initial state; not yet fulfilled or rejected.</li>
+           <li><strong>Fulfilled:</strong> The operation completed successfully, with a resulting value.</li>
+           <li><strong>Rejected:</strong> The operation failed, with a reason (an error).</li>
          </ul>
 
-         <h4>Key Methods:</h4>
+         <br />
+         <h4>Creating and Using Promises:</h4>
+         <p>The modern approach uses <code>async/await</code> with <code>try/catch</code> for clean, readable code.</p>
+
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// 1. A function that returns a Promise
+function fetchData(url: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (Math.random() > 0.2) {
+        resolve({ data: \`Content from \${url}\` });
+      } else {
+        reject(new Error('Network request failed'));
+      }
+    }, 1000);
+  });
+}
+
+// 2. Consuming the Promise with async/await
+async function processData(url: string) {
+  console.log('Fetching data...');
+  try {
+    const response = await fetchData(url); // Pauses here until promise settles
+    console.log('Success:', response.data);
+  } catch (error) {
+    console.error('Error:', error.message);
+  } finally {
+    console.log('Operation finished.');
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Promise Combinators: Running Promises in Parallel</h4>
          <ul>
-           <li><strong>.then():</strong> Handle successful completion</li>
-           <li><strong>.catch():</strong> Handle errors</li>
-           <li><strong>.finally():</strong> Execute regardless of outcome</li>
-           <li><strong>Promise.all():</strong> Wait for all promises</li>
+           <li><strong><code>Promise.all()</code>:</strong> Fulfills when all promises fulfill. Rejects if any promise rejects.</li>
+           <li><strong><code>Promise.allSettled()</code>:</strong> Fulfills when all promises settle (fulfill or reject). Never rejects.</li>
+           <li><strong><code>Promise.race()</code>:</strong> Settles as soon as the first promise settles.</li>
+           <li><strong><code>Promise.any()</code>:</strong> Fulfills as soon as the first promise fulfills. Rejects only if all promises reject.</li>
+         </ul>
+         
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">async function fetchMultipleResources() {
+  try {
+    const [user, posts, comments] = await Promise.all([
+      fetchData('/api/user/1'),
+      fetchData('/api/posts/1'),
+      fetchData('/api/comments/1')
+    ]);
+    console.log('All resources fetched concurrently:', { user, posts, comments });
+  } catch (error) {
+    console.error('One of the requests failed:', error.message);
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Common Pitfalls:</h4>
+         <ul>
+           <li><strong>Forgetting <code>await</code>:</strong> The function will continue without waiting for the promise, often leading to race conditions.</li>
+           <li><strong>Uncaught promise rejections:</strong> Forgetting a <code>.catch()</code> block or a <code>try/catch</code> around <code>await</code>.</li>
+           <li><strong>Mixing <code>.then()</code> and <code>await</code>:</strong> Can lead to confusing and hard-to-read code. Stick to one style per function.</li>
+           <li><strong>Sequential <code>await</code>s instead of <code>Promise.all()</code>:</strong> Fetching independent resources one by one is much slower than fetching them concurrently.</li>
          </ul>
        `,
       question: {
-        type: "click-code",
+        type: "drag-drop-code",
         question:
-          "Click on the lines that will execute if the promise is rejected:",
-        codeLines: [
-          'fetch("/api/data")',
-          "  .then(response => response.json())",
-          '  .then(data => console.log("Success:", data))',
-          '  .catch(error => console.log("Error:", error))',
-          '  .finally(() => console.log("Done"));',
+          "You need to fetch user data and their posts concurrently. Arrange the `async/await` code to do this efficiently and safely.",
+        codeBlocks: [
+          "async function getUserProfile(userId: string) {",
+          "try {",
+          "const [user, posts] = await Promise.all([",
+          "  fetchUserData(userId),",
+          "  fetchUserPosts(userId)",
+          "]);",
+          "console.log('User:', user, 'Posts:', posts);",
+          "} catch (error) {",
+          "console.error('Failed to fetch profile:', error);",
+          "}",
+          "}",
         ],
-        correctLines: [3, 4],
-        multiSelect: true,
+        correctOrder: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         explanation:
-          "When a promise is rejected, .catch() handles the error and .finally() always executes.",
+          "The most efficient and safest way is to wrap concurrent `Promise.all` calls within a `try/catch` block. This allows you to fetch independent resources in parallel and handle any potential failures from either request in a single, clean error-handling block.",
       } as Question,
     },
 

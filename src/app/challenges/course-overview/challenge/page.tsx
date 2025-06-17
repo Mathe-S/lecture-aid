@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import hljs from "highlight.js";
+import "highlight.js/styles/tokyo-night-dark.css";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -114,6 +116,12 @@ export default function CourseOverviewChallengePage() {
       }
     }
   }, [user]);
+
+  useEffect(() => {
+    // This effect will run whenever the current step changes,
+    // ensuring that new code blocks are highlighted.
+    hljs.highlightAll();
+  }, [currentStep]);
 
   const saveProgress = (updatedProgress: ChallengeProgress) => {
     if (user) {
