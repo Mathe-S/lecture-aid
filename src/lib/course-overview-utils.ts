@@ -273,25 +273,23 @@ export function getStepContent(stepId: string) {
           <li><strong>Map:</strong> Key-value associations</li>
         </ul>
 
-        <h4>Stack ADT Example:</h4>
-        <div class="bg-gray-100 p-4 rounded-lg mt-4">
-          <pre><code>interface Stack<T> {
-    push(item: T): void;
-    pop(): T;
-    peek(): T;
-    isEmpty(): boolean;
-    size(): number;
-}</code></pre>
-        </div>
+        <h4>Priority Queue Challenge:</h4>
+        <p>A Priority Queue is an ADT where elements are served based on priority, not insertion order. Unlike a regular queue (FIFO), the highest priority element is always removed first.</p>
       `,
-      question:
-        "Design the interface for a Priority Queue ADT. What operations should it provide?",
-      correctAnswer: "insert with priority, removeMax, peekMax, isEmpty, size",
-      hints: [
-        "Think about what makes a priority queue different from a regular queue",
-        "Consider operations for adding elements with priorities",
-        "What operations would clients need to inspect or remove elements?",
-      ],
+      question: {
+        type: "multiple-choice",
+        question:
+          "Which operations are ESSENTIAL for a Priority Queue ADT interface?",
+        options: [
+          "push(), pop(), peek(), isEmpty(), size()",
+          "insert(), removeMax(), peekMax(), isEmpty(), size()",
+          "add(), remove(), contains(), iterator(), clear()",
+          "enqueue(), dequeue(), front(), back(), length()",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "A Priority Queue needs: insert() to add elements with priority, removeMax() to get the highest priority element, peekMax() to view the highest priority without removing it, isEmpty() to check if empty, and size() to get the count. Unlike regular queues that use enqueue/dequeue, priority queues focus on priority-based operations.",
+      } as Question,
     },
 
     "abstraction-functions-rep-invariants": {
