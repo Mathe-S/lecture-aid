@@ -600,37 +600,105 @@ synchronized void increment() {
       title: "Recursive Data Types",
       description: "Understanding and implementing recursive data structures.",
       content: `
-         <h3>Recursive Data Types</h3>
-         <p>Recursive data types are defined in terms of themselves, enabling elegant solutions for tree-like structures.</p>
+         <p>Recursive data types are defined in terms of themselves, creating powerful abstractions for hierarchical and self-similar data structures. They form the foundation of many algorithms and data structures in computer science.</p>
          
-         <h4>Common Examples:</h4>
+         <br />
+         <h4>Definition & Structure:</h4>
+         <p>A recursive data type consists of:</p>
          <ul>
-           <li><strong>Binary Trees:</strong> Each node has left and right subtrees</li>
-           <li><strong>Linked Lists:</strong> Each node points to the next node</li>
-           <li><strong>Expression Trees:</strong> Mathematical expressions as trees</li>
+           <li><strong>Base case:</strong> Simple, non-recursive variant that terminates recursion</li>
+           <li><strong>Recursive case:</strong> Contains references to the same type, enabling infinite composition</li>
+           <li><strong>Type safety:</strong> TypeScript ensures structural integrity at compile time</li>
          </ul>
 
-         <h4>Key Principles:</h4>
+         <br />
+         <h4>TypeScript Implementation Examples:</h4>
+         
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>// Binary Tree - Classic recursive structure
+interface TreeNode&lt;T&gt; {
+  value: T;
+  left: TreeNode&lt;T&gt; | null;   // Recursive reference
+  right: TreeNode&lt;T&gt; | null;  // Recursive reference
+}
+
+// Linked List - Linear recursive structure  
+interface ListNode&lt;T&gt; {
+  data: T;
+  next: ListNode&lt;T&gt; | null;  // Recursive reference
+}
+
+// Expression Tree - For mathematical expressions
+type Expression = 
+  | { type: 'number'; value: number }           // Base case
+  | { type: 'binary'; op: '+' | '-' | '*' | '/'; // Recursive case
+      left: Expression; right: Expression };</code></pre>
+         </div>
+
+         <br />
+         <h4>Common Recursive Patterns:</h4>
          <ul>
-           <li>Base case: Simple, non-recursive case</li>
-           <li>Recursive case: References to the same type</li>
-           <li>Structural recursion: Process follows data structure</li>
+           <li><strong>Trees:</strong> Binary trees, n-ary trees, syntax trees</li>
+           <li><strong>Lists:</strong> Linked lists, nested lists</li>
+           <li><strong>Graphs:</strong> Directed acyclic graphs, parse trees</li>
+           <li><strong>Algebraic Types:</strong> Sum types, product types</li>
+         </ul>
+
+         <br />
+         <h4>Processing Recursive Data:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>// Structural recursion follows data structure
+function treeHeight&lt;T&gt;(node: TreeNode&lt;T&gt; | null): number {
+  if (node === null) return 0;              // Base case
+  
+  const leftHeight = treeHeight(node.left);   // Recursive call
+  const rightHeight = treeHeight(node.right); // Recursive call
+  
+  return 1 + Math.max(leftHeight, rightHeight);
+}
+
+// Pattern matching with union types
+function evaluateExpression(expr: Expression): number {
+  switch (expr.type) {
+    case 'number':
+      return expr.value;                     // Base case
+    case 'binary':
+      const left = evaluateExpression(expr.left);   // Recursion
+      const right = evaluateExpression(expr.right); // Recursion
+      
+      switch (expr.op) {
+        case '+': return left + right;
+        case '-': return left - right;
+        case '*': return left * right;
+        case '/': return left / right;
+      }
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Benefits of Recursive Data Types:</h4>
+         <ul>
+           <li><strong>Natural representation:</strong> Mirrors problem structure</li>
+           <li><strong>Composability:</strong> Easy to build complex from simple</li>
+           <li><strong>Elegant algorithms:</strong> Recursive processing matches data</li>
+           <li><strong>Type safety:</strong> Compiler catches structural errors</li>
          </ul>
        `,
       question: {
         type: "drag-drop-code",
         question:
-          "Arrange the binary tree traversal code in the correct order:",
+          "Arrange the TypeScript binary tree in-order traversal code in the correct order:",
         codeBlocks: [
-          "if (node == null) return;",
+          "if (node === null) return;",
           "traverseInOrder(node.left);",
-          "System.out.println(node.data);",
+          "console.log(node.value);",
           "traverseInOrder(node.right);",
-          "public void traverseInOrder(TreeNode node) {",
+          "function traverseInOrder<T>(node: TreeNode<T> | null): void {",
         ],
         correctOrder: [4, 0, 1, 2, 3],
         explanation:
-          "In-order traversal: method signature → null check → left subtree → process node → right subtree",
+          "In-order traversal in TypeScript: function signature with generics → null check → left subtree → process current node → right subtree. This pattern visits nodes in sorted order for binary search trees.",
       } as Question,
     },
 
