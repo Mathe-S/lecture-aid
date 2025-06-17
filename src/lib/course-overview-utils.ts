@@ -1964,79 +1964,493 @@ class MessageQueue {
 
     "little-languages": {
       title: "Little Languages",
-      description: "Domain-specific languages and language design principles.",
+      description:
+        "Domain-specific languages and modern DSL design principles.",
       content: `
-         <h3>Little Languages</h3>
-         <p>Little languages (DSLs) are specialized languages designed for specific problem domains.</p>
+         <p><strong>Little Languages</strong> (Domain-Specific Languages or DSLs) are specialized programming languages designed to solve problems in specific domains with greater expressiveness and simplicity than general-purpose languages. They represent one of the most powerful abstractions in software engineering, enabling domain experts to work directly with concepts from their field.</p>
          
-         <h4>Types of DSLs:</h4>
+         <br />
+         <h4>DSL Categories & Design Approaches:</h4>
          <ul>
-           <li><strong>Internal DSL:</strong> Embedded in host language</li>
-           <li><strong>External DSL:</strong> Standalone language with parser</li>
-           <li><strong>Configuration languages:</strong> JSON, YAML, XML</li>
-           <li><strong>Query languages:</strong> SQL, GraphQL</li>
+           <li><strong>Internal DSLs (Embedded):</strong> Built within a host language using its syntax and semantics</li>
+           <li><strong>External DSLs (Standalone):</strong> Independent languages with custom syntax and dedicated parsers</li>
+           <li><strong>Fluent Interfaces:</strong> Method chaining that reads like natural language</li>
+           <li><strong>Configuration DSLs:</strong> Declarative languages for system configuration</li>
+           <li><strong>Template DSLs:</strong> Languages for generating text, code, or markup</li>
+           <li><strong>Query DSLs:</strong> Languages for data retrieval and manipulation</li>
          </ul>
 
-         <h4>Design Principles:</h4>
+         <br />
+         <h4>Internal DSL Implementation in TypeScript:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// Fluent API for Building SQL Queries
+class QueryBuilder {
+  private selectClause = '';
+  private fromClause = '';
+  private whereConditions: string[] = [];
+  private joinClauses: string[] = [];
+  private orderByClause = '';
+  private limitClause = '';
+  
+  select(...columns: string[]): QueryBuilder {
+    this.selectClause = columns.length > 0 ? columns.join(', ') : '*';
+    return this;
+  }
+  
+  from(table: string): QueryBuilder {
+    this.fromClause = table;
+    return this;
+  }
+  
+  where(condition: string): QueryBuilder {
+    this.whereConditions.push(condition);
+    return this;
+  }
+  
+  and(condition: string): QueryBuilder {
+    if (this.whereConditions.length === 0) {
+      throw new Error('Cannot use AND without a WHERE clause');
+    }
+    this.whereConditions.push(\`AND \${condition}\`);
+    return this;
+  }
+  
+  or(condition: string): QueryBuilder {
+    if (this.whereConditions.length === 0) {
+      throw new Error('Cannot use OR without a WHERE clause');
+    }
+    this.whereConditions.push(\`OR \${condition}\`);
+    return this;
+  }
+  
+  join(table: string, condition: string): QueryBuilder {
+    this.joinClauses.push(\`JOIN \${table} ON \${condition}\`);
+    return this;
+  }
+  
+  leftJoin(table: string, condition: string): QueryBuilder {
+    this.joinClauses.push(\`LEFT JOIN \${table} ON \${condition}\`);
+    return this;
+  }
+  
+  orderBy(column: string, direction: 'ASC' | 'DESC' = 'ASC'): QueryBuilder {
+    this.orderByClause = \`ORDER BY \${column} \${direction}\`;
+    return this;
+  }
+  
+  limit(count: number): QueryBuilder {
+    this.limitClause = \`LIMIT \${count}\`;
+    return this;
+  }
+  
+  build(): string {
+    if (!this.selectClause || !this.fromClause) {
+      throw new Error('SELECT and FROM clauses are required');
+    }
+    
+    const parts = [
+      \`SELECT \${this.selectClause}\`,
+      \`FROM \${this.fromClause}\`,
+      ...this.joinClauses,
+      this.whereConditions.length > 0 ? \`WHERE \${this.whereConditions.join(' ')}\` : '',
+      this.orderByClause,
+      this.limitClause
+    ].filter(Boolean);
+    
+    return parts.join(' ');
+  }
+}
+
+// Usage: Reads like natural language
+const query = new QueryBuilder()
+  .select('users.name', 'profiles.bio', 'posts.title')
+  .from('users')
+  .leftJoin('profiles', 'users.id = profiles.user_id')
+  .join('posts', 'users.id = posts.author_id')
+  .where('users.active = true')
+  .and('posts.published_at IS NOT NULL')
+  .orderBy('posts.created_at', 'DESC')
+  .limit(10)
+  .build();
+
+console.log(query);
+// Output: SELECT users.name, profiles.bio, posts.title FROM users 
+//         LEFT JOIN profiles ON users.id = profiles.user_id 
+//         JOIN posts ON users.id = posts.author_id 
+//         WHERE users.active = true AND posts.published_at IS NOT NULL 
+//         ORDER BY posts.created_at DESC LIMIT 10</code></pre>
+         </div>
+
+         <br />
+         <h4>External DSL: Custom Configuration Language:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// Custom DSL for API Route Configuration
+interface Route {
+  path: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  handler: string;
+  middleware: string[];
+  rateLimit?: { requests: number; window: string };
+  auth?: boolean;
+}
+
+interface ApiConfig {
+  baseUrl: string;
+  version: string;
+  routes: Route[];
+  middleware: Record<string, any>;
+}
+
+// DSL Parser for route configuration
+class RouteDSLParser {
+  private tokens: string[] = [];
+  private current = 0;
+  
+  parse(dsl: string): ApiConfig {
+    this.tokens = this.tokenize(dsl);
+    this.current = 0;
+    
+    return this.parseConfig();
+  }
+  
+  private tokenize(input: string): string[] {
+    // Simple tokenizer - in production, use a proper lexer
+    return input
+      .replace(/[{}();]/g, ' $& ')
+      .split(/\s+/)
+      .filter(token => token.trim().length > 0);
+  }
+  
+  private parseConfig(): ApiConfig {
+    const config: Partial<ApiConfig> = {
+      routes: [],
+      middleware: {}
+    };
+    
+    while (this.current < this.tokens.length) {
+      const token = this.tokens[this.current];
+      
+      if (token === 'api') {
+        this.advance(); // skip 'api'
+        config.baseUrl = this.expectString();
+        config.version = this.expectString();
+      } else if (token === 'route') {
+        config.routes!.push(this.parseRoute());
+      } else if (token === 'middleware') {
+        this.parseMiddleware(config.middleware!);
+      } else {
+        this.advance();
+      }
+    }
+    
+    return config as ApiConfig;
+  }
+  
+  private parseRoute(): Route {
+    this.advance(); // skip 'route'
+    
+    const path = this.expectString();
+    const method = this.expectString() as Route['method'];
+    
+    this.expect('{');
+    
+    const route: Partial<Route> = {
+      path,
+      method,
+      middleware: []
+    };
+    
+    while (this.current < this.tokens.length && this.tokens[this.current] !== '}') {
+      const key = this.advance();
+      
+      switch (key) {
+        case 'handler':
+          route.handler = this.expectString();
+          break;
+        case 'middleware':
+          route.middleware = this.parseArray();
+          break;
+        case 'auth':
+          route.auth = this.expectBoolean();
+          break;
+        case 'rateLimit':
+          route.rateLimit = this.parseRateLimit();
+          break;
+        default:
+          this.advance(); // skip unknown tokens
+      }
+    }
+    
+    this.expect('}');
+    return route as Route;
+  }
+  
+  private parseRateLimit(): { requests: number; window: string } {
+    this.expect('(');
+    const requests = parseInt(this.advance());
+    const window = this.expectString();
+    this.expect(')');
+    
+    return { requests, window };
+  }
+  
+  private parseArray(): string[] {
+    this.expect('[');
+    const items: string[] = [];
+    
+    while (this.current < this.tokens.length && this.tokens[this.current] !== ']') {
+      items.push(this.expectString());
+    }
+    
+    this.expect(']');
+    return items;
+  }
+  
+  private parseMiddleware(middleware: Record<string, any>): void {
+    this.advance(); // skip 'middleware'
+    const name = this.expectString();
+    
+    this.expect('{');
+    const config: any = {};
+    
+    while (this.current < this.tokens.length && this.tokens[this.current] !== '}') {
+      const key = this.advance();
+      const value = this.advance();
+      config[key] = this.parseValue(value);
+    }
+    
+    this.expect('}');
+    middleware[name] = config;
+  }
+  
+  private parseValue(value: string): any {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    if (/^\d+$/.test(value)) return parseInt(value);
+    if (/^\d+\.\d+$/.test(value)) return parseFloat(value);
+    return value.replace(/['"]/g, ''); // remove quotes
+  }
+  
+  private advance(): string {
+    return this.tokens[this.current++];
+  }
+  
+  private expect(expected: string): void {
+    const token = this.advance();
+    if (token !== expected) {
+      throw new Error(\`Expected '\${expected}' but got '\${token}'\`);
+    }
+  }
+  
+  private expectString(): string {
+    const token = this.advance();
+    return token.replace(/['"]/g, ''); // remove quotes
+  }
+  
+  private expectBoolean(): boolean {
+    const token = this.advance();
+    if (token === 'true') return true;
+    if (token === 'false') return false;
+    throw new Error(\`Expected boolean but got '\${token}'\`);
+  }
+}
+
+// Example DSL usage:
+const dslCode = \`
+  api "https://api.example.com" "v1"
+  
+  middleware "cors" {
+    origin "*"
+    methods ["GET", "POST", "PUT", "DELETE"]
+  }
+  
+  middleware "auth" {
+    secret "jwt-secret-key"
+    expiry "24h"
+  }
+  
+  route "/users" GET {
+    handler "getUsersHandler"
+    middleware ["cors"]
+  }
+  
+  route "/users" POST {
+    handler "createUserHandler"
+    middleware ["cors", "auth"]
+    rateLimit (100 "1h")
+  }
+  
+  route "/users/:id" PUT {
+    handler "updateUserHandler"
+    middleware ["cors", "auth"]
+    auth true
+  }
+\`;
+
+const parser = new RouteDSLParser();
+const config = parser.parse(dslCode);
+console.log(JSON.stringify(config, null, 2));</code></pre>
+         </div>
+
+         <br />
+         <h4>Template DSL: Code Generation:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// Template DSL for generating TypeScript interfaces
+class TypeScriptGenerator {
+  private indentLevel = 0;
+  
+  generateInterface(name: string, fields: Array<{name: string, type: string, optional?: boolean}>): string {
+    const lines = [];
+    lines.push(\`export interface \${name} {\`);
+    
+    this.indent();
+    for (const field of fields) {
+      const optional = field.optional ? '?' : '';
+      lines.push(\`\${this.getIndent()}\${field.name}\${optional}: \${field.type};\`);
+    }
+    this.dedent();
+    
+    lines.push(\`\${this.getIndent()}}\`);
+    return lines.join('\\n');
+  }
+  
+  generateClass(name: string, fields: Array<{name: string, type: string, access?: 'public' | 'private' | 'protected'}>): string {
+    const lines = [];
+    lines.push(\`export class \${name} {\`);
+    
+    this.indent();
+    
+    // Constructor
+    const constructorParams = fields.map(f => \`\${f.name}: \${f.type}\`).join(', ');
+    lines.push(\`\${this.getIndent()}constructor(\${constructorParams}) {\`);
+    
+    this.indent();
+    for (const field of fields) {
+      lines.push(\`\${this.getIndent()}this.\${field.name} = \${field.name};\`);
+    }
+    this.dedent();
+    
+    lines.push(\`\${this.getIndent()}}\`);
+    lines.push('');
+    
+    // Fields
+    for (const field of fields) {
+      const access = field.access || 'public';
+      lines.push(\`\${this.getIndent()}\${access} \${field.name}: \${field.type};\`);
+    }
+    
+    this.dedent();
+    lines.push(\`\${this.getIndent()}}\`);
+    
+    return lines.join('\\n');
+  }
+  
+  private indent(): void {
+    this.indentLevel++;
+  }
+  
+  private dedent(): void {
+    this.indentLevel = Math.max(0, this.indentLevel - 1);
+  }
+  
+  private getIndent(): string {
+    return '  '.repeat(this.indentLevel);
+  }
+}
+
+// Usage
+const generator = new TypeScriptGenerator();
+
+const userInterface = generator.generateInterface('User', [
+  { name: 'id', type: 'number' },
+  { name: 'name', type: 'string' },
+  { name: 'email', type: 'string' },
+  { name: 'avatar', type: 'string', optional: true }
+]);
+
+const userClass = generator.generateClass('UserModel', [
+  { name: 'id', type: 'number', access: 'private' },
+  { name: 'name', type: 'string', access: 'public' },
+  { name: 'email', type: 'string', access: 'public' }
+]);
+
+console.log(userInterface);
+console.log('\\n' + userClass);</code></pre>
+         </div>
+
+         <br />
+         <h4>Modern DSL Examples in Practice:</h4>
          <ul>
-           <li><strong>Domain focus:</strong> Tailored to specific problem</li>
-           <li><strong>Simplicity:</strong> Easy to learn and use</li>
-           <li><strong>Expressiveness:</strong> Natural problem representation</li>
-           <li><strong>Tool support:</strong> IDE integration and debugging</li>
+           <li><strong>CSS:</strong> Styling DSL for web presentation</li>
+           <li><strong>SQL:</strong> Declarative query language for databases</li>
+           <li><strong>GraphQL:</strong> Query language for APIs with type system</li>
+           <li><strong>Dockerfile:</strong> Container configuration DSL</li>
+           <li><strong>Terraform:</strong> Infrastructure as Code DSL</li>
+           <li><strong>React JSX:</strong> Template DSL embedded in JavaScript</li>
+           <li><strong>CSS-in-JS:</strong> Styled-components, Emotion</li>
+           <li><strong>Build Tools:</strong> Webpack, Vite configuration DSLs</li>
+           <li><strong>Testing DSLs:</strong> Jest, Cypress, Playwright</li>
+           <li><strong>ORM Query Builders:</strong> Prisma, TypeORM, Sequelize</li>
+         </ul>
+
+         <br />
+         <h4>DSL Design Principles:</h4>
+         <ul>
+           <li><strong>Domain Focus:</strong> Solve specific problems in a particular domain</li>
+           <li><strong>Expressiveness:</strong> Allow natural expression of domain concepts</li>
+           <li><strong>Simplicity:</strong> Easy to learn for domain experts</li>
+           <li><strong>Consistency:</strong> Predictable syntax and semantics</li>
+           <li><strong>Composability:</strong> Small pieces combine to create complex behavior</li>
+           <li><strong>Error Handling:</strong> Clear, domain-specific error messages</li>
+           <li><strong>Tool Support:</strong> IDE integration, syntax highlighting, debugging</li>
+           <li><strong>Documentation:</strong> Examples and tutorials for domain users</li>
+         </ul>
+
+         <br />
+         <h4>Implementation Strategies:</h4>
+         <ul>
+           <li><strong>Parser Combinators:</strong> Functional approach to parsing</li>
+           <li><strong>ANTLR/PEG:</strong> Grammar-based parser generators</li>
+           <li><strong>Fluent Interfaces:</strong> Method chaining in host language</li>
+           <li><strong>Template Engines:</strong> Text transformation with placeholders</li>
+           <li><strong>AST Transformation:</strong> Compile to host language AST</li>
+           <li><strong>Interpreter Pattern:</strong> Direct execution of DSL constructs</li>
+         </ul>
+
+         <br />
+         <h4>Benefits & Trade-offs:</h4>
+         <p><strong>Benefits:</strong></p>
+         <ul>
+           <li>Higher productivity for domain experts</li>
+           <li>Reduced cognitive load and learning curve</li>
+           <li>Better maintainability and readability</li>
+           <li>Domain-specific optimizations possible</li>
+           <li>Fewer bugs through domain constraints</li>
+         </ul>
+         
+         <p><strong>Trade-offs:</strong></p>
+         <ul>
+           <li>Development cost of creating the DSL</li>
+           <li>Limited scope compared to general-purpose languages</li>
+           <li>Tool support may be limited initially</li>
+           <li>Learning curve for DSL-specific concepts</li>
+           <li>Potential for feature creep and complexity</li>
          </ul>
        `,
       question: {
-        type: "multiple-choice",
+        type: "drag-drop-code",
         question:
-          "What is the main advantage of a Domain-Specific Language (DSL)?",
-        options: [
-          "It runs faster than general-purpose languages",
-          "It can solve any programming problem",
-          "It provides natural expression for domain problems",
-          "It requires no learning curve",
+          "Arrange the DSL implementation steps in the correct order for creating a fluent query builder:",
+        codeBlocks: [
+          "return this; // Enable method chaining",
+          "class QueryBuilder {",
+          "build(): string { // Generate final output",
+          "select(...columns: string[]): QueryBuilder {",
+          "private selectClause = ''; // Store state",
         ],
-        correctAnswer: 2,
+        correctOrder: [1, 4, 3, 0, 2],
         explanation:
-          "DSLs excel at providing natural, expressive ways to solve problems in their specific domain.",
-      } as Question,
-    },
-
-    "software-construction-review": {
-      title: "Software Construction Review",
-      description: "Comprehensive review of software engineering principles.",
-      content: `
-         <h3>Software Construction Review</h3>
-         <p>Let's review the key principles that make software robust, maintainable, and reliable.</p>
-         
-         <h4>Core Principles:</h4>
-         <ul>
-           <li><strong>Modularity:</strong> Break complex systems into manageable parts</li>
-           <li><strong>Abstraction:</strong> Hide implementation details behind clean interfaces</li>
-           <li><strong>Testing:</strong> Verify correctness through systematic testing</li>
-           <li><strong>Documentation:</strong> Clear specifications and comments</li>
-         </ul>
-
-         <h4>Quality Attributes:</h4>
-         <ul>
-           <li><strong>Correctness:</strong> Does what it's supposed to do</li>
-           <li><strong>Robustness:</strong> Handles unexpected situations gracefully</li>
-           <li><strong>Maintainability:</strong> Easy to modify and extend</li>
-           <li><strong>Performance:</strong> Efficient use of resources</li>
-         </ul>
-       `,
-      question: {
-        type: "multiple-choice",
-        question:
-          "Which principle is most important for long-term software maintenance?",
-        options: [
-          "Writing the fastest possible code",
-          "Using the latest programming language features",
-          "Creating clear abstractions and interfaces",
-          "Minimizing the number of files in the project",
-        ],
-        correctAnswer: 2,
-        explanation:
-          "Clear abstractions and interfaces make software easier to understand, modify, and maintain over time.",
+          "DSL implementation follows this pattern: (1) Define class with state storage, (2) Store internal state in private fields, (3) Create fluent methods that modify state, (4) Return 'this' to enable method chaining, (5) Provide build/execute method to generate final result. This pattern is fundamental to creating readable, chainable APIs that feel like domain-specific languages while leveraging the host language's type system and tooling.",
       } as Question,
     },
   };
