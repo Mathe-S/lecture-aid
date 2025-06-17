@@ -31,6 +31,16 @@ const challengesData: Challenge[] = [
     isLocked: false,
     completionRate: 0,
   },
+  {
+    id: "course-overview",
+    title: "Course Overview",
+    description:
+      "Comprehensive review of Introduction To Software Engineering. 20 in-depth topics covering everything from static checking to little languages.",
+    points: 50,
+    isCompleted: false,
+    isLocked: false,
+    completionRate: 0,
+  },
   // Placeholder for future challenges
   {
     id: "coming-soon-1",
