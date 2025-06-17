@@ -337,39 +337,67 @@ export function getStepContent(stepId: string) {
       description: "Understanding interfaces and subtype relationships.",
       content: `
          <h3>Interfaces & Subtyping</h3>
-         <p>Interfaces define contracts that classes must implement, enabling polymorphism.</p>
-         
+         <p>Interfaces define contracts that classes must implement, enabling polymorphism. The <strong>Liskov Substitution Principle (LSP)</strong> ensures that objects of a superclass can be replaced with objects of a subclass without breaking the application.</p>
+         <br />
          <h4>Key Concepts:</h4>
          <ul>
-           <li><strong>Interface:</strong> Contract specifying methods a class must implement</li>
-           <li><strong>Subtyping:</strong> Relationship where one type can substitute for another</li>
-           <li><strong>Liskov Substitution Principle:</strong> Subtypes must be substitutable for their base types</li>
+           <li><strong>Interface Contract:</strong> Defines what methods must be implemented and their expected behavior</li>
+           <li><strong>Substitutability:</strong> Subclasses must work wherever the parent class is used</li>
+           <li><strong>LSP Rule:</strong> "Objects should be replaceable with instances of their subtypes without altering program correctness"</li>
          </ul>
-
-         <h4>Example:</h4>
-         <div class="bg-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>interface Shape {
-    double area();
-    double perimeter();
-}
-
-class Circle implements Shape {
-    private double radius;
-    
-    public double area() { return Math.PI * radius * radius; }
-    public double perimeter() { return 2 * Math.PI * radius; }
-}</code></pre>
-         </div>
+         <br />
+         <h4>Real-World LSP Violation:</h4>
+         <p>Below is code where a Square class extends Rectangle. The client code expects to resize any Rectangle, but Square breaks this expectation by throwing exceptions. Click on the line that violates LSP:</p>
        `,
-      question:
-        "Explain why this violates the Liskov Substitution Principle: A Square class that throws an exception when width != height in setWidth().",
-      correctAnswer:
-        "violates LSP because Square cannot substitute Rectangle, breaks expected behavior",
-      hints: [
-        "Think about what clients expect from a Rectangle",
-        "Consider what happens when Square is used where Rectangle is expected",
-        "LSP requires subtypes to strengthen postconditions, not add restrictions",
-      ],
+      question: {
+        type: "click-code",
+        question:
+          "Click on the line that violates the Liskov Substitution Principle:",
+        codeLines: [
+          "class Rectangle {",
+          "  protected width: number;",
+          "  protected height: number;",
+          "",
+          "  setWidth(w: number): void {",
+          "    this.width = w;",
+          "  }",
+          "",
+          "  setHeight(h: number): void {",
+          "    this.height = h;",
+          "  }",
+          "",
+          "  getArea(): number {",
+          "    return this.width * this.height;",
+          "  }",
+          "}",
+          "",
+          "class Square extends Rectangle {",
+          "  setWidth(w: number): void {",
+          "    if (w !== this.height) {",
+          "      throw new Error('Square sides must be equal');",
+          "    }",
+          "    this.width = w;",
+          "  }",
+          "",
+          "  setHeight(h: number): void {",
+          "    if (h !== this.width) {",
+          "      throw new Error('Square sides must be equal');",
+          "    }",
+          "    this.height = h;",
+          "  }",
+          "}",
+          "",
+          "// Client code that breaks with Square:",
+          "function resizeRectangle(rect: Rectangle): void {",
+          "  rect.setWidth(10);  // This throws error if rect is a Square!",
+          "  rect.setHeight(5);",
+          "}",
+        ],
+        correctLines: [19, 26],
+        multiSelect: true,
+        explanation:
+          "Lines 20 and 27 violate LSP by throwing errors that the parent Rectangle class doesn't throw. Client code expects to call setWidth() and setHeight() on any Rectangle without errors. The Square class breaks this contract by adding preconditions (width must equal height) that don't exist in Rectangle. This means Square cannot substitute for Rectangle in existing code - a clear LSP violation. Better design: use composition or separate interfaces for mutable vs immutable shapes.",
+      } as Question,
     },
 
     "functional-programming": {
