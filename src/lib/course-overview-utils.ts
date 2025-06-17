@@ -1570,40 +1570,395 @@ class TodoController {
 
     "message-passing-networking": {
       title: "Message-Passing & Networking",
-      description: "Communication between distributed systems and processes.",
+      description:
+        "Modern distributed systems communication and networking protocols.",
       content: `
-         <h3>Message-Passing & Networking</h3>
-         <p>Message-passing enables communication between separate processes or systems.</p>
+         <p>Message-passing is the fundamental mechanism that enables <strong>distributed systems</strong> to communicate, coordinate, and share data across networks. Modern applications rely on sophisticated networking protocols and patterns to achieve scalability, reliability, and performance in distributed environments.</p>
          
-         <h4>Communication Models:</h4>
+         <br />
+         <h4>Message-Passing Paradigms:</h4>
+         <p>Different communication patterns serve different architectural needs:</p>
          <ul>
-           <li><strong>Synchronous:</strong> Sender waits for receiver</li>
-           <li><strong>Asynchronous:</strong> Sender continues immediately</li>
-           <li><strong>Request-Response:</strong> Two-way communication</li>
-           <li><strong>Publish-Subscribe:</strong> Many-to-many messaging</li>
+           <li><strong>Synchronous Communication:</strong> Sender blocks until receiver responds (RPC, HTTP request-response)</li>
+           <li><strong>Asynchronous Communication:</strong> Sender continues immediately, no blocking (message queues, events)</li>
+           <li><strong>Request-Response:</strong> Traditional client-server interaction with acknowledgment</li>
+           <li><strong>Publish-Subscribe:</strong> Decoupled many-to-many messaging via message brokers</li>
+           <li><strong>Message Queues:</strong> Reliable delivery with persistence and retry mechanisms</li>
+           <li><strong>Event Streaming:</strong> Continuous data flow processing (Apache Kafka, AWS Kinesis)</li>
          </ul>
 
-         <h4>Network Protocols:</h4>
+         <br />
+         <h4>Network Protocol Stack:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// Modern HTTP Client Implementation
+class HttpClient {
+  private baseURL: string;
+  private defaultHeaders: Record<string, string>;
+  
+  constructor(baseURL: string, defaultHeaders: Record<string, string> = {}) {
+    this.baseURL = baseURL;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...defaultHeaders
+    };
+  }
+  
+  async request<T>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    endpoint: string,
+    data?: any,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = \`\${this.baseURL}\${endpoint}\`;
+    
+    const config: RequestInit = {
+      method,
+      headers: {
+        ...this.defaultHeaders,
+        ...options.headers
+      },
+      ...options
+    };
+    
+    if (data && ['POST', 'PUT'].includes(method)) {
+      config.body = JSON.stringify(data);
+    }
+    
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        throw new HttpError(
+          \`HTTP \${response.status}: \${response.statusText}\`,
+          response.status,
+          response.statusText
+        );
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        return await response.json();
+      }
+      
+      return await response.text() as unknown as T;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new NetworkError('Network request failed', error);
+    }
+  }
+  
+  // Convenience methods
+  get<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.request<T>('GET', endpoint, undefined, options);
+  }
+  
+  post<T>(endpoint: string, data: any, options?: RequestInit): Promise<T> {
+    return this.request<T>('POST', endpoint, data, options);
+  }
+}
+
+class HttpError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public statusText: string
+  ) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}
+
+class NetworkError extends Error {
+  constructor(message: string, public cause: any) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>WebSocket Real-Time Communication:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// WebSocket Client with Reconnection Logic
+class WebSocketClient {
+  private ws: WebSocket | null = null;
+  private url: string;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000;
+  private messageQueue: string[] = [];
+  private eventListeners: Map<string, Function[]> = new Map();
+  
+  constructor(url: string) {
+    this.url = url;
+    this.connect();
+  }
+  
+  private connect(): void {
+    try {
+      this.ws = new WebSocket(this.url);
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+        this.reconnectAttempts = 0;
+        this.flushMessageQueue();
+        this.emit('connected');
+      };
+      
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.emit('message', data);
+          
+          // Handle specific message types
+          if (data.type) {
+            this.emit(data.type, data.payload);
+          }
+        } catch (error) {
+          console.error('Failed to parse WebSocket message:', error);
+        }
+      };
+      
+      this.ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        this.emit('disconnected', { code: event.code, reason: event.reason });
+        
+        // Attempt reconnection if not a clean close
+        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.scheduleReconnect();
+        }
+      };
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.emit('error', error);
+      };
+      
+    } catch (error) {
+      console.error('Failed to create WebSocket:', error);
+      this.scheduleReconnect();
+    }
+  }
+  
+  private scheduleReconnect(): void {
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(\`Reconnecting in \${delay}ms (attempt \${this.reconnectAttempts})\`);
+    
+    setTimeout(() => {
+      this.connect();
+    }, delay);
+  }
+  
+  send(message: any): void {
+    const jsonMessage = JSON.stringify(message);
+    
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(jsonMessage);
+    } else {
+      // Queue message for when connection is restored
+      this.messageQueue.push(jsonMessage);
+    }
+  }
+  
+  private flushMessageQueue(): void {
+    while (this.messageQueue.length > 0 && this.ws?.readyState === WebSocket.OPEN) {
+      const message = this.messageQueue.shift()!;
+      this.ws.send(message);
+    }
+  }
+  
+  on(event: string, callback: Function): void {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, []);
+    }
+    this.eventListeners.get(event)!.push(callback);
+  }
+  
+  private emit(event: string, data?: any): void {
+    const callbacks = this.eventListeners.get(event) || [];
+    callbacks.forEach(callback => callback(data));
+  }
+  
+  close(): void {
+    this.ws?.close(1000, 'Client closing connection');
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Message Queue Pattern:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// Simple Message Queue Implementation
+interface Message {
+  id: string;
+  type: string;
+  payload: any;
+  timestamp: number;
+  retryCount: number;
+  maxRetries: number;
+}
+
+class MessageQueue {
+  private queue: Message[] = [];
+  private processing = false;
+  private subscribers: Map<string, Function[]> = new Map();
+  
+  async publish(type: string, payload: any, maxRetries = 3): Promise<void> {
+    const message: Message = {
+      id: crypto.randomUUID(),
+      type,
+      payload,
+      timestamp: Date.now(),
+      retryCount: 0,
+      maxRetries
+    };
+    
+    this.queue.push(message);
+    
+    if (!this.processing) {
+      this.processQueue();
+    }
+  }
+  
+  subscribe(messageType: string, handler: Function): void {
+    if (!this.subscribers.has(messageType)) {
+      this.subscribers.set(messageType, []);
+    }
+    this.subscribers.get(messageType)!.push(handler);
+  }
+  
+  private async processQueue(): Promise<void> {
+    this.processing = true;
+    
+    while (this.queue.length > 0) {
+      const message = this.queue.shift()!;
+      
+      try {
+        await this.deliverMessage(message);
+      } catch (error) {
+        console.error(\`Failed to deliver message \${message.id}:\`, error);
+        
+        if (message.retryCount < message.maxRetries) {
+          message.retryCount++;
+          // Exponential backoff
+          setTimeout(() => {
+            this.queue.unshift(message);
+          }, 1000 * Math.pow(2, message.retryCount));
+        } else {
+          console.error(\`Message \${message.id} exceeded max retries, moving to dead letter queue\`);
+          this.handleDeadLetter(message);
+        }
+      }
+    }
+    
+    this.processing = false;
+  }
+  
+  private async deliverMessage(message: Message): Promise<void> {
+    const handlers = this.subscribers.get(message.type) || [];
+    
+    if (handlers.length === 0) {
+      throw new Error(\`No handlers registered for message type: \${message.type}\`);
+    }
+    
+    // Deliver to all subscribers
+    const promises = handlers.map(handler => 
+      Promise.resolve(handler(message.payload, message))
+    );
+    
+    await Promise.all(promises);
+  }
+  
+  private handleDeadLetter(message: Message): void {
+    // In production, this would go to a dead letter queue
+    console.log('Dead letter:', message);
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Modern Network Protocols:</h4>
          <ul>
-           <li><strong>HTTP:</strong> Web communication protocol</li>
-           <li><strong>TCP:</strong> Reliable, ordered delivery</li>
-           <li><strong>UDP:</strong> Fast, unreliable delivery</li>
-           <li><strong>WebSocket:</strong> Real-time bidirectional communication</li>
+           <li><strong>HTTP/1.1:</strong> Traditional request-response with persistent connections</li>
+           <li><strong>HTTP/2:</strong> Multiplexing, server push, binary protocol</li>
+           <li><strong>HTTP/3 (QUIC):</strong> UDP-based, reduced latency, built-in security</li>
+           <li><strong>WebSocket:</strong> Full-duplex communication over single TCP connection</li>
+           <li><strong>gRPC:</strong> High-performance RPC framework with Protocol Buffers</li>
+           <li><strong>GraphQL:</strong> Query language for APIs with single endpoint</li>
+           <li><strong>Server-Sent Events (SSE):</strong> Server-to-client streaming</li>
+           <li><strong>WebRTC:</strong> Peer-to-peer real-time communication</li>
+         </ul>
+
+         <br />
+         <h4>Distributed System Challenges:</h4>
+         <ul>
+           <li><strong>Network Partitions:</strong> Systems must handle network splits gracefully</li>
+           <li><strong>Latency & Throughput:</strong> Balancing response time with data volume</li>
+           <li><strong>Fault Tolerance:</strong> Graceful degradation when components fail</li>
+           <li><strong>Consistency:</strong> Ensuring data consistency across distributed nodes</li>
+           <li><strong>Load Balancing:</strong> Distributing requests across multiple servers</li>
+           <li><strong>Service Discovery:</strong> Dynamic finding and connecting to services</li>
+           <li><strong>Circuit Breakers:</strong> Preventing cascade failures</li>
+           <li><strong>Rate Limiting:</strong> Protecting services from overload</li>
+         </ul>
+
+         <br />
+         <h4>Message Serialization Formats:</h4>
+         <ul>
+           <li><strong>JSON:</strong> Human-readable, widely supported, larger size</li>
+           <li><strong>Protocol Buffers:</strong> Binary, compact, schema evolution</li>
+           <li><strong>MessagePack:</strong> Binary JSON-like format, smaller than JSON</li>
+           <li><strong>Apache Avro:</strong> Schema evolution, compact binary encoding</li>
+           <li><strong>XML:</strong> Verbose but self-describing with schema validation</li>
+         </ul>
+
+         <br />
+         <h4>Networking Best Practices:</h4>
+         <ul>
+           <li><strong>Connection Pooling:</strong> Reuse connections to avoid setup overhead</li>
+           <li><strong>Timeout Configuration:</strong> Set appropriate timeouts for all network calls</li>
+           <li><strong>Retry Logic:</strong> Implement exponential backoff with jitter</li>
+           <li><strong>Circuit Breakers:</strong> Fail fast when downstream services are down</li>
+           <li><strong>Compression:</strong> Use gzip/brotli to reduce bandwidth</li>
+           <li><strong>Caching:</strong> Cache responses to reduce network calls</li>
+           <li><strong>Security:</strong> Always use TLS/SSL for sensitive data</li>
+           <li><strong>Monitoring:</strong> Track latency, throughput, and error rates</li>
+         </ul>
+
+         <br />
+         <h4>Modern Architectural Patterns:</h4>
+         <ul>
+           <li><strong>Microservices:</strong> Distributed services communicating via APIs</li>
+           <li><strong>Event-Driven Architecture:</strong> Services react to events asynchronously</li>
+           <li><strong>CQRS:</strong> Command Query Responsibility Segregation</li>
+           <li><strong>Event Sourcing:</strong> Store state changes as sequence of events</li>
+           <li><strong>Saga Pattern:</strong> Manage distributed transactions</li>
+           <li><strong>API Gateway:</strong> Single entry point for client requests</li>
          </ul>
        `,
       question: {
-        type: "multiple-choice",
+        type: "click-code",
         question:
-          "Which protocol provides reliable, ordered delivery of messages?",
-        options: [
-          "UDP (User Datagram Protocol)",
-          "TCP (Transmission Control Protocol)",
-          "HTTP (HyperText Transfer Protocol)",
-          "SMTP (Simple Mail Transfer Protocol)",
+          "In this WebSocket client implementation, click on the lines that implement the exponential backoff retry strategy:",
+        codeLines: [
+          "private scheduleReconnect(): void {",
+          "  this.reconnectAttempts++;",
+          "  const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);",
+          "  ",
+          "  console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);",
+          "  ",
+          "  setTimeout(() => {",
+          "    this.connect();",
+          "  }, delay);",
+          "}",
         ],
-        correctAnswer: 1,
+        correctLines: [1, 2, 6, 7, 8],
+        multiSelect: true,
         explanation:
-          "TCP guarantees reliable, ordered delivery of data with error checking and retransmission.",
+          "Lines 2-3 implement exponential backoff by incrementing attempts and calculating delay using Math.pow(2, attempts-1). Lines 7-9 use setTimeout with the calculated delay to schedule reconnection. This pattern increases wait time exponentially (1s, 2s, 4s, 8s...) to avoid overwhelming a failing server while still attempting recovery. The exponential backoff strategy is crucial for robust distributed systems.",
       } as Question,
     },
 
