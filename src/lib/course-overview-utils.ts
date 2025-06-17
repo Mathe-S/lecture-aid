@@ -150,29 +150,27 @@ export function getStepContent(stepId: string) {
         </ul>
 
         <h4>Review Scenario:</h4>
-        <p>You're reviewing this user authentication function:</p>
-        
-        <div class="bg-gray-100 p-4 rounded-lg mt-4">
-          <pre><code>function authenticateUser(username, password) {
-    let users = getUsers();
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].username == username && users[i].password == password) {
-            return true;
-        }
-    }
-    return false;
-}</code></pre>
-        </div>
+        <p>You're reviewing this user authentication function and need to identify security issues:</p>
       `,
-      question:
-        "Identify three major issues with this authentication code and suggest improvements.",
-      correctAnswer:
-        "plain text password storage, loose equality comparison, no input validation",
-      hints: [
-        "Think about password security and storage",
-        "Consider the type of equality comparison being used",
-        "What happens if username or password is null/undefined?",
-      ],
+      question: {
+        type: "click-code",
+        question: "Click on the lines that contain security vulnerabilities:",
+        codeLines: [
+          "function authenticateUser(username, password) {",
+          "    let users = getUsers();",
+          "    for (let i = 0; i < users.length; i++) {",
+          "        if (users[i].username == username && users[i].password == password) {",
+          "            return true;",
+          "        }",
+          "    }",
+          "    return false;",
+          "}",
+        ],
+        correctLines: [3],
+        multiSelect: false,
+        explanation:
+          "Line 4 has multiple security issues: plain text password comparison (should be hashed), loose equality (==) instead of strict (===), and no input validation for null/undefined values.",
+      } as Question,
     },
 
     specifications: {

@@ -43,8 +43,17 @@ export function CourseStep({
 
   const stepContent = getStepContent(step.id);
 
+  // Check if step has hints (legacy format) or uses interactive questions
+  const hasHints =
+    stepContent && stepContent.hints && stepContent.hints.length > 0;
+  const hasInteractiveQuestion =
+    stepContent &&
+    stepContent.question &&
+    typeof stepContent.question === "object" &&
+    stepContent.question.type;
+
   const showNextHint = () => {
-    if (stepContent && currentHint < stepContent.hints.length - 1) {
+    if (hasHints && currentHint < stepContent.hints.length - 1) {
       setCurrentHint(currentHint + 1);
     }
   };
@@ -117,7 +126,7 @@ export function CourseStep({
       </Card>
 
       {/* Interactive Question */}
-      {stepContent.question && (
+      {hasInteractiveQuestion && (
         <InteractiveQuestion
           question={stepContent.question as Question}
           onAnswer={(isCorrect, userAnswer) => {
@@ -130,8 +139,8 @@ export function CourseStep({
         />
       )}
 
-      {/* Hints Section */}
-      {!isCompleted && (
+      {/* Hints Section - Only show for legacy questions with hints */}
+      {!isCompleted && hasHints && (
         <Card className="bg-white/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -165,6 +174,28 @@ export function CourseStep({
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Help Section for Interactive Questions */}
+      {!isCompleted && hasInteractiveQuestion && (
+        <Card className="bg-white/80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-yellow-500" />
+              Need Help?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <p className="text-blue-800">
+                <strong>💡 Tip:</strong> For interactive questions, try your
+                best answer first. You&apos;ll get immediate feedback and can
+                try again if needed. The explanation will help you understand
+                the correct solution!
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}
