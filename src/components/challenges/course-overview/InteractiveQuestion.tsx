@@ -427,15 +427,20 @@ function DragDropCodeRenderer({
     }))
   );
 
+  // This effect resets the component's state when the question prop changes.
   useEffect(() => {
-    // This effect runs once when the component mounts
-    hljs.highlightAll();
-  }, []);
-
-  // Initialize the answer with the default order
-  useEffect(() => {
+    setItems(
+      question.codeBlocks.map((block, index) => ({
+        id: index.toString(),
+        content: block,
+        originalIndex: index,
+      }))
+    );
+    // Also reset the user's answer in the parent component
     setUserAnswer(question.codeBlocks.map((_, index) => index));
-  }, [setUserAnswer, question.codeBlocks]);
+    // Use a timeout to ensure the DOM has updated before re-applying highlighting
+    setTimeout(() => hljs.highlightAll(), 0);
+  }, [question, setUserAnswer]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -494,10 +499,18 @@ function SequenceOrderRenderer({
     }))
   );
 
-  // Initialize the answer with the default order
+  // This effect resets the component's state when the question prop changes.
   useEffect(() => {
+    setItems(
+      question.items.map((item, index) => ({
+        id: index.toString(),
+        content: item,
+        originalIndex: index,
+      }))
+    );
+    // Also reset the user's answer in the parent component
     setUserAnswer(question.items.map((_, index) => index));
-  }, [setUserAnswer, question.items]);
+  }, [question, setUserAnswer]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
