@@ -450,49 +450,59 @@ export function getStepContent(stepId: string) {
       title: "Equality",
       description: "Understanding different types of equality in programming.",
       content: `
-         <h3>Equality in Programming</h3>
-         <p>Different types of equality serve different purposes in software design.</p>
-         
+         <p>Equality in programming has different meanings depending on context. Understanding these differences is crucial for correct object comparison and hash-based collections.</p>
+         <br />
          <h4>Types of Equality:</h4>
          <ul>
            <li><strong>Reference Equality:</strong> Same object in memory (===)</li>
-           <li><strong>Object Equality:</strong> Same values in all fields (.equals())</li>
-           <li><strong>Behavioral Equality:</strong> Objects behave the same way</li>
+           <li><strong>Structural Equality:</strong> Same values in all fields</li>
+           <li><strong>Behavioral Equality:</strong> Objects behave identically</li>
          </ul>
-
-         <h4>Equality Contract:</h4>
-         <ul>
-           <li><strong>Reflexive:</strong> x.equals(x) is true</li>
-           <li><strong>Symmetric:</strong> x.equals(y) iff y.equals(x)</li>
-           <li><strong>Transitive:</strong> if x.equals(y) and y.equals(z), then x.equals(z)</li>
-           <li><strong>Consistent:</strong> Multiple calls return same result</li>
-         </ul>
-
-         <h4>Example:</h4>
-         <div class="bg-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>class Person {
-    private String name;
-    private int age;
-    
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof Person)) return false;
-        Person other = (Person) obj;
-        return Objects.equals(name, other.name) && age == other.age;
-    }
-}</code></pre>
+         <br />
+         <h4>Critical Rule:</h4>
+         <p><strong>If two objects are equal, they MUST have the same hash code!</strong> This is essential for hash-based collections like Map and Set to work correctly.</p>
+         <br />
+         <h4>Problematic TypeScript Class:</h4>
+         <p>The following class has a serious equality bug that will break hash-based collections:</p>
+         <br />
+         <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 14px;">
+           <strong>class Person {</strong><br />
+           &nbsp;&nbsp;private name: string;<br />
+           &nbsp;&nbsp;private age: number;<br />
+           <br />
+           &nbsp;&nbsp;constructor(name: string, age: number) {<br />
+           &nbsp;&nbsp;&nbsp;&nbsp;this.name = name;<br />
+           &nbsp;&nbsp;&nbsp;&nbsp;this.age = age;<br />
+           &nbsp;&nbsp;}<br />
+           <br />
+           &nbsp;&nbsp;equals(other: Person): boolean {<br />
+           &nbsp;&nbsp;&nbsp;&nbsp;return this.name === other.name && this.age === other.age;<br />
+           &nbsp;&nbsp;}<br />
+           &nbsp;&nbsp;// Missing: hashCode() method!<br />
+           }<br />
+           <br />
+           <strong>// This will break:</strong><br />
+           const map = new Map&lt;Person, string&gt;();<br />
+           const person1 = new Person('Alice', 25);<br />
+           const person2 = new Person('Alice', 25);<br />
+           map.set(person1, 'Engineer');<br />
+           console.log(map.get(person2)); // <strong style="color: red;">undefined!</strong> Should be 'Engineer'
          </div>
        `,
-      question:
-        "Why must hashCode() be overridden when equals() is overridden?",
-      correctAnswer:
-        "equal objects must have same hash code for hash tables to work correctly",
-      hints: [
-        "Think about how hash tables work",
-        "Consider what happens when equal objects have different hash codes",
-        "Hash code contract requires equal objects to have equal hash codes",
-      ],
+      question: {
+        type: "multiple-choice",
+        question:
+          "Why does `map.get(person2)` return `undefined` even though person1 and person2 have the same name and age?",
+        options: [
+          "The equals() method is implemented incorrectly",
+          "TypeScript Map doesn't support custom objects as keys",
+          "The Person class is missing a hashCode() method, so equal objects have different hash codes",
+          "person1 and person2 are different references, so they can never be equal",
+        ],
+        correctAnswer: 2,
+        explanation:
+          "The issue is that Person class has an equals() method but no hashCode() method. In hash-based collections like Map and Set, objects are first compared by hash code, then by equality. Without a proper hashCode() implementation, person1 and person2 (though equal) will have different hash codes, causing the Map to place them in different buckets. When you call map.get(person2), it looks in the wrong bucket and returns undefined. The solution: implement a hashCode() method that returns the same value for equal objects.",
+      } as Question,
     },
 
     debugging: {
