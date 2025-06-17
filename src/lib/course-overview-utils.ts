@@ -189,26 +189,23 @@ export function getStepContent(stepId: string) {
           <li><strong>Exceptions:</strong> When and why the method might throw exceptions</li>
         </ul>
 
-        <h4>Example Specification:</h4>
-        <div class="bg-gray-100 p-4 rounded-lg mt-4">
-          <pre><code>/**
- * Find the maximum element in an array
- * @param arr array of integers, must not be empty
- * @returns the largest integer in arr
- * @throws IllegalArgumentException if arr is empty or null
- */
-public static int findMax(int[] arr)</code></pre>
-        </div>
+        <h4>Specification Challenge:</h4>
+        <p>You need to write a specification for a method that removes all occurrences of a specific element from a list. What are the essential components?</p>
       `,
-      question:
-        "Write a complete specification for a method that removes all occurrences of a specific element from a list.",
-      correctAnswer:
-        "precondition list not null, postcondition removes all occurrences, returns modified list",
-      hints: [
-        "Consider what inputs are valid (preconditions)",
-        "Think about what the method promises to do (postconditions)",
-        "Don't forget about edge cases like empty lists",
-      ],
+      question: {
+        type: "multiple-choice",
+        question:
+          "Which elements are MOST essential for a complete method specification?",
+        options: [
+          "Implementation details and algorithm choice",
+          "Preconditions, postconditions, and exception behavior",
+          "Variable names and code formatting",
+          "Performance benchmarks and memory usage",
+        ],
+        correctAnswer: 1,
+        explanation:
+          "A complete specification must define preconditions (what must be true when called), postconditions (what the method guarantees), and exception behavior (when and why exceptions are thrown). Implementation details should be avoided in specifications.",
+      } as Question,
     },
 
     "designing-specifications": {
