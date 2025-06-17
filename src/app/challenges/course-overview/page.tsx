@@ -155,10 +155,10 @@ export default function CourseOverviewChallenge() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-700">
-              This comprehensive challenge covers all major topics from MIT
-              6.102 Software Construction. Each step focuses on a specific
-              concept with in-depth explanations and complex problem-solving
-              scenarios.
+              This comprehensive challenge covers all major topics from
+              Introduction to Software Engineering. Each step focuses on a
+              specific concept with in-depth explanations and complex
+              problem-solving scenarios.
             </p>
 
             <div className="bg-blue-50 p-4 rounded-lg">

@@ -73,7 +73,7 @@ const courseSteps = [
   { id: "little-languages", title: "Little Languages", number: 19 },
   {
     id: "software-construction-review",
-    title: "Software Construction Review",
+    title: "Software Engineering Review",
     number: 20,
   },
 ];
@@ -346,7 +346,7 @@ export default function CourseOverviewChallengePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-800">
                 <Key className="h-5 w-5" />
-                Your Progress Key
+                Your Progress Key - Please copy this into the assignment
               </CardTitle>
             </CardHeader>
             <CardContent>
