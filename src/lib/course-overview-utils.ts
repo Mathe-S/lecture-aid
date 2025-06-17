@@ -677,48 +677,115 @@ function handleStatus(status: Status): string {
       title: "Concurrency",
       description: "Managing multiple threads and shared resources safely.",
       content: `
-         <h3>Concurrency Fundamentals</h3>
-         <p>Concurrency allows multiple tasks to execute simultaneously, but requires careful coordination.</p>
+         <p>Concurrency is the art of managing multiple computations that execute simultaneously and potentially interact. While powerful, it introduces significant challenges like race conditions and deadlocks that must be handled carefully.</p>
          
-         <h4>Key Concepts:</h4>
+         <br />
+         <h4>Concurrency vs. Parallelism:</h4>
          <ul>
-           <li><strong>Thread:</strong> Independent execution path</li>
-           <li><strong>Race Condition:</strong> Outcome depends on timing</li>
-           <li><strong>Deadlock:</strong> Threads waiting for each other</li>
-           <li><strong>Synchronization:</strong> Coordinating thread access</li>
+           <li><strong>Concurrency:</strong> Dealing with many things at once (e.g., handling multiple web requests).</li>
+           <li><strong>Parallelism:</strong> Doing many things at once (e.g., using multiple CPU cores to process data).</li>
          </ul>
 
-         <h4>Synchronization Mechanisms:</h4>
+         <br />
+         <h4>Common Concurrency Problems:</h4>
          <ul>
-           <li><strong>Locks/Mutexes:</strong> Exclusive access to resources</li>
-           <li><strong>Semaphores:</strong> Control number of concurrent accesses</li>
-           <li><strong>Monitors:</strong> High-level synchronization construct</li>
-           <li><strong>Atomic Operations:</strong> Indivisible operations</li>
+           <li><strong>Race Condition:</strong> Outcome depends on non-deterministic timing of operations.</li>
+           <li><strong>Deadlock:</strong> Two or more processes are blocked forever, waiting for each other.</li>
+           <li><strong>Starvation:</strong> A process is perpetually denied necessary resources.</li>
+           <li><strong>Livelock:</strong> Processes are busy but make no progress.</li>
          </ul>
 
-         <h4>Example Race Condition:</h4>
-         <div class="bg-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// Unsafe - race condition
-int counter = 0;
-void increment() {
-    counter++;  // Read, increment, write - not atomic!
+         <br />
+         <h4>Race Condition Example in TypeScript:</h4>
+         <p>The classic "read-modify-write" race condition. Two async operations fetch a value, increment it, and write it back. The final value will be wrong.</p>
+         
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>let sharedCounter = 0;
+
+async function increment() {
+  const currentValue = sharedCounter; // Read
+  await new Promise(r => setTimeout(r, 10)); // Simulate network/IO delay
+  sharedCounter = currentValue + 1;  // Write
 }
 
-// Safe - synchronized
-synchronized void increment() {
-    counter++;
+// If two calls to increment() run concurrently:
+// Call 1 reads 0.
+// Call 2 reads 0.
+// Call 1 writes 1.
+// Call 2 writes 1.
+// Expected: 2, Actual: 1. This is a race condition.</code></pre>
+         </div>
+
+         <br />
+         <h4>Synchronization Mechanisms:</h4>
+         <ul>
+           <li><strong>Locks (Mutexes):</strong> Ensure only one thread can enter a critical section at a time.</li>
+           <li><strong>Semaphores:</strong> Allow a certain number of threads to access a resource.</li>
+           <li><strong>Atomics:</strong> Hardware-level atomic operations for lock-free concurrency (e.g., \`Atomics\` in JS for SharedArrayBuffers).</li>
+           <li><strong>Transactional Memory:</strong> Grouping memory operations into atomic transactions.</li>
+         </ul>
+
+         <br />
+         <h4>Solving Race Conditions with a Lock:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code>// A simple async lock implementation
+class AsyncLock {
+  private isLocked = false;
+  private queue: (() => void)[] = [];
+
+  async acquire() {
+    if (!this.isLocked) {
+      this.isLocked = true;
+      return;
+    }
+    await new Promise<void>(resolve => this.queue.push(resolve));
+  }
+
+  release() {
+    if (this.queue.length > 0) {
+      this.queue.shift()!();
+    } else {
+      this.isLocked = false;
+    }
+  }
+}
+
+const lock = new AsyncLock();
+let safeCounter = 0;
+
+async function safeIncrement() {
+  await lock.acquire();
+  try {
+    const currentValue = safeCounter;
+    await new Promise(r => setTimeout(r, 10));
+    safeCounter = currentValue + 1;
+  } finally {
+    lock.release(); // Always release the lock!
+  }
 }</code></pre>
          </div>
        `,
-      question:
-        "Explain how deadlock can occur with two threads and two locks.",
-      correctAnswer:
-        "thread1 holds lock1 waits for lock2, thread2 holds lock2 waits for lock1",
-      hints: [
-        "Think about the order in which threads acquire locks",
-        "Consider what happens when each thread holds one lock and needs another",
-        "Deadlock requires circular waiting",
-      ],
+      question: {
+        type: "click-code",
+        question:
+          "Click on the line where the non-atomic operation creates a race condition.",
+        codeLines: [
+          "let sharedCounter = 0;",
+          "",
+          "async function increment() {",
+          "  const currentValue = sharedCounter;",
+          "  await new Promise(r => setTimeout(r, 10));",
+          "  sharedCounter = currentValue + 1;",
+          "}",
+          "",
+          "// What if two calls run at the same time?",
+          "increment();",
+          "increment();",
+        ],
+        correctLines: [5],
+        explanation:
+          "Line 6 (`sharedCounter = currentValue + 1;`) is the critical part of the race condition. It's a 'read-modify-write' operation that is not atomic. An `await` on line 5 introduces a delay, allowing another `increment` call to read the stale `sharedCounter` value before the first call can write its updated value back. This leads to lost updates.",
+      } as Question,
     },
 
     "recursive-data-types": {
