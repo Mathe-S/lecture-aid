@@ -298,38 +298,38 @@ export function getStepContent(stepId: string) {
       content: `
          <h3>Abstraction Functions & Representation Invariants</h3>
          <p>These concepts help maintain the integrity of ADT implementations.</p>
-         
+         <br />
          <h4>Abstraction Function (AF):</h4>
          <ul>
            <li>Maps concrete representation to abstract value</li>
            <li>Explains what the representation means</li>
            <li>Used in documentation and reasoning</li>
          </ul>
-
+         <br />
          <h4>Representation Invariant (RI):</h4>
          <ul>
            <li>Properties that must always be true of the representation</li>
            <li>Checked in constructor and mutating methods</li>
            <li>Helps catch implementation bugs</li>
          </ul>
-
-         <h4>Example - IntSet using array:</h4>
-         <div class="bg-gray-100 p-4 rounded-lg mt-4">
-           <pre><code>// Rep: elements[0..size-1] contains the set elements
-// AF: {elements[i] | 0 <= i < size}
-// RI: elements != null && 0 <= size <= elements.length
-//     && no duplicates in elements[0..size-1]</code></pre>
-         </div>
+         <br />
+         <h4>Stack Implementation Challenge:</h4>
+         <p>Consider a Stack implemented using a linked list with a 'top' pointer. The 'top' points to the most recently added element (top of stack), and each node has a 'next' pointer to the element below it.</p>
        `,
-      question:
-        "Write the abstraction function and rep invariant for a Stack implemented using a linked list with a 'top' pointer.",
-      correctAnswer:
-        "AF maps linked list to stack sequence, RI ensures top points to valid node or null",
-      hints: [
-        "Think about how the linked list represents the stack order",
-        "Consider what properties the 'top' pointer must satisfy",
-        "What invariants ensure the linked list is well-formed?",
-      ],
+      question: {
+        type: "multiple-choice",
+        question:
+          "What is the most important property that the Representation Invariant (RI) must ensure for this Stack implementation?",
+        options: [
+          "The linked list is sorted in ascending order",
+          "All nodes have the same data type",
+          "The 'top' pointer is either null (empty stack) or points to a valid node in a well-formed linked list",
+          "The stack contains at least one element",
+        ],
+        correctAnswer: 2,
+        explanation:
+          "The RI must ensure the 'top' pointer is either null (for an empty stack) or points to a valid node in a well-formed linked list with no cycles. This guarantees the representation is always in a valid state. The AF would map this linked list structure to the abstract stack sequence (top element first), but the RI focuses on structural integrity of the concrete representation.",
+      } as Question,
     },
 
     "interfaces-subtyping": {
