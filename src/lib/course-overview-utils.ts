@@ -1312,39 +1312,259 @@ class AtomicMutex {
 
     "callbacks-gui": {
       title: "Callbacks & Graphical User Interfaces",
-      description: "Event-driven programming and GUI design patterns.",
+      description: "Event-driven programming and modern GUI design patterns.",
       content: `
-         <h3>Callbacks & GUI Programming</h3>
-         <p>GUIs use event-driven programming where callbacks respond to user interactions.</p>
+         <p>Graphical User Interfaces (GUIs) are fundamentally <strong>event-driven systems</strong> where user interactions trigger callbacks that update the application state. This paradigm differs from traditional sequential programming by responding to unpredictable user actions asynchronously.</p>
          
-         <h4>Event-Driven Concepts:</h4>
+         <br />
+         <h4>Event-Driven Architecture:</h4>
+         <p>Modern GUI frameworks use an event loop that continuously monitors for user interactions:</p>
          <ul>
-           <li><strong>Event loop:</strong> Continuously processes events</li>
-           <li><strong>Event handlers:</strong> Functions that respond to events</li>
-           <li><strong>Event delegation:</strong> Parent handles child events</li>
-           <li><strong>Asynchronous execution:</strong> Non-blocking event processing</li>
+           <li><strong>Event Loop:</strong> The central dispatcher that processes events from a queue</li>
+           <li><strong>Event Queue:</strong> FIFO buffer holding events waiting to be processed</li>
+           <li><strong>Event Handlers/Callbacks:</strong> Functions registered to respond to specific events</li>
+           <li><strong>Event Propagation:</strong> How events bubble up or capture down the DOM tree</li>
          </ul>
 
-         <h4>Common GUI Patterns:</h4>
+         <br />
+         <h4>Callback Patterns in Modern JavaScript/TypeScript:</h4>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-4">
+           <pre><code class="language-typescript">// 1. Traditional Event Listeners
+button.addEventListener('click', function(event) {
+  console.log('Button clicked!', event.target);
+});
+
+// 2. Arrow Function Callbacks (Modern)
+button.addEventListener('click', (event) => {
+  updateCounter(event.currentTarget.dataset.value);
+});
+
+// 3. Method Callbacks with Proper 'this' Binding
+class TodoApp {
+  private todos: Todo[] = [];
+  
+  constructor() {
+    // Bind methods to preserve 'this' context
+    this.handleAddTodo = this.handleAddTodo.bind(this);
+    this.handleDeleteTodo = this.handleDeleteTodo.bind(this);
+  }
+  
+  handleAddTodo(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.todos.push({ id: Date.now(), text: input.value, completed: false });
+    this.render();
+  }
+  
+  handleDeleteTodo(id: number): void {
+    this.todos = this.todos.filter(todo => todo.id !== id);
+    this.render();
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Essential GUI Design Patterns:</h4>
+         
+         <p><strong>1. Observer Pattern (Event System):</strong></p>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-2">
+           <pre><code class="language-typescript">// Custom Event System
+class EventEmitter {
+  private listeners: Map<string, Function[]> = new Map();
+  
+  on(event: string, callback: Function): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event)!.push(callback);
+  }
+  
+  emit(event: string, data?: any): void {
+    const callbacks = this.listeners.get(event) || [];
+    callbacks.forEach(callback => callback(data));
+  }
+  
+  off(event: string, callback: Function): void {
+    const callbacks = this.listeners.get(event) || [];
+    const index = callbacks.indexOf(callback);
+    if (index > -1) callbacks.splice(index, 1);
+  }
+}</code></pre>
+         </div>
+
+         <p><strong>2. Command Pattern (Action Encapsulation):</strong></p>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-2">
+           <pre><code class="language-typescript">// Encapsulate actions for undo/redo functionality
+interface Command {
+  execute(): void;
+  undo(): void;
+}
+
+class AddTodoCommand implements Command {
+  constructor(
+    private todoList: TodoList,
+    private todoText: string,
+    private todoId?: number
+  ) {}
+  
+  execute(): void {
+    this.todoId = this.todoList.addTodo(this.todoText);
+  }
+  
+  undo(): void {
+    if (this.todoId) {
+      this.todoList.removeTodo(this.todoId);
+    }
+  }
+}
+
+class CommandManager {
+  private history: Command[] = [];
+  private currentIndex = -1;
+  
+  executeCommand(command: Command): void {
+    // Remove any commands after current index (for redo)
+    this.history = this.history.slice(0, this.currentIndex + 1);
+    
+    command.execute();
+    this.history.push(command);
+    this.currentIndex++;
+  }
+  
+  undo(): void {
+    if (this.currentIndex >= 0) {
+      this.history[this.currentIndex].undo();
+      this.currentIndex--;
+    }
+  }
+  
+  redo(): void {
+    if (this.currentIndex < this.history.length - 1) {
+      this.currentIndex++;
+      this.history[this.currentIndex].execute();
+    }
+  }
+}</code></pre>
+         </div>
+
+         <p><strong>3. Model-View-Controller (MVC) Pattern:</strong></p>
+         <div class="bg-gray-900 text-gray-100 p-4 rounded-lg mt-2">
+           <pre><code class="language-typescript">// Separation of concerns in GUI applications
+class TodoModel {
+  private todos: Todo[] = [];
+  private observers: Function[] = [];
+  
+  addObserver(observer: Function): void {
+    this.observers.push(observer);
+  }
+  
+  private notifyObservers(): void {
+    this.observers.forEach(observer => observer(this.todos));
+  }
+  
+  addTodo(text: string): void {
+    this.todos.push({ id: Date.now(), text, completed: false });
+    this.notifyObservers();
+  }
+  
+  toggleTodo(id: number): void {
+    const todo = this.todos.find(t => t.id === id);
+    if (todo) {
+      todo.completed = !todo.completed;
+      this.notifyObservers();
+    }
+  }
+}
+
+class TodoView {
+  constructor(private container: HTMLElement) {}
+  
+  render(todos: Todo[]): void {
+    this.container.innerHTML = todos.map(todo => 
+      \`<div class="todo \${todo.completed ? 'completed' : ''}">
+         <input type="checkbox" \${todo.completed ? 'checked' : ''} 
+                data-id="\${todo.id}">
+         <span>\${todo.text}</span>
+         <button data-id="\${todo.id}" class="delete">Delete</button>
+       </div>\`
+    ).join('');
+  }
+}
+
+class TodoController {
+  constructor(
+    private model: TodoModel,
+    private view: TodoView
+  ) {
+    // Model updates trigger view re-render
+    this.model.addObserver((todos: Todo[]) => {
+      this.view.render(todos);
+    });
+    
+    // Set up event delegation for dynamic content
+    this.setupEventListeners();
+  }
+  
+  private setupEventListeners(): void {
+    // Event delegation: handle events on parent container
+    this.view.container.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      
+      if (target.matches('input[type="checkbox"]')) {
+        const id = parseInt(target.dataset.id!);
+        this.model.toggleTodo(id);
+      }
+      
+      if (target.matches('.delete')) {
+        const id = parseInt(target.dataset.id!);
+        this.model.deleteTodo(id);
+      }
+    });
+  }
+}</code></pre>
+         </div>
+
+         <br />
+         <h4>Modern GUI Framework Concepts:</h4>
          <ul>
-           <li><strong>Observer:</strong> Objects subscribe to events</li>
-           <li><strong>Command:</strong> Encapsulate actions as objects</li>
-           <li><strong>MVC:</strong> Separate model, view, and controller</li>
+           <li><strong>Virtual DOM:</strong> Efficient diffing and updating (React, Vue)</li>
+           <li><strong>Reactive Programming:</strong> Automatic UI updates when data changes (RxJS, MobX)</li>
+           <li><strong>Component Architecture:</strong> Reusable, encapsulated UI components</li>
+           <li><strong>State Management:</strong> Centralized application state (Redux, Zustand)</li>
+           <li><strong>Event Delegation:</strong> Efficient event handling for dynamic content</li>
+         </ul>
+
+         <br />
+         <h4>Callback Challenges and Solutions:</h4>
+         <ul>
+           <li><strong>Callback Hell:</strong> Solved with Promises, async/await</li>
+           <li><strong>Memory Leaks:</strong> Proper event listener cleanup</li>
+           <li><strong>Context Loss:</strong> Arrow functions or explicit binding</li>
+           <li><strong>Performance:</strong> Event delegation, debouncing, throttling</li>
+         </ul>
+
+         <br />
+         <h4>Event Handling Best Practices:</h4>
+         <ul>
+           <li><strong>Use Event Delegation:</strong> Handle events on parent containers for dynamic content</li>
+           <li><strong>Debounce/Throttle:</strong> Limit rapid event firing (scroll, resize, input)</li>
+           <li><strong>Prevent Default:</strong> Control default browser behavior when needed</li>
+           <li><strong>Clean Up:</strong> Remove event listeners when components unmount</li>
+           <li><strong>Accessibility:</strong> Support keyboard navigation and screen readers</li>
          </ul>
        `,
       question: {
-        type: "sequence-order",
-        question: "Arrange the event handling process in correct order:",
-        items: [
-          "Event is dispatched to handler",
-          "User clicks button",
-          "Event is added to event queue",
-          "Event loop processes next event",
-          "Handler function executes",
+        type: "multiple-choice",
+        question:
+          "In the MVC pattern for GUI applications, what is the primary responsibility of the Controller?",
+        options: [
+          "Storing and managing the application's data and business logic",
+          "Rendering the user interface and displaying data to the user",
+          "Handling user input and coordinating between Model and View",
+          "Managing network requests and API communications",
         ],
-        correctOrder: [1, 2, 3, 0, 4],
+        correctAnswer: 2,
         explanation:
-          "Event handling: User action → Queue event → Event loop processes → Dispatch to handler → Execute handler",
+          "The Controller in MVC acts as an intermediary that handles user input (events like clicks, form submissions), processes that input, and coordinates updates between the Model (data) and View (UI). It contains the application logic that responds to user interactions, updates the model when needed, and triggers view updates. The Model handles data/business logic, the View handles presentation, and the Controller handles the interaction logic that connects them.",
       } as Question,
     },
 
