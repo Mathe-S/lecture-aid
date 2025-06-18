@@ -47,6 +47,7 @@ export async function GET(
       // We might want to return an empty CSV or a message.
       // For now, let's return an empty CSV with default headers if no assignment info is available.
       const emptyCsvHeaders = [
+        "User ID",
         "Student Name",
         "Email",
         "GitHub URL",
@@ -74,6 +75,7 @@ export async function GET(
 
     // Define base headers
     const baseHeaders = [
+      "User ID",
       "Student Name",
       "Email",
       "GitHub URL",
@@ -91,6 +93,7 @@ export async function GET(
     // Format data for CSV
     const csvData = submissions.map((submission) => {
       const row: { [key: string]: string | number | null } = {
+        "User ID": submission.userId || "Unknown",
         "Student Name": submission.profile?.fullName || "Unknown",
         Email: submission.profile?.email || "Unknown",
         "GitHub URL": submission.repositoryUrl || "Not submitted",
