@@ -133,12 +133,11 @@ const PROJECT_IDEA_TEMPLATE = `# Project: [Your Project Title]
 
 ---
 
-## 🎯 Grading Criteria (450 points total)
-1. **Code Quality & Architecture** (120 pts - 27%)
-2. **Testing Strategy & Implementation** (120 pts - 27%)
-3. **Functionality & User Experience** (80 pts - 18%)
-4. **Documentation & Technical Decisions** (80 pts - 18%)
-5. **Deployment & DevOps** (50 pts - 11%)`;
+## 🎯 Grading Criteria (400 points total)
+1. **Code Quality & Architecture** (100 pts - 25%)
+2. **Testing Strategy & Implementation** (100 pts - 25%)
+3. **Functionality & User Experience** (100 pts - 25%)
+4. **Documentation & Technical Decisions** (100 pts - 25%)`;
 
 export function ProjectIdeaEditor({
   groupId,

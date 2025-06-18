@@ -227,10 +227,10 @@ export default function AdminFinalProjectsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {summary.averageScore}/450
+                {summary.averageScore}/400
               </div>
               <p className="text-xs text-muted-foreground">
-                {Math.round((summary.averageScore / 450) * 100)}% average
+                {Math.round((summary.averageScore / 400) * 100)}% average
               </p>
             </CardContent>
           </Card>
@@ -250,48 +250,6 @@ export default function AdminFinalProjectsPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Weekly Scores Overview */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Weekly Score Averages
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {Object.entries(summary.weeklyAverages).map(([week, average]) => {
-                const weekNum = parseInt(week.replace("week", ""));
-                const maxScore =
-                  weeklyMaxScores[week as keyof typeof weeklyMaxScores];
-                const percentage = Math.round((average / maxScore) * 100);
-
-                return (
-                  <div key={week} className="text-center">
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      Week {weekNum}
-                    </div>
-                    <div className="text-2xl font-bold">
-                      {average}/{maxScore}
-                    </div>
-                    <Badge
-                      variant={
-                        percentage >= 80
-                          ? "default"
-                          : percentage >= 60
-                          ? "secondary"
-                          : "destructive"
-                      }
-                    >
-                      {percentage}%
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
