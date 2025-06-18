@@ -124,7 +124,7 @@ export default function AdminFinalProjectsPage() {
     );
   }
 
-  const { groups, tasks, summary, weeklyMaxScores } = finalData!;
+  const { groups, tasks, summary } = finalData!;
 
   // Calculate statistics
   const totalGroups = groups.length;
