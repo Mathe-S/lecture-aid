@@ -426,13 +426,15 @@ export function FeedbackTemplateManager() {
               <p className="text-muted-foreground mb-4">
                 Create your first feedback template to get started
               </p>
-              <Button
-                onClick={() => setShowCreateDialog(true)}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Create Template
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  onClick={() => setShowCreateDialog(true)}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Template
+                </Button>
+              </div>
             </div>
           ) : (
             <Table>
