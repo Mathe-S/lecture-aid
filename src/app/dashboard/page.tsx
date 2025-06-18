@@ -34,6 +34,7 @@ import { AssignmentSubmissionWithProfile } from "@/db/drizzle/schema";
 import { useGrades } from "@/hooks/useGrades";
 import { Progress } from "@/components/ui/progress";
 import { useUserMidtermEvaluations } from "@/hooks/useMidtermGroups";
+import { FinalTaskScoreCard } from "@/components/final/final-task-score-card";
 
 export default function DashboardPage() {
   const { user, role, isLoading, refreshUser } = useAuth();
@@ -335,6 +336,11 @@ export default function DashboardPage() {
                       {grades.extraPoints}
                     </div>
                   </div>
+                </div>
+
+                {/* Final Project Score */}
+                <div className="mt-6">
+                  <FinalTaskScoreCard />
                 </div>
               </div>
             ) : (

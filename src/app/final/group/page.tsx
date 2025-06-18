@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUserFinalGroup } from "@/hooks/useFinalUserGroup";
 import { GroupDashboard } from "@/components/final/group-dashboard";
 import { AllFinalGroupsList } from "@/components/final/all-final-groups-list";
+import { FinalTaskScoreCard } from "@/components/final/final-task-score-card";
 import { Loader2 } from "lucide-react";
 
 function GroupPageLoading() {
@@ -73,12 +74,21 @@ export default function GroupPage() {
   return (
     <main className="container mx-auto py-10 px-4 md:px-6">
       <div className="space-y-8">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Group Dashboard</h1>
-          <p className="text-muted-foreground">
-            Manage your final project, track progress, and collaborate with your
-            team.
-          </p>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">
+              Group Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Manage your final project, track progress, and collaborate with
+              your team.
+            </p>
+          </div>
+
+          {/* Final Task Score Card */}
+          <div className="lg:w-80">
+            <FinalTaskScoreCard showTitle={false} />
+          </div>
         </div>
 
         <Suspense fallback={<GroupPageLoading />}>
