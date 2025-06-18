@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { TaskGradingInterface } from "@/components/admin/final/task-grading-interface";
 import { FeedbackTemplateManager } from "@/components/admin/final/feedback-template-manager";
+import { GradedTasksInterface } from "@/components/admin/final/graded-tasks-interface";
 
 // Helper function to get week number from date
 function getWeekNumber(date: Date): number {
@@ -54,6 +55,20 @@ export default function AdminGradingPage() {
           : `/api/admin/final/grading/tasks?groupId=${selectedGroup}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch tasks");
+      return response.json();
+    },
+  });
+
+  // Fetch graded tasks
+  const { data: gradedTasks } = useQuery({
+    queryKey: ["admin", "grading", "graded-tasks", selectedGroup],
+    queryFn: async () => {
+      const url =
+        selectedGroup === "all"
+          ? "/api/admin/final/grading/graded-tasks"
+          : `/api/admin/final/grading/graded-tasks?groupId=${selectedGroup}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch graded tasks");
       return response.json();
     },
   });
@@ -96,6 +111,24 @@ export default function AdminGradingPage() {
       return matchesSearch && matchesWeek;
     }) || [];
 
+  // Filter graded tasks based on search and filters
+  const filteredGradedTasks =
+    gradedTasks?.filter((task: any) => {
+      const matchesSearch =
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.assignees.some((assignee: any) =>
+          assignee.user.fullName
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        );
+
+      const matchesWeek =
+        selectedWeek === "all" ||
+        getWeekNumber(new Date(task.updatedAt)) === parseInt(selectedWeek);
+
+      return matchesSearch && matchesWeek;
+    }) || [];
+
   // Group tasks by week for display
   const tasksByWeek = filteredTasks.reduce((acc: any, task: any) => {
     const week = getWeekNumber(new Date(task.updatedAt));
@@ -103,6 +136,17 @@ export default function AdminGradingPage() {
     acc[week].push(task);
     return acc;
   }, {});
+
+  // Group graded tasks by week for display
+  const gradedTasksByWeek = filteredGradedTasks.reduce(
+    (acc: any, task: any) => {
+      const week = getWeekNumber(new Date(task.updatedAt));
+      if (!acc[week]) acc[week] = [];
+      acc[week].push(task);
+      return acc;
+    },
+    {}
+  );
 
   if (isLoading) {
     return (
@@ -187,10 +231,14 @@ export default function AdminGradingPage() {
 
       {/* Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="grading" className="gap-2">
             <GraduationCap className="h-4 w-4" />
             Task Grading
+          </TabsTrigger>
+          <TabsTrigger value="graded" className="gap-2">
+            <Award className="h-4 w-4" />
+            Graded Tasks
           </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2">
             <Filter className="h-4 w-4" />
@@ -285,6 +333,102 @@ export default function AdminGradingPage() {
                       <p className="text-muted-foreground">
                         All tasks have been graded or no tasks match your
                         filters
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="graded" className="mt-6">
+          <div className="space-y-6">
+            {/* Filters (shared with grading tab) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Filters</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search tasks or students..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                  </div>
+                  <Select
+                    value={selectedGroup}
+                    onValueChange={setSelectedGroup}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Select group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Groups</SelectItem>
+                      {groups?.map((group: any) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Weeks</SelectItem>
+                      <SelectItem value="1">Week 1</SelectItem>
+                      <SelectItem value="2">Week 2</SelectItem>
+                      <SelectItem value="3">Week 3</SelectItem>
+                      <SelectItem value="4">Week 4</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Graded Tasks by Week */}
+            <div className="space-y-6">
+              {Object.keys(gradedTasksByWeek)
+                .sort((a, b) => parseInt(a) - parseInt(b))
+                .map((week) => (
+                  <Card key={week}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5" />
+                        Week {week}
+                        <Badge variant="outline">
+                          {gradedTasksByWeek[week].length} task(s)
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <GradedTasksInterface
+                        tasks={gradedTasksByWeek[week] as any}
+                        week={parseInt(week)}
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+
+              {Object.keys(gradedTasksByWeek).length === 0 && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center py-12">
+                      <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg font-medium mb-2">
+                        No graded tasks found
+                      </p>
+                      <p className="text-muted-foreground">
+                        Graded tasks will appear here after you grade student
+                        submissions
                       </p>
                     </div>
                   </CardContent>
