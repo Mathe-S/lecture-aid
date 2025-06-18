@@ -3,7 +3,7 @@
 import { useFinalTaskGrades } from "@/hooks/useFinalTaskGrades";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Target, TrendingUp, Loader2 } from "lucide-react";
+import { Award, Target, Loader2 } from "lucide-react";
 
 interface FinalTaskScoreCardProps {
   className?: string;
@@ -57,8 +57,7 @@ export function FinalTaskScoreCard({
     );
   }
 
-  const { totalPointsEarned, totalTasksGraded, totalTasks, averageScore } =
-    gradeData;
+  const { totalPointsEarned, totalTasksGraded, totalTasks } = gradeData;
 
   return (
     <Card
@@ -90,21 +89,13 @@ export function FinalTaskScoreCard({
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/60 rounded-lg p-3 text-center">
-              <div className="text-lg font-semibold text-yellow-800">
+          {/* Stats Display */}
+          <div className="flex justify-center">
+            <div className="bg-white/60 rounded-lg p-4 text-center">
+              <div className="text-xl font-semibold text-yellow-800">
                 {totalTasksGraded}
               </div>
-              <div className="text-xs text-yellow-600">Graded Tasks</div>
-            </div>
-
-            <div className="bg-white/60 rounded-lg p-3 text-center">
-              <div className="text-lg font-semibold text-yellow-800 flex items-center justify-center gap-1">
-                {averageScore}%
-                <TrendingUp className="h-3 w-3" />
-              </div>
-              <div className="text-xs text-yellow-600">Average Score</div>
+              <div className="text-sm text-yellow-600">Graded Tasks</div>
             </div>
           </div>
 
