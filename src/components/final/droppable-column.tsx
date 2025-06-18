@@ -61,7 +61,9 @@ export function DroppableColumn({
                 ? "No tasks yet"
                 : id === "in_progress"
                 ? "No active tasks"
-                : "No completed tasks"}
+                : id === "done"
+                ? "No completed tasks"
+                : "No graded tasks"}
             </p>
             {id === "todo" && (
               <p className="text-xs">Add tasks to get started</p>

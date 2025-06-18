@@ -26,6 +26,16 @@ export interface TaskAssigneeDetails {
   assignedBy: ProfileDetails;
 }
 
+export interface TaskGradeDetails {
+  id: string;
+  studentId: string;
+  points: number;
+  maxPoints: number;
+  feedback: string | null;
+  gradedAt: string;
+  grader: ProfileDetails;
+}
+
 export interface TaskWithDetails {
   id: string;
   title: string;
@@ -39,6 +49,7 @@ export interface TaskWithDetails {
   groupId: string;
   createdBy: ProfileDetails;
   assignees: TaskAssigneeDetails[];
+  grades?: TaskGradeDetails[]; // Include grades for graded tasks
   createdAt: string;
   updatedAt: string;
 }
@@ -125,6 +136,26 @@ export async function getGroupTasks(
           },
         },
       },
+      grades: {
+        with: {
+          student: {
+            columns: {
+              id: true,
+              email: true,
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+          grader: {
+            columns: {
+              id: true,
+              email: true,
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
     },
     orderBy: [desc(finalTasks.createdAt)],
   });
@@ -159,6 +190,20 @@ export async function getGroupTasks(
         email: assignee.assignedBy.email,
         fullName: assignee.assignedBy.fullName,
         avatarUrl: assignee.assignedBy.avatarUrl,
+      },
+    })),
+    grades: task.grades?.map((grade) => ({
+      id: grade.id,
+      studentId: grade.studentId,
+      points: grade.points,
+      maxPoints: grade.maxPoints,
+      feedback: grade.feedback,
+      gradedAt: grade.gradedAt,
+      grader: {
+        id: grade.grader.id,
+        email: grade.grader.email,
+        fullName: grade.grader.fullName,
+        avatarUrl: grade.grader.avatarUrl,
       },
     })),
     createdAt: task.createdAt,

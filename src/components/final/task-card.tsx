@@ -7,7 +7,14 @@ import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Award, MessageSquare } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { EditTaskDialog } from "./edit-task-dialog";
 import { DeleteTaskDialog } from "./delete-task-dialog";
@@ -33,6 +40,7 @@ function getInitials(fullName: string | null): string {
 export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showGradeDialog, setShowGradeDialog] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
@@ -45,13 +53,16 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
       }
     : undefined;
 
-  // Check if current user can edit this task (is assigned to it)
+  // Check if current user can edit this task (is assigned to it and task is not graded)
   const canEdit =
-    userId && task.assignees.some((assignee) => assignee.profile.id === userId);
+    userId &&
+    task.status !== "graded" &&
+    task.assignees.some((assignee) => assignee.profile.id === userId);
 
-  // Check if current user can delete this task
+  // Check if current user can delete this task (and task is not graded)
   const canDelete =
     userId &&
+    task.status !== "graded" &&
     (() => {
       const hasAssignees = task.assignees.length > 0;
       if (hasAssignees) {
@@ -78,6 +89,16 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
     setShowDeleteDialog(true);
   };
 
+  const handleGradeClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent drag from starting
+    setShowGradeDialog(true);
+  };
+
+  // Get the current user's grade for this task (if it exists)
+  const userGrade =
+    userId && task.grades?.find((grade) => grade.studentId === userId);
+  const hasGrade = task.status === "graded" && userGrade;
+
   return (
     <>
       <div
@@ -94,6 +115,8 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
           task.status === "todo" && "bg-white",
           task.status === "in_progress" && "bg-blue-50",
           task.status === "done" && "bg-green-50",
+          task.status === "graded" &&
+            "bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200",
           !canDrag && "opacity-60"
         )}
       >
@@ -176,9 +199,40 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
           </div>
         )}
 
-        {!canDrag && (
+        {!canDrag && task.status !== "graded" && (
           <div className="text-xs text-muted-foreground mt-2 italic">
             Not assigned to you
+          </div>
+        )}
+
+        {/* Grade Display for Graded Tasks */}
+        {hasGrade && userGrade && (
+          <div className="mt-3 pt-2 border-t border-yellow-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-yellow-600" />
+                <div>
+                  <div className="text-sm font-medium text-yellow-800">
+                    Score: {userGrade.points}/{userGrade.maxPoints}
+                  </div>
+                  <div className="text-xs text-yellow-600">
+                    {Math.round((userGrade.points / userGrade.maxPoints) * 100)}
+                    %
+                  </div>
+                </div>
+              </div>
+              {userGrade.feedback && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100"
+                  onClick={handleGradeClick}
+                  title="View feedback"
+                >
+                  <MessageSquare className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -201,6 +255,71 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
           task={task}
           groupId={group.id}
         />
+      )}
+
+      {/* Grade Feedback Dialog */}
+      {showGradeDialog && hasGrade && userGrade && (
+        <Dialog open={showGradeDialog} onOpenChange={setShowGradeDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-yellow-600" />
+                Grade & Feedback: {task.title}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Grade Summary */}
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-yellow-600" />
+                    <span className="font-semibold text-yellow-800">
+                      Your Score
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-yellow-800">
+                      {userGrade.points}/{userGrade.maxPoints}
+                    </div>
+                    <div className="text-sm text-yellow-600">
+                      {Math.round(
+                        (userGrade.points / userGrade.maxPoints) * 100
+                      )}
+                      %
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-yellow-700">
+                  Graded by: {userGrade.grader.fullName} on{" "}
+                  {new Date(userGrade.gradedAt).toLocaleDateString()}
+                </div>
+              </div>
+
+              {/* Feedback */}
+              {userGrade.feedback && (
+                <div>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Feedback
+                  </h4>
+                  <ScrollArea className="h-32 w-full rounded-md border p-3">
+                    <div className="text-sm whitespace-pre-wrap">
+                      {userGrade.feedback}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {!userGrade.feedback && (
+                <div className="text-center py-4 text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No feedback provided for this task.</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );
