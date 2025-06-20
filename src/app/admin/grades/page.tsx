@@ -9,6 +9,7 @@ import {
   useRecalculateGrade,
   useRecalculateAllGrades,
 } from "@/hooks/useGrades";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -53,16 +54,35 @@ type SortField =
   | "quizPoints"
   | "assignmentPoints"
   | "midtermPoints"
+  | "finalPoints"
   | "extraPoints"
   | "totalPoints"
   | "progress";
 type SortDirection = "asc" | "desc";
+
+// Interface for final task scores
+interface StudentFinalScore {
+  userId: string;
+  totalPointsEarned: number;
+  totalTasksGraded: number;
+  totalTasks: number;
+}
 
 export default function AdminGradesPage() {
   const { data: allGrades, isLoading } = useAllGrades() as {
     data: GradeWithProfilesType[] | undefined;
     isLoading: boolean;
   };
+
+  // Fetch all students' final task scores
+  const { data: finalScores, isLoading: isLoadingFinalScores } = useQuery({
+    queryKey: ["admin", "final-scores"],
+    queryFn: async (): Promise<StudentFinalScore[]> => {
+      const response = await fetch("/api/admin/final/all-scores");
+      if (!response.ok) throw new Error("Failed to fetch final scores");
+      return response.json();
+    },
+  });
   const [selectedStudent, setSelectedStudent] =
     useState<GradeWithProfilesType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -124,6 +144,14 @@ export default function AdminGradesPage() {
         const getProgress = (grade: GradeWithProfilesType) =>
           ((grade.totalPoints ?? 0) / (grade.maxPossiblePoints || 1000)) * 100;
 
+        // Helper function to get final points
+        const getFinalPoints = (grade: GradeWithProfilesType) => {
+          const finalScore = finalScores?.find(
+            (fs) => fs.userId === grade.userId
+          );
+          return finalScore?.totalPointsEarned ?? 0;
+        };
+
         switch (sortField) {
           case "name":
             comparison = getFullName(a).localeCompare(getFullName(b));
@@ -136,6 +164,9 @@ export default function AdminGradesPage() {
             break;
           case "midtermPoints":
             comparison = (a.midtermPoints ?? 0) - (b.midtermPoints ?? 0);
+            break;
+          case "finalPoints":
+            comparison = getFinalPoints(a) - getFinalPoints(b);
             break;
           case "extraPoints":
             comparison = (a.extraPoints ?? 0) - (b.extraPoints ?? 0);
@@ -260,6 +291,12 @@ export default function AdminGradesPage() {
                         Midterm
                       </SortableHeader>
                       <SortableHeader
+                        field="finalPoints"
+                        className="w-[100px] text-right"
+                      >
+                        Final
+                      </SortableHeader>
+                      <SortableHeader
                         field="extraPoints"
                         className="w-[100px] text-right"
                       >
@@ -289,6 +326,11 @@ export default function AdminGradesPage() {
                         ((grade.totalPoints ?? 0) /
                           (grade.maxPossiblePoints ?? 1000)) *
                         100;
+
+                      // Get final score for this student
+                      const finalScore = finalScores?.find(
+                        (fs) => fs.userId === grade.userId
+                      );
 
                       return (
                         <TableRow key={grade.userId}>
@@ -322,6 +364,21 @@ export default function AdminGradesPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {grade.midtermPoints ?? 0}/250
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {isLoadingFinalScores ? (
+                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                            ) : (
+                              <div className="flex flex-col items-end">
+                                <span className="font-medium">
+                                  {finalScore?.totalPointsEarned ?? 0}
+                                </span>
+                                <span className="text-xs text-slate-500">
+                                  {finalScore?.totalTasksGraded ?? 0}/
+                                  {finalScore?.totalTasks ?? 0} tasks
+                                </span>
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             {grade.extraPoints}
