@@ -10,8 +10,6 @@ export interface FinalTaskGradeSummary {
     taskId: string;
     taskTitle: string;
     points: number;
-    maxPoints: number;
-    percentage: number;
     gradedAt: string;
   }>;
 }

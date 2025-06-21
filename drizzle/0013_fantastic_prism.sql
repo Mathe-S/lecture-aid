@@ -1,0 +1,1 @@
+ALTER TABLE "final_task_grades" DROP COLUMN "max_points";

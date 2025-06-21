@@ -97,10 +97,6 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
   const appealInfo = extractAppealInfo(task.description);
 
   // Find the student's current grade if exists
-  const currentGrade = task.grades?.find(
-    (g) => g.studentId === selectedStudentId
-  );
-  const maxPoints = currentGrade?.maxPoints || 100;
 
   const handleResolve = () => {
     if (!selectedStudentId || !points) return;
@@ -109,7 +105,6 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
       taskId: task.id,
       studentId: selectedStudentId,
       points: parseInt(points),
-      maxPoints: maxPoints,
       feedback,
       adminResponse,
     });
@@ -169,9 +164,6 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
                     {task.dueDate
                       ? new Date(task.dueDate).toLocaleDateString()
                       : "No due date"}
-                  </div>
-                  <div>
-                    <span className="font-medium">Max Points:</span> {maxPoints}
                   </div>
                 </div>
               </div>
@@ -262,7 +254,7 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
                         {grade ? (
                           <div>
                             <Badge variant="secondary">
-                              {grade.points}/{grade.maxPoints}
+                              {grade.points} pts
                             </Badge>
                             <p className="text-xs text-muted-foreground mt-1">
                               Graded{" "}
@@ -297,15 +289,10 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
                       id="points"
                       type="number"
                       min="0"
-                      max={maxPoints}
                       value={points}
                       onChange={(e) => setPoints(e.target.value)}
                       placeholder="Enter points"
                     />
-                  </div>
-                  <div>
-                    <Label>Max Points</Label>
-                    <Input value={maxPoints} disabled className="bg-muted" />
                   </div>
                 </div>
 
@@ -486,7 +473,7 @@ export function AppealsInterface({ tasks, week }: AppealsInterfaceProps) {
                           </span>
                           {grade && (
                             <Badge variant="outline" className="text-xs">
-                              {grade.points}/{grade.maxPoints}
+                              {grade.points} pts
                             </Badge>
                           )}
                         </div>

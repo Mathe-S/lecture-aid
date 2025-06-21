@@ -85,7 +85,6 @@ function UpdateGradeDialog({
   onOpenChange,
 }: UpdateGradeDialogProps) {
   const [points, setPoints] = useState(grade.points.toString());
-  const [maxPoints, setMaxPoints] = useState(grade.maxPoints.toString());
   const [feedback, setFeedback] = useState(grade.feedback || "");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const queryClient = useQueryClient();
@@ -135,16 +134,15 @@ function UpdateGradeDialog({
   };
 
   const handleSubmit = () => {
-    if (!points || !maxPoints) {
-      toast.error("Please enter both points and max points");
+    if (!points) {
+      toast.error("Please enter points");
       return;
     }
 
     const pointsNum = parseInt(points);
-    const maxPointsNum = parseInt(maxPoints);
 
-    if (pointsNum < 0 || pointsNum > maxPointsNum) {
-      toast.error("Points must be between 0 and max points");
+    if (pointsNum < 0) {
+      toast.error("Points must be non-negative");
       return;
     }
 
@@ -152,7 +150,6 @@ function UpdateGradeDialog({
       taskId: task.id,
       studentId: grade.studentId,
       points: pointsNum,
-      maxPoints: maxPointsNum,
       feedback: feedback.trim() || undefined,
     });
   };
@@ -190,10 +187,7 @@ function UpdateGradeDialog({
               <Award className="h-4 w-4 text-blue-600" />
               <span className="font-medium text-blue-800">Current Grade</span>
             </div>
-            <p className="text-sm">
-              Score: {grade.points}/{grade.maxPoints} points (
-              {Math.round((grade.points / grade.maxPoints) * 100)}%)
-            </p>
+            <p className="text-sm">Score: {grade.points} points</p>
             <p className="text-sm text-muted-foreground">
               Graded by: {grade.grader.fullName} on{" "}
               {new Date(grade.createdAt).toLocaleDateString()}
@@ -202,29 +196,16 @@ function UpdateGradeDialog({
 
           {/* Update Form */}
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="points">Points Earned</Label>
-                <Input
-                  id="points"
-                  type="number"
-                  min="0"
-                  value={points}
-                  onChange={(e) => setPoints(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="maxPoints">Max Points</Label>
-                <Input
-                  id="maxPoints"
-                  type="number"
-                  min="1"
-                  value={maxPoints}
-                  onChange={(e) => setMaxPoints(e.target.value)}
-                  placeholder="10"
-                />
-              </div>
+            <div>
+              <Label htmlFor="points">Points Earned</Label>
+              <Input
+                id="points"
+                type="number"
+                min="0"
+                value={points}
+                onChange={(e) => setPoints(e.target.value)}
+                placeholder="0"
+              />
             </div>
 
             {/* Feedback Templates */}
@@ -496,8 +477,7 @@ export function GradedTasksInterface({ tasks }: GradedTasksInterfaceProps) {
                           {grade.student.fullName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {grade.points}/{grade.maxPoints} pts (
-                          {Math.round((grade.points / grade.maxPoints) * 100)}%)
+                          {grade.points} pts
                         </p>
                       </div>
                       <Button

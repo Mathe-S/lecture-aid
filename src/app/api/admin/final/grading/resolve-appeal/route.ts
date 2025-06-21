@@ -19,10 +19,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { taskId, studentId, points, maxPoints, feedback, adminResponse } =
-      body;
+    const { taskId, studentId, points, feedback, adminResponse } = body;
 
-    if (!taskId || !studentId || points === undefined || !maxPoints) {
+    if (!taskId || !studentId || points === undefined) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -67,7 +66,6 @@ ${adminResponse}
       taskId,
       studentId,
       points,
-      maxPoints,
       feedback: feedback || null,
       graderId: userData.user.id,
     });

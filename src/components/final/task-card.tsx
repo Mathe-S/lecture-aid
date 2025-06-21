@@ -294,11 +294,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                 <Award className="h-4 w-4 text-yellow-600" />
                 <div>
                   <div className="text-sm font-medium text-yellow-800">
-                    Score: {userGrade.points}/{userGrade.maxPoints}
-                  </div>
-                  <div className="text-xs text-yellow-600">
-                    {Math.round((userGrade.points / userGrade.maxPoints) * 100)}
-                    %
+                    Score: {userGrade.points} pts
                   </div>
                 </div>
               </div>
@@ -475,13 +471,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-yellow-800">
-                        {userGrade.points}/{userGrade.maxPoints}
-                      </div>
-                      <div className="text-sm text-yellow-600">
-                        {Math.round(
-                          (userGrade.points / userGrade.maxPoints) * 100
-                        )}
-                        %
+                        {userGrade.points} pts
                       </div>
                     </div>
                   </div>
@@ -560,7 +550,6 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                     id="appealPoints"
                     type="number"
                     min="0"
-                    max={userGrade.maxPoints}
                     value={appealPoints}
                     onChange={(e) => setAppealPoints(e.target.value)}
                     placeholder={`Enter points `}

@@ -37,7 +37,7 @@ export async function getStudentGradeSummary(
       taskId: finalTaskGrades.taskId,
       taskTitle: finalTasks.title,
       points: finalTaskGrades.points,
-      maxPoints: finalTaskGrades.maxPoints,
+
       feedback: finalTaskGrades.feedback,
       gradedAt: finalTaskGrades.gradedAt,
     })

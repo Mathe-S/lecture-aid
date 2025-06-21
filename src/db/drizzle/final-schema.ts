@@ -296,7 +296,6 @@ export const finalTaskGrades = pgTable(
       .references(() => profiles.id, { onDelete: "cascade" })
       .notNull(),
     points: integer("points").notNull(), // Points awarded for this task
-    maxPoints: integer("max_points").notNull(), // Maximum possible points
     feedback: text("feedback"),
     gradedAt: timestamp("graded_at", { withTimezone: true, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)

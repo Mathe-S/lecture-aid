@@ -10,7 +10,6 @@ const gradeTaskSchema = z.object({
   taskId: z.string().uuid("Invalid task ID"),
   studentId: z.string().uuid("Invalid student ID"),
   points: z.number().min(0, "Points must be non-negative"),
-  maxPoints: z.number().min(1, "Max points must be at least 1"),
   feedback: z.string().optional(),
 });
 
@@ -32,14 +31,6 @@ export async function POST(request: Request) {
     // Parse and validate request body
     const body = await request.json();
     const validatedData = gradeTaskSchema.parse(body);
-
-    // Validate that points don't exceed max points
-    if (validatedData.points > validatedData.maxPoints) {
-      return NextResponse.json(
-        { error: "Points cannot exceed max points" },
-        { status: 400 }
-      );
-    }
 
     // Check if the task exists and is in "done" status
     const task = await db.query.finalTasks.findFirst({
@@ -73,7 +64,6 @@ export async function POST(request: Request) {
         .update(finalTaskGrades)
         .set({
           points: validatedData.points,
-          maxPoints: validatedData.maxPoints,
           feedback: validatedData.feedback,
           graderId: userData.user.id,
           updatedAt: new Date().toISOString(),
@@ -88,7 +78,6 @@ export async function POST(request: Request) {
           taskId: validatedData.taskId,
           studentId: validatedData.studentId,
           points: validatedData.points,
-          maxPoints: validatedData.maxPoints,
           feedback: validatedData.feedback,
           graderId: userData.user.id,
         })

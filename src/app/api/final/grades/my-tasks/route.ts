@@ -69,7 +69,7 @@ export async function GET() {
       gradedTasks.length > 0
         ? gradedTasks.reduce((sum, task) => {
             const grade = task.grades[0];
-            return sum + (grade ? (grade.points / grade.maxPoints) * 100 : 0);
+            return sum + (grade ? grade.points : 0);
           }, 0) / gradedTasks.length
         : 0;
 
@@ -79,8 +79,7 @@ export async function GET() {
         taskId: task.id,
         taskTitle: task.title,
         points: grade.points,
-        maxPoints: grade.maxPoints,
-        percentage: Math.round((grade.points / grade.maxPoints) * 100),
+
         gradedAt: grade.gradedAt,
       };
     });

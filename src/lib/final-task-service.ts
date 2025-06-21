@@ -30,7 +30,6 @@ export interface TaskGradeDetails {
   id: string;
   studentId: string;
   points: number;
-  maxPoints: number;
   feedback: string | null;
   gradedAt: string;
   grader: ProfileDetails;
@@ -196,7 +195,6 @@ export async function getGroupTasks(
       id: grade.id,
       studentId: grade.studentId,
       points: grade.points,
-      maxPoints: grade.maxPoints,
       feedback: grade.feedback,
       gradedAt: grade.gradedAt,
       grader: {

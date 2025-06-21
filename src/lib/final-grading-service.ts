@@ -75,13 +75,11 @@ export interface GradeTaskPayload {
   studentId: string;
   graderId: string;
   points: number;
-  maxPoints: number;
   feedback?: string;
 }
 
 export interface UpdateGradePayload {
   points: number;
-  maxPoints: number;
   feedback?: string;
 }
 
@@ -132,7 +130,6 @@ export async function getTasksForGrading(
       gradeStudentId: finalTaskGrades.studentId,
       gradeGraderId: finalTaskGrades.graderId,
       gradePoints: finalTaskGrades.points,
-      gradeMaxPoints: finalTaskGrades.maxPoints,
       gradeFeedback: finalTaskGrades.feedback,
       gradeGradedAt: finalTaskGrades.gradedAt,
       gradeUpdatedAt: finalTaskGrades.updatedAt,
@@ -220,7 +217,6 @@ export async function getTasksForGrading(
       row.gradeStudentId &&
       row.gradeGraderId &&
       row.gradePoints !== null &&
-      row.gradeMaxPoints !== null &&
       row.gradeGradedAt &&
       row.gradeUpdatedAt &&
       row.studentId &&
@@ -232,7 +228,6 @@ export async function getTasksForGrading(
         studentId: row.gradeStudentId,
         graderId: row.gradeGraderId,
         points: row.gradePoints,
-        maxPoints: row.gradeMaxPoints,
         feedback: row.gradeFeedback,
         gradedAt: row.gradeGradedAt,
         updatedAt: row.gradeUpdatedAt,
@@ -277,7 +272,6 @@ export async function gradeTask(
       studentId: payload.studentId,
       graderId: payload.graderId,
       points: payload.points,
-      maxPoints: payload.maxPoints,
       feedback: payload.feedback,
     })
     .returning();
@@ -311,7 +305,6 @@ export async function updateTaskGrade(
     .update(finalTaskGrades)
     .set({
       points: payload.points,
-      maxPoints: payload.maxPoints,
       feedback: payload.feedback,
       updatedAt: new Date().toISOString(),
     })
@@ -335,7 +328,6 @@ export async function getTaskGrade(
       studentId: finalTaskGrades.studentId,
       graderId: finalTaskGrades.graderId,
       points: finalTaskGrades.points,
-      maxPoints: finalTaskGrades.maxPoints,
       feedback: finalTaskGrades.feedback,
       gradedAt: finalTaskGrades.gradedAt,
       updatedAt: finalTaskGrades.updatedAt,
@@ -448,7 +440,6 @@ export async function getGradingStats(groupId?: string) {
   const gradesQuery = db
     .select({
       points: finalTaskGrades.points,
-      maxPoints: finalTaskGrades.maxPoints,
       taskId: finalTaskGrades.taskId,
     })
     .from(finalTaskGrades)
@@ -469,18 +460,15 @@ export async function getGradingStats(groupId?: string) {
     (sum: number, grade: (typeof grades)[0]) => sum + grade.points,
     0
   );
-  const totalMaxPoints = grades.reduce(
-    (sum: number, grade: (typeof grades)[0]) => sum + grade.maxPoints,
-    0
-  );
-  const averageScore =
-    totalMaxPoints > 0 ? (totalPoints / totalMaxPoints) * 100 : 0;
+  // Since we removed maxPoints, we'll calculate average points per grade instead
+  const averagePointsPerGrade =
+    grades.length > 0 ? totalPoints / grades.length : 0;
 
   return {
     totalTasks,
     gradedTasks,
     pendingTasks,
-    averageScore: Math.round(averageScore * 100) / 100,
+    averagePointsPerGrade: Math.round(averagePointsPerGrade * 100) / 100,
     totalGrades: grades.length,
   };
 }

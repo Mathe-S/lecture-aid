@@ -72,7 +72,6 @@ function GradeTaskDialog({
   onOpenChange,
 }: GradeTaskDialogProps) {
   const [points, setPoints] = useState("");
-  const [maxPoints, setMaxPoints] = useState("10");
   const [feedback, setFeedback] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const queryClient = useQueryClient();
@@ -125,16 +124,15 @@ function GradeTaskDialog({
   };
 
   const handleSubmit = () => {
-    if (!points || !maxPoints) {
-      toast.error("Please enter both points and max points");
+    if (!points) {
+      toast.error("Please enter points");
       return;
     }
 
     const pointsNum = parseInt(points);
-    const maxPointsNum = parseInt(maxPoints);
 
-    if (pointsNum < 0 || pointsNum > maxPointsNum) {
-      toast.error("Points must be between 0 and max points");
+    if (pointsNum < 0) {
+      toast.error("Points must be non-negative");
       return;
     }
 
@@ -142,7 +140,6 @@ function GradeTaskDialog({
       taskId: task.id,
       studentId: student.id,
       points: pointsNum,
-      maxPoints: maxPointsNum,
       feedback: feedback.trim() || undefined,
     });
   };
@@ -363,9 +360,7 @@ function GradeTaskDialog({
                     Already Graded
                   </span>
                 </div>
-                <p className="text-sm">
-                  Score: {existingGrade.points}/{existingGrade.maxPoints} points
-                </p>
+                <p className="text-sm">Score: {existingGrade.points} points</p>
                 {existingGrade.feedback && (
                   <p className="text-sm mt-1 text-muted-foreground">
                     Feedback: {existingGrade.feedback}
@@ -376,29 +371,16 @@ function GradeTaskDialog({
 
             {/* Grading Form */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="points">Points Earned</Label>
-                  <Input
-                    id="points"
-                    type="number"
-                    min="0"
-                    value={points}
-                    onChange={(e) => setPoints(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="maxPoints">Max Points</Label>
-                  <Input
-                    id="maxPoints"
-                    type="number"
-                    min="1"
-                    value={maxPoints}
-                    onChange={(e) => setMaxPoints(e.target.value)}
-                    placeholder="10"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="points">Points Earned</Label>
+                <Input
+                  id="points"
+                  type="number"
+                  min="0"
+                  value={points}
+                  onChange={(e) => setPoints(e.target.value)}
+                  placeholder="0"
+                />
               </div>
 
               {/* Feedback Templates */}
