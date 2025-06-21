@@ -5,6 +5,7 @@ import { useQueryState } from "nuqs";
 import { useAuth } from "@/context/AuthContext";
 import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import { useTaskStats } from "@/hooks/useFinalTasks";
+import { useLeaveFinalGroup } from "@/hooks/useFinalUserGroup";
 import {
   Card,
   CardContent,
@@ -18,6 +19,17 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Users,
   FolderOpen,
   GitBranch,
@@ -27,10 +39,13 @@ import {
   ExternalLink,
   Lightbulb,
   Target,
+  LogOut,
+  Loader2,
 } from "lucide-react";
 import { ProjectIdeaEditor } from "./project-idea-editor";
 import { RepositoryLinkDialog } from "./repository-link-dialog";
 import { DraggableTaskBoard } from "./draggable-task-board";
+import { useRouter } from "next/navigation";
 
 interface GroupDashboardProps {
   group: FinalGroupWithDetails;
@@ -280,6 +295,7 @@ function TeamActivitySection() {
 
 export function GroupDashboard({ group }: GroupDashboardProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const isOwner = user?.id === group.owner.id;
   const [activeTab, setActiveTab] = useQueryState("tab", {
     defaultValue: "overview",
@@ -287,9 +303,22 @@ export function GroupDashboard({ group }: GroupDashboardProps) {
   });
   const [showRepositoryLinkDialog, setShowRepositoryLinkDialog] =
     useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+
+  const { mutate: leaveGroup, isPending: isLeavingGroup } =
+    useLeaveFinalGroup();
 
   const handleLinkRepository = () => {
     setShowRepositoryLinkDialog(true);
+  };
+
+  const handleLeaveGroup = () => {
+    leaveGroup(undefined, {
+      onSuccess: () => {
+        setShowLeaveDialog(false);
+        router.push("/final");
+      },
+    });
   };
 
   return (
@@ -306,9 +335,61 @@ export function GroupDashboard({ group }: GroupDashboardProps) {
               : " No project selected"}
           </p>
         </div>
-        <Badge variant={isOwner ? "default" : "secondary"}>
-          {isOwner ? "Owner" : "Member"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={isOwner ? "default" : "secondary"}>
+            {isOwner ? "Owner" : "Member"}
+          </Badge>
+          {!isOwner && (
+            <AlertDialog
+              open={showLeaveDialog}
+              onOpenChange={setShowLeaveDialog}
+            >
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isLeavingGroup}
+                >
+                  {isLeavingGroup ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <LogOut className="h-4 w-4 mr-2" />
+                  )}
+                  Leave Group
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Are you sure you want to leave this group?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. You will lose access to the
+                    group and all its resources. You&apos;ll need to find or
+                    create a new group to continue with the final project.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleLeaveGroup}
+                    disabled={isLeavingGroup}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {isLeavingGroup ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Leaving...
+                      </>
+                    ) : (
+                      "Leave Group"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
 
       {/* Navigation Tabs */}
