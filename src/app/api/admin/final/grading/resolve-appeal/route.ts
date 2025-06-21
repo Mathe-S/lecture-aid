@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { gradeTask } from "@/lib/final-grading-service";
+import {
+  gradeTask,
+  getTaskGrade,
+  updateTaskGrade,
+} from "@/lib/final-grading-service";
 import { supabaseForServer } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/userService";
 
@@ -61,14 +65,26 @@ ${adminResponse}
         .eq("id", taskId);
     }
 
-    // Grade or re-grade the task with new points
-    const result = await gradeTask({
-      taskId,
-      studentId,
-      points,
-      feedback: feedback || null,
-      graderId: userData.user.id,
-    });
+    // Check if a grade already exists for this task and student
+    const existingGrade = await getTaskGrade(taskId, studentId);
+
+    let result;
+    if (existingGrade) {
+      // Update existing grade
+      result = await updateTaskGrade(existingGrade.id, {
+        points,
+        feedback: feedback || null,
+      });
+    } else {
+      // Create new grade (shouldn't happen for appeals, but handle it)
+      result = await gradeTask({
+        taskId,
+        studentId,
+        points,
+        feedback: feedback || null,
+        graderId: userData.user.id,
+      });
+    }
 
     return NextResponse.json(result);
   } catch (error) {

@@ -72,12 +72,14 @@ function extractAppealInfo(description: string | null) {
   if (!description) return null;
 
   // Look for appeal information in the description
-  const appealMatch = description.match(/---\s*Appeal:\s*([\s\S]*?)(?=---|$)/);
+  const appealMatch = description.match(
+    /---\s*GRADE APPEAL\s*---([\s\S]*?)---\s*END APPEAL\s*---/
+  );
   if (!appealMatch) return null;
 
   const appealText = appealMatch[1].trim();
   const pointsMatch = appealText.match(/Requested Points:\s*(\d+)/);
-  const reasonMatch = appealText.match(/Reason:\s*([\s\S]*?)(?=\n\n|$)/);
+  const reasonMatch = appealText.match(/Reason:\s*([\s\S]*?)(?=\n|$)/);
 
   return {
     requestedPoints: pointsMatch ? parseInt(pointsMatch[1]) : null,
