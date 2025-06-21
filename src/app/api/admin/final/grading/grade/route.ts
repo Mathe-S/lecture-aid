@@ -41,9 +41,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    if (task.status !== "done") {
+    if (task.status !== "done" && task.status !== "graded") {
       return NextResponse.json(
-        { error: "Task must be in 'done' status to be graded" },
+        { error: "Task must be in 'done' or 'graded' status to be graded" },
         { status: 400 }
       );
     }
