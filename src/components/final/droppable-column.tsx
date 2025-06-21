@@ -63,10 +63,17 @@ export function DroppableColumn({
                 ? "No active tasks"
                 : id === "done"
                 ? "No completed tasks"
-                : "No graded tasks"}
+                : id === "graded"
+                ? "No graded tasks"
+                : id === "appeal"
+                ? "No appeals submitted"
+                : "No tasks"}
             </p>
             {id === "todo" && (
               <p className="text-xs">Add tasks to get started</p>
+            )}
+            {id === "appeal" && (
+              <p className="text-xs">Appeal grades you think are unfair</p>
             )}
           </div>
         ) : (

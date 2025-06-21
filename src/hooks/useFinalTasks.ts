@@ -284,12 +284,14 @@ export function useTasksByStatus(groupId: string | undefined) {
       in_progress: [],
       done: [],
       graded: [],
+      appeal: [],
     } as Record<TaskStatus, TaskWithDetails[]>
   ) || {
     todo: [],
     in_progress: [],
     done: [],
     graded: [],
+    appeal: [],
   };
 
   return {
@@ -312,6 +314,7 @@ export function useTaskStats(groupId: string | undefined) {
       inProgress: 0,
       done: 0,
       graded: 0,
+      appeal: 0,
       completionRate: 0,
     };
   }
@@ -332,10 +335,21 @@ export function useTaskStats(groupId: string | undefined) {
         case "graded":
           acc.graded++;
           break;
+        case "appeal":
+          acc.appeal++;
+          break;
       }
       return acc;
     },
-    { total: 0, todo: 0, inProgress: 0, done: 0, graded: 0, completionRate: 0 }
+    {
+      total: 0,
+      todo: 0,
+      inProgress: 0,
+      done: 0,
+      graded: 0,
+      appeal: 0,
+      completionRate: 0,
+    }
   );
 
   stats.completionRate = stats.total > 0 ? (stats.done / stats.total) * 100 : 0;

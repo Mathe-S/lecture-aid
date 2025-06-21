@@ -2,12 +2,24 @@
 
 import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { TaskWithDetails } from "@/lib/final-task-service";
 import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit, Trash2, Award, MessageSquare, FolderOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Edit,
+  Trash2,
+  Award,
+  MessageSquare,
+  FolderOpen,
+  AlertTriangle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { finalTaskKeys } from "@/hooks/useFinalTasks";
 import { EditTaskDialog } from "./edit-task-dialog";
 import { DeleteTaskDialog } from "./delete-task-dialog";
 
@@ -41,6 +54,48 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showGradeDialog, setShowGradeDialog] = useState(false);
+  const [showAppealDialog, setShowAppealDialog] = useState(false);
+
+  // Appeal form state
+  const [appealPoints, setAppealPoints] = useState("");
+  const [appealReason, setAppealReason] = useState("");
+
+  const queryClient = useQueryClient();
+
+  // Appeal mutation
+  const appealMutation = useMutation({
+    mutationFn: async (payload: {
+      taskId: string;
+      requestedPoints: number;
+      reason?: string;
+    }) => {
+      const response = await fetch(
+        `/api/final/groups/${group.id}/tasks/${payload.taskId}/appeal`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestedPoints: payload.requestedPoints,
+            reason: payload.reason,
+          }),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to submit appeal");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success("Grade appeal submitted successfully!");
+      queryClient.invalidateQueries({
+        queryKey: finalTaskKeys.group(group.id),
+      });
+      setShowAppealDialog(false);
+      setAppealPoints("");
+      setAppealReason("");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to submit appeal: ${error.message}`);
+    },
+  });
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
@@ -79,6 +134,12 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
       }
     })();
 
+  // Check if current user can appeal this graded task
+  const canAppeal =
+    userId &&
+    task.status === "graded" &&
+    task.assignees.some((assignee) => assignee.profile.id === userId);
+
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent drag from starting
     setShowEditDialog(true);
@@ -92,6 +153,32 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
   const handleGradeClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent drag from starting
     setShowGradeDialog(true);
+  };
+
+  const handleAppealClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent drag from starting
+    setShowAppealDialog(true);
+  };
+
+  const handleAppealSubmit = () => {
+    if (!appealPoints || !userGrade) {
+      toast.error("Please enter the points you think you deserve");
+      return;
+    }
+
+    const requestedPoints = parseInt(appealPoints);
+    const maxPoints = userGrade.maxPoints;
+
+    if (requestedPoints < 0 || requestedPoints > maxPoints) {
+      toast.error(`Points must be between 0 and ${maxPoints}`);
+      return;
+    }
+
+    appealMutation.mutate({
+      taskId: task.id,
+      requestedPoints,
+      reason: appealReason.trim() || undefined,
+    });
   };
 
   // Get the current user's grade for this task (if it exists)
@@ -221,17 +308,30 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                   </div>
                 </div>
               </div>
-              {userGrade.feedback && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100"
-                  onClick={handleGradeClick}
-                  title="View feedback"
-                >
-                  <MessageSquare className="h-3 w-3" />
-                </Button>
-              )}
+              <div className="flex items-center gap-1">
+                {userGrade.feedback && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-100"
+                    onClick={handleGradeClick}
+                    title="View feedback"
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                  </Button>
+                )}
+                {canAppeal && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-100"
+                    onClick={handleAppealClick}
+                    title="Appeal grade"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -422,6 +522,122 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                 )}
               </div>
             </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Grade Appeal Dialog */}
+      {showAppealDialog && canAppeal && userGrade && (
+        <Dialog open={showAppealDialog} onOpenChange={setShowAppealDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                Appeal Grade: {task.title}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Current Grade Display */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Award className="h-4 w-4 text-slate-600" />
+                  Current Grade
+                </h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xl font-bold text-slate-800">
+                      {userGrade.points}
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Graded by: {userGrade.grader.fullName}
+                  </div>
+                </div>
+              </div>
+
+              {/* Appeal Form */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="appealPoints">
+                    What grade do you think you deserve?
+                  </Label>
+                  <Input
+                    id="appealPoints"
+                    type="number"
+                    min="0"
+                    max={userGrade.maxPoints}
+                    value={appealPoints}
+                    onChange={(e) => setAppealPoints(e.target.value)}
+                    placeholder={`Enter points (0-${userGrade.maxPoints})`}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="appealReason">
+                    Reason for appeal (optional)
+                  </Label>
+                  <Textarea
+                    id="appealReason"
+                    value={appealReason}
+                    onChange={(e) => setAppealReason(e.target.value)}
+                    placeholder="Explain why you think your grade should be different..."
+                    rows={4}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Provide a clear explanation of why you believe your work
+                    deserves a different grade.
+                  </p>
+                </div>
+              </div>
+
+              {/* Appeal Warning */}
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-orange-800 mb-1">
+                      Appeal Guidelines
+                    </p>
+                    <ul className="text-orange-700 space-y-1 text-xs">
+                      <li>• Your appeal will be reviewed by the instructor</li>
+                      <li>• Provide specific reasons for your appeal</li>
+                      <li>
+                        • The final decision will be made by the instructor
+                      </li>
+                      <li>• You can submit multiple appeals if needed</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAppealDialog(false)}
+                  disabled={appealMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAppealSubmit}
+                  disabled={appealMutation.isPending}
+                  className="gap-2"
+                >
+                  {appealMutation.isPending ? (
+                    "Submitting..."
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-4 w-4" />
+                      Submit Appeal
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}

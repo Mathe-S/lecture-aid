@@ -201,7 +201,9 @@ export const finalTasks = pgTable(
     priority: text("priority", { enum: ["high", "medium", "low"] })
       .default("medium")
       .notNull(),
-    status: text("status", { enum: ["todo", "in_progress", "done", "graded"] })
+    status: text("status", {
+      enum: ["todo", "in_progress", "done", "graded", "appeal"],
+    })
       .default("todo")
       .notNull(),
     dueDate: timestamp("due_date", { withTimezone: true, mode: "string" }),
@@ -266,7 +268,13 @@ export type FinalTaskAssignee = typeof finalTaskAssignees.$inferSelect;
 
 // Export priority and status enums for use in components
 export const TASK_PRIORITIES = ["high", "medium", "low"] as const;
-export const TASK_STATUSES = ["todo", "in_progress", "done", "graded"] as const;
+export const TASK_STATUSES = [
+  "todo",
+  "in_progress",
+  "done",
+  "graded",
+  "appeal",
+] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 

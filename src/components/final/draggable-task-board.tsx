@@ -22,6 +22,7 @@ import {
   Plus,
   Calendar,
   Award,
+  AlertTriangle,
 } from "lucide-react";
 import { CreateTaskDialog } from "./create-task-dialog";
 import { DroppableColumn } from "@/components/final/droppable-column";
@@ -141,7 +142,7 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
         </div>
 
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {/* To Do Column */}
           <DroppableColumn
             id="todo"
@@ -182,6 +183,17 @@ export function DraggableTaskBoard({ group }: DraggableTaskBoardProps) {
             icon={Award}
             tasks={tasksByStatus.graded}
             canDragTask={() => false} // Students cannot drag graded tasks
+            group={group}
+            userId={user?.id}
+          />
+
+          {/* Grade Appeal Column */}
+          <DroppableColumn
+            id="appeal"
+            title="Grade Appeal"
+            icon={AlertTriangle}
+            tasks={tasksByStatus.appeal}
+            canDragTask={() => false} // Students cannot drag appeal tasks
             group={group}
             userId={user?.id}
           />
