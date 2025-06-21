@@ -167,12 +167,6 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
     }
 
     const requestedPoints = parseInt(appealPoints);
-    const maxPoints = userGrade.maxPoints;
-
-    if (requestedPoints < 0 || requestedPoints > maxPoints) {
-      toast.error(`Points must be between 0 and ${maxPoints}`);
-      return;
-    }
 
     appealMutation.mutate({
       taskId: task.id,
@@ -286,7 +280,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
           </div>
         )}
 
-        {!canDrag && task.status !== "graded" && (
+        {!canDrag && task.status !== "graded" && task.status !== "appeal" && (
           <div className="text-xs text-muted-foreground mt-2 italic">
             Not assigned to you
           </div>
@@ -569,7 +563,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                     max={userGrade.maxPoints}
                     value={appealPoints}
                     onChange={(e) => setAppealPoints(e.target.value)}
-                    placeholder={`Enter points (0-${userGrade.maxPoints})`}
+                    placeholder={`Enter points `}
                     className="mt-1"
                   />
                 </div>

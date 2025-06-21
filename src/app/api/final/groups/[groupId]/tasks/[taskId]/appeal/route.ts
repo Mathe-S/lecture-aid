@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseForServer } from "@/utils/supabase/server";
-import { updateTask } from "@/lib/final-task-service";
+import { updateTask, getTaskById } from "@/lib/final-task-service";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ groupId: string; taskId: string }> }
 ) {
   try {
-    const { groupId, taskId } = await params;
+    const { taskId } = await params;
     const { requestedPoints, reason } = await request.json();
 
     const supabase = await supabaseForServer();
@@ -33,23 +33,7 @@ export async function POST(
       : `\n\n--- GRADE APPEAL ---\nRequested Points: ${requestedPoints}\n--- END APPEAL ---`;
 
     // Get current task to append to description
-    const taskResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/final/groups/${groupId}/tasks/${taskId}`,
-      {
-        headers: {
-          cookie: request.headers.get("cookie") || "",
-        },
-      }
-    );
-
-    if (!taskResponse.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch task" },
-        { status: 500 }
-      );
-    }
-
-    const currentTask = await taskResponse.json();
+    const currentTask = await getTaskById(taskId, user.id);
     const updatedDescription =
       (currentTask.description || "") + appealDescription;
 

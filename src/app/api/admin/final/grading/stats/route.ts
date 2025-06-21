@@ -41,6 +41,13 @@ export async function GET() {
       .where(eq(finalTasks.status, "graded"));
     const gradedTasks = gradedTasksResult[0]?.count || 0;
 
+    // Get appeal tasks count (status = 'appeal')
+    const appealTasksResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(finalTasks)
+      .where(eq(finalTasks.status, "appeal"));
+    const appealTasks = appealTasksResult[0]?.count || 0;
+
     // Get average score from task grades
     const averageScoreResult = await db
       .select({ avg: sql<number>`avg(${finalTaskGrades.points})` })
@@ -70,6 +77,7 @@ export async function GET() {
       totalTasks,
       pendingTasks,
       gradedTasks,
+      appealTasks,
       averageScore: Math.round(averageScore * 100) / 100,
       completionRate: Math.round(completionRate * 100) / 100,
       studentPerformance: studentPerformance.map((student) => ({

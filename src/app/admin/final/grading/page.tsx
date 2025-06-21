@@ -24,10 +24,12 @@ import {
   CheckCircle,
   Clock,
   Award,
+  AlertTriangle,
 } from "lucide-react";
 import { TaskGradingInterface } from "@/components/admin/final/task-grading-interface";
 import { FeedbackTemplateManager } from "@/components/admin/final/feedback-template-manager";
 import { GradedTasksInterface } from "@/components/admin/final/graded-tasks-interface";
+import { AppealsInterface } from "@/components/admin/final/appeals-interface";
 
 // Helper function to get week number from date
 function getWeekNumber(date: Date): number {
@@ -69,6 +71,20 @@ export default function AdminGradingPage() {
           : `/api/admin/final/grading/graded-tasks?groupId=${selectedGroup}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch graded tasks");
+      return response.json();
+    },
+  });
+
+  // Fetch appeal tasks
+  const { data: appealTasks } = useQuery({
+    queryKey: ["admin", "grading", "appeals", selectedGroup],
+    queryFn: async () => {
+      const url =
+        selectedGroup === "all"
+          ? "/api/admin/final/grading/appeals"
+          : `/api/admin/final/grading/appeals?groupId=${selectedGroup}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch appeal tasks");
       return response.json();
     },
   });
@@ -148,6 +164,35 @@ export default function AdminGradingPage() {
     {}
   );
 
+  // Filter appeal tasks based on search and filters
+  const filteredAppealTasks =
+    appealTasks?.filter((task: any) => {
+      const matchesSearch =
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.assignees.some((assignee: any) =>
+          assignee.user.fullName
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        );
+
+      const matchesWeek =
+        selectedWeek === "all" ||
+        getWeekNumber(new Date(task.updatedAt)) === parseInt(selectedWeek);
+
+      return matchesSearch && matchesWeek;
+    }) || [];
+
+  // Group appeal tasks by week for display
+  const appealTasksByWeek = filteredAppealTasks.reduce(
+    (acc: any, task: any) => {
+      const week = getWeekNumber(new Date(task.updatedAt));
+      if (!acc[week]) acc[week] = [];
+      acc[week].push(task);
+      return acc;
+    },
+    {}
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -177,7 +222,7 @@ export default function AdminGradingPage() {
 
       {/* Statistics Overview */}
       {gradingStats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
@@ -215,6 +260,17 @@ export default function AdminGradingPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Appeals</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {gradingStats.appealTasks || 0}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Average Score
               </CardTitle>
@@ -231,7 +287,7 @@ export default function AdminGradingPage() {
 
       {/* Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="grading" className="gap-2">
             <GraduationCap className="h-4 w-4" />
             Task Grading
@@ -239,6 +295,15 @@ export default function AdminGradingPage() {
           <TabsTrigger value="graded" className="gap-2">
             <Award className="h-4 w-4" />
             Graded Tasks
+          </TabsTrigger>
+          <TabsTrigger value="appeals" className="gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Appeals
+            {filteredAppealTasks.length > 0 && (
+              <Badge variant="destructive" className="ml-1 text-xs">
+                {filteredAppealTasks.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2">
             <Filter className="h-4 w-4" />
@@ -429,6 +494,101 @@ export default function AdminGradingPage() {
                       <p className="text-muted-foreground">
                         Graded tasks will appear here after you grade student
                         submissions
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="appeals" className="mt-6">
+          <div className="space-y-6">
+            {/* Filters (shared with other tabs) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Filters</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search tasks or students..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                  </div>
+                  <Select
+                    value={selectedGroup}
+                    onValueChange={setSelectedGroup}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Select group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Groups</SelectItem>
+                      {groups?.map((group: any) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Weeks</SelectItem>
+                      <SelectItem value="1">Week 1</SelectItem>
+                      <SelectItem value="2">Week 2</SelectItem>
+                      <SelectItem value="3">Week 3</SelectItem>
+                      <SelectItem value="4">Week 4</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Appeal Tasks by Week */}
+            <div className="space-y-6">
+              {Object.keys(appealTasksByWeek)
+                .sort((a, b) => parseInt(a) - parseInt(b))
+                .map((week) => (
+                  <Card key={week}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5" />
+                        Week {week}
+                        <Badge variant="outline">
+                          {appealTasksByWeek[week].length} appeal(s)
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <AppealsInterface
+                        tasks={appealTasksByWeek[week]}
+                        week={parseInt(week)}
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+
+              {Object.keys(appealTasksByWeek).length === 0 && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center py-12">
+                      <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg font-medium mb-2">
+                        No grade appeals
+                      </p>
+                      <p className="text-muted-foreground">
+                        Student grade appeals will appear here for your review
                       </p>
                     </div>
                   </CardContent>
