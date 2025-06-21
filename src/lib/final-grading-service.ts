@@ -46,7 +46,16 @@ export interface TaskForGrading {
   status: string;
   priority: string;
   dueDate: string | null;
+  estimatedHours: number | null;
   groupId: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: {
+    id: string;
+    fullName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+  };
   assignees: {
     id: string;
     userId: string;
@@ -89,7 +98,11 @@ export async function getTasksForGrading(
       status: finalTasks.status,
       priority: finalTasks.priority,
       dueDate: finalTasks.dueDate,
+      estimatedHours: finalTasks.estimatedHours,
       groupId: finalTasks.groupId,
+      createdAt: finalTasks.createdAt,
+      updatedAt: finalTasks.updatedAt,
+      createdById: finalTasks.createdById,
     })
     .from(finalTasks)
     .where(groupId ? eq(finalTasks.groupId, groupId) : undefined)
@@ -100,6 +113,18 @@ export async function getTasksForGrading(
   // Get assignees and grades for each task
   const tasksWithDetails = await Promise.all(
     tasks.map(async (task: (typeof tasks)[0]) => {
+      // Get task creator details
+      const createdBy = await db
+        .select({
+          id: profiles.id,
+          fullName: profiles.fullName,
+          email: profiles.email,
+          avatarUrl: profiles.avatarUrl,
+        })
+        .from(profiles)
+        .where(eq(profiles.id, task.createdById))
+        .limit(1);
+
       // Get assignees
       const assignees = await db
         .select({
@@ -159,6 +184,12 @@ export async function getTasksForGrading(
 
       return {
         ...task,
+        createdBy: createdBy[0] || {
+          id: task.createdById,
+          fullName: null,
+          email: null,
+          avatarUrl: null,
+        },
         assignees,
         grades,
       };

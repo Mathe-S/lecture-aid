@@ -39,6 +39,7 @@ import {
   Mail,
   Calendar,
   User,
+  Clock,
 } from "lucide-react";
 import type { TaskForGrading } from "@/lib/final-grading-service";
 
@@ -433,10 +434,10 @@ export function GradedTasksInterface({ tasks }: GradedTasksInterfaceProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Task</TableHead>
+            <TableHead>Task Details</TableHead>
             <TableHead>Grades</TableHead>
+            <TableHead>Time & Creation Info</TableHead>
             <TableHead>Links</TableHead>
-            <TableHead>Graded</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -444,15 +445,34 @@ export function GradedTasksInterface({ tasks }: GradedTasksInterfaceProps) {
           {gradedTasks.map((task) => (
             <TableRow key={task.id}>
               <TableCell>
-                <div>
-                  <p className="font-medium">{task.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {task.description?.slice(0, 100)}
-                    {task.description && task.description.length > 100 && "..."}
-                  </p>
-                  <div className="flex gap-1 mt-1">
-                    <Badge variant="outline">{task.priority}</Badge>
-                    <Badge variant="secondary">{task.status}</Badge>
+                <div className="space-y-2">
+                  <div>
+                    <p className="font-medium">{task.title}</p>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {task.description.slice(0, 100)}
+                        {task.description.length > 100 && "..."}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Badge
+                      variant={
+                        task.priority === "high"
+                          ? "destructive"
+                          : task.priority === "medium"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {task.priority}
+                    </Badge>
+                    <Badge variant="outline">{task.status}</Badge>
+                    {task.estimatedHours && (
+                      <Badge variant="secondary">
+                        {task.estimatedHours}h estimated
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </TableCell>
@@ -493,6 +513,37 @@ export function GradedTasksInterface({ tasks }: GradedTasksInterfaceProps) {
                 </div>
               </TableCell>
               <TableCell>
+                <div className="text-sm space-y-1">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    Created: {new Date(task.createdAt).toLocaleDateString()}
+                  </div>
+                  {task.dueDate && (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      Due: {new Date(task.dueDate).toLocaleDateString()}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Avatar className="h-3 w-3">
+                      <AvatarImage
+                        src={task.createdBy?.avatarUrl || undefined}
+                      />
+                      <AvatarFallback className="text-xs">
+                        {getInitials(task.createdBy?.fullName || null)}
+                      </AvatarFallback>
+                    </Avatar>
+                    By: {task.createdBy?.fullName || "Unknown"}
+                  </div>
+                  {task.grades && task.grades.length > 0 && (
+                    <div className="flex items-center gap-1 text-muted-foreground mt-2 pt-1 border-t">
+                      <User className="h-3 w-3" />
+                      Graded: {new Date(task.updatedAt).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
                 <div className="flex gap-1">
                   {task.commitLink && (
                     <Button
@@ -515,20 +566,6 @@ export function GradedTasksInterface({ tasks }: GradedTasksInterfaceProps) {
                     >
                       <GitMerge className="h-4 w-4" />
                     </Button>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(task.updatedAt).toLocaleDateString()}
-                  </div>
-                  {task.grades && task.grades.length > 0 && (
-                    <div className="flex items-center gap-1 text-muted-foreground mt-1">
-                      <User className="h-3 w-3" />
-                      {task.grades[0].grader.fullName}
-                    </div>
                   )}
                 </div>
               </TableCell>
