@@ -7,7 +7,7 @@ import type { FinalGroupWithDetails } from "@/lib/final-group-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit, Trash2, Award, MessageSquare } from "lucide-react";
+import { Edit, Trash2, Award, MessageSquare, FolderOpen } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -260,64 +260,168 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
       {/* Grade Feedback Dialog */}
       {showGradeDialog && hasGrade && userGrade && (
         <Dialog open={showGradeDialog} onOpenChange={setShowGradeDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-yellow-600" />
-                Grade & Feedback: {task.title}
+                Graded Task: {task.title}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4">
-              {/* Grade Summary */}
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-yellow-600" />
-                    <span className="font-semibold text-yellow-800">
-                      Your Score
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-yellow-800">
-                      {userGrade.points}/{userGrade.maxPoints}
-                    </div>
-                    <div className="text-sm text-yellow-600">
-                      {Math.round(
-                        (userGrade.points / userGrade.maxPoints) * 100
-                      )}
-                      %
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-yellow-700">
-                  Graded by: {userGrade.grader.fullName} on{" "}
-                  {new Date(userGrade.gradedAt).toLocaleDateString()}
-                </div>
-              </div>
-
-              {/* Feedback */}
-              {userGrade.feedback && (
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4" />
-                    Feedback
+            <ScrollArea className="max-h-[70vh] pr-4">
+              <div className="space-y-6">
+                {/* Task Details Section */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Task Details
                   </h4>
-                  <ScrollArea className="h-32 w-full rounded-md border p-3">
-                    <div className="text-sm whitespace-pre-wrap">
-                      {userGrade.feedback}
-                    </div>
-                  </ScrollArea>
-                </div>
-              )}
 
-              {!userGrade.feedback && (
-                <div className="text-center py-4 text-muted-foreground">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No feedback provided for this task.</p>
+                  <div className="space-y-4">
+                    {/* Title and Priority */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h5 className="font-medium text-lg">{task.title}</h5>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge
+                            variant={
+                              task.priority === "high"
+                                ? "destructive"
+                                : task.priority === "medium"
+                                ? "default"
+                                : "secondary"
+                            }
+                          >
+                            {task.priority} priority
+                          </Badge>
+                          <Badge variant="outline">
+                            {task.status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    {task.description && (
+                      <div>
+                        <h6 className="font-medium text-sm mb-2">
+                          Description
+                        </h6>
+                        <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-white p-3 rounded border">
+                          {task.description}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Assignees */}
+                    {task.assignees.length > 0 && (
+                      <div>
+                        <h6 className="font-medium text-sm mb-2">
+                          Assigned to
+                        </h6>
+                        <div className="flex flex-wrap gap-2">
+                          {task.assignees.map((assignee) => (
+                            <div
+                              key={assignee.profile.id}
+                              className="flex items-center gap-2 bg-white rounded-full px-3 py-1 border"
+                            >
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage
+                                  src={assignee.profile.avatarUrl || undefined}
+                                />
+                                <AvatarFallback className="text-xs">
+                                  {getInitials(assignee.profile.fullName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">
+                                {assignee.profile.fullName}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dates */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <h6 className="font-medium mb-1">Created</h6>
+                        <p className="text-muted-foreground">
+                          {new Date(task.createdAt).toLocaleDateString()} at{" "}
+                          {new Date(task.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      {task.dueDate && (
+                        <div>
+                          <h6 className="font-medium mb-1">Due Date</h6>
+                          <p className="text-muted-foreground">
+                            {new Date(task.dueDate).toLocaleDateString()} at{" "}
+                            {new Date(task.dueDate).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Grade Summary */}
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-yellow-600" />
+                      <span className="font-semibold text-yellow-800">
+                        Your Score
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-yellow-800">
+                        {userGrade.points}/{userGrade.maxPoints}
+                      </div>
+                      <div className="text-sm text-yellow-600">
+                        {Math.round(
+                          (userGrade.points / userGrade.maxPoints) * 100
+                        )}
+                        %
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-yellow-700">
+                    Graded by: {userGrade.grader.fullName} on{" "}
+                    {new Date(userGrade.gradedAt).toLocaleDateString()} at{" "}
+                    {new Date(userGrade.gradedAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                {userGrade.feedback ? (
+                  <div>
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Instructor Feedback
+                    </h4>
+                    <div className="bg-white border rounded-lg p-4">
+                      <div className="text-sm whitespace-pre-wrap">
+                        {userGrade.feedback}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No feedback provided for this task.</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       )}
