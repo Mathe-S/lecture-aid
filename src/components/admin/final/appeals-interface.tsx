@@ -88,6 +88,44 @@ function extractAppealInfo(description: string | null) {
   };
 }
 
+function getOriginalDescription(description: string | null): string {
+  if (!description) return "";
+
+  // Extract the original description before any appeal information
+  const appealStartIndex = description.indexOf("--- GRADE APPEAL ---");
+  if (appealStartIndex !== -1) {
+    return description.substring(0, appealStartIndex).trim();
+  }
+
+  return description;
+}
+
+function renderTextWithLinks(text: string) {
+  // Simple URL regex to match http/https URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    // Create a new regex for testing to avoid state issues
+    const testRegex = /(https?:\/\/[^\s]+)/g;
+    if (testRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 underline break-all"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
   const [points, setPoints] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -154,8 +192,10 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
                 {task.description && (
                   <div>
                     <h4 className="font-medium mb-2">Task Description:</h4>
-                    <div className="bg-muted p-3 rounded-md text-sm whitespace-pre-wrap">
-                      {task.description.split("---")[0].trim()}
+                    <div className="bg-muted p-4 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
+                      {renderTextWithLinks(
+                        getOriginalDescription(task.description)
+                      )}
                     </div>
                   </div>
                 )}
@@ -166,6 +206,10 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
                     {task.dueDate
                       ? new Date(task.dueDate).toLocaleDateString()
                       : "No due date"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Status:</span>{" "}
+                    <Badge variant="secondary">{task.status}</Badge>
                   </div>
                 </div>
               </div>
