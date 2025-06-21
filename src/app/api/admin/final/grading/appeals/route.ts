@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTasksForGrading } from "@/lib/final-grading-service";
 import { supabaseForServer } from "@/utils/supabase/server";
+import { getUserRole } from "@/lib/userService";
 
 export async function GET(request: NextRequest) {
+  const supabase = await supabaseForServer();
+  const { data: userData, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !userData?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const supabase = await supabaseForServer();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     // Check if user is admin
-    const { data: userRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!userRole || userRole.role !== "admin") {
+    const userRole = await getUserRole(userData.user.id);
+    if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -10,6 +10,7 @@ import {
 } from "@/db/drizzle/final-schema";
 import { profiles } from "@/db/drizzle/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // Types for grading
 export interface TaskGradeWithDetails extends FinalTaskGrade {
@@ -34,7 +35,7 @@ export interface TaskGradeWithDetails extends FinalTaskGrade {
     id: string;
     fullName: string | null;
     email: string | null;
-  };
+  } | null;
 }
 
 export interface TaskForGrading {
@@ -88,115 +89,182 @@ export interface UpdateGradePayload {
 export async function getTasksForGrading(
   groupId?: string
 ): Promise<TaskForGrading[]> {
-  const query = db
+  // Create aliases for multiple profile joins
+  const creatorProfiles = alias(profiles, "creator_profiles");
+  const assigneeProfiles = alias(profiles, "assignee_profiles");
+  const studentProfiles = alias(profiles, "student_profiles");
+  const graderProfiles = alias(profiles, "grader_profiles");
+
+  // Single query to get all data with joins
+  const rawData = await db
     .select({
-      id: finalTasks.id,
-      title: finalTasks.title,
-      description: finalTasks.description,
-      commitLink: finalTasks.commitLink,
-      mergeRequestLink: finalTasks.mergeRequestLink,
-      status: finalTasks.status,
-      priority: finalTasks.priority,
-      dueDate: finalTasks.dueDate,
-      estimatedHours: finalTasks.estimatedHours,
-      groupId: finalTasks.groupId,
-      createdAt: finalTasks.createdAt,
-      updatedAt: finalTasks.updatedAt,
-      createdById: finalTasks.createdById,
+      // Task data
+      taskId: finalTasks.id,
+      taskTitle: finalTasks.title,
+      taskDescription: finalTasks.description,
+      taskCommitLink: finalTasks.commitLink,
+      taskMergeRequestLink: finalTasks.mergeRequestLink,
+      taskStatus: finalTasks.status,
+      taskPriority: finalTasks.priority,
+      taskDueDate: finalTasks.dueDate,
+      taskEstimatedHours: finalTasks.estimatedHours,
+      taskGroupId: finalTasks.groupId,
+      taskCreatedAt: finalTasks.createdAt,
+      taskUpdatedAt: finalTasks.updatedAt,
+      taskCreatedById: finalTasks.createdById,
+
+      // Creator data
+      creatorId: creatorProfiles.id,
+      creatorFullName: creatorProfiles.fullName,
+      creatorEmail: creatorProfiles.email,
+      creatorAvatarUrl: creatorProfiles.avatarUrl,
+
+      // Assignee data
+      assigneeId: finalTaskAssignees.id,
+      assigneeUserId: finalTaskAssignees.userId,
+      assigneeUserFullName: assigneeProfiles.fullName,
+      assigneeUserEmail: assigneeProfiles.email,
+      assigneeUserAvatarUrl: assigneeProfiles.avatarUrl,
+
+      // Grade data
+      gradeId: finalTaskGrades.id,
+      gradeTaskId: finalTaskGrades.taskId,
+      gradeStudentId: finalTaskGrades.studentId,
+      gradeGraderId: finalTaskGrades.graderId,
+      gradePoints: finalTaskGrades.points,
+      gradeMaxPoints: finalTaskGrades.maxPoints,
+      gradeFeedback: finalTaskGrades.feedback,
+      gradeGradedAt: finalTaskGrades.gradedAt,
+      gradeUpdatedAt: finalTaskGrades.updatedAt,
+
+      // Student data (for grades)
+      studentId: studentProfiles.id,
+      studentFullName: studentProfiles.fullName,
+      studentEmail: studentProfiles.email,
+      studentAvatarUrl: studentProfiles.avatarUrl,
+
+      // Grader data
+      graderId: graderProfiles.id,
+      graderFullName: graderProfiles.fullName,
+      graderEmail: graderProfiles.email,
     })
     .from(finalTasks)
+    .leftJoin(creatorProfiles, eq(finalTasks.createdById, creatorProfiles.id))
+    .leftJoin(finalTaskAssignees, eq(finalTasks.id, finalTaskAssignees.taskId))
+    .leftJoin(
+      assigneeProfiles,
+      eq(finalTaskAssignees.userId, assigneeProfiles.id)
+    )
+    .leftJoin(finalTaskGrades, eq(finalTasks.id, finalTaskGrades.taskId))
+    .leftJoin(
+      studentProfiles,
+      eq(finalTaskGrades.studentId, studentProfiles.id)
+    )
+    .leftJoin(graderProfiles, eq(finalTaskGrades.graderId, graderProfiles.id))
     .where(groupId ? eq(finalTasks.groupId, groupId) : undefined)
     .orderBy(desc(finalTasks.updatedAt));
 
-  const tasks = await query;
+  // Group the flat data into the expected structure
+  const taskMap = new Map<string, TaskForGrading>();
 
-  // Get assignees and grades for each task
-  const tasksWithDetails = await Promise.all(
-    tasks.map(async (task: (typeof tasks)[0]) => {
-      // Get task creator details
-      const createdBy = await db
-        .select({
-          id: profiles.id,
-          fullName: profiles.fullName,
-          email: profiles.email,
-          avatarUrl: profiles.avatarUrl,
-        })
-        .from(profiles)
-        .where(eq(profiles.id, task.createdById))
-        .limit(1);
-
-      // Get assignees
-      const assignees = await db
-        .select({
-          id: finalTaskAssignees.id,
-          userId: finalTaskAssignees.userId,
-          user: {
-            id: profiles.id,
-            fullName: profiles.fullName,
-            email: profiles.email,
-            avatarUrl: profiles.avatarUrl,
-          },
-        })
-        .from(finalTaskAssignees)
-        .innerJoin(profiles, eq(finalTaskAssignees.userId, profiles.id))
-        .where(eq(finalTaskAssignees.taskId, task.id));
-
-      // Get grades
-      const grades = await db
-        .select({
-          id: finalTaskGrades.id,
-          taskId: finalTaskGrades.taskId,
-          studentId: finalTaskGrades.studentId,
-          graderId: finalTaskGrades.graderId,
-          points: finalTaskGrades.points,
-          maxPoints: finalTaskGrades.maxPoints,
-          feedback: finalTaskGrades.feedback,
-          gradedAt: finalTaskGrades.gradedAt,
-          updatedAt: finalTaskGrades.updatedAt,
-          task: {
-            id: finalTasks.id,
-            title: finalTasks.title,
-            description: finalTasks.description,
-            commitLink: finalTasks.commitLink,
-            mergeRequestLink: finalTasks.mergeRequestLink,
-            status: finalTasks.status,
-            priority: finalTasks.priority,
-            dueDate: finalTasks.dueDate,
-            groupId: finalTasks.groupId,
-          },
-          student: {
-            id: profiles.id,
-            fullName: profiles.fullName,
-            email: profiles.email,
-            avatarUrl: profiles.avatarUrl,
-          },
-          grader: {
-            id: profiles.id,
-            fullName: profiles.fullName,
-            email: profiles.email,
-          },
-        })
-        .from(finalTaskGrades)
-        .innerJoin(finalTasks, eq(finalTaskGrades.taskId, finalTasks.id))
-        .innerJoin(profiles, eq(finalTaskGrades.studentId, profiles.id))
-        .leftJoin(profiles, eq(finalTaskGrades.graderId, profiles.id))
-        .where(eq(finalTaskGrades.taskId, task.id));
-
-      return {
-        ...task,
-        createdBy: createdBy[0] || {
-          id: task.createdById,
-          fullName: null,
-          email: null,
-          avatarUrl: null,
+  for (const row of rawData) {
+    if (!taskMap.has(row.taskId)) {
+      taskMap.set(row.taskId, {
+        id: row.taskId,
+        title: row.taskTitle,
+        description: row.taskDescription,
+        commitLink: row.taskCommitLink,
+        mergeRequestLink: row.taskMergeRequestLink,
+        status: row.taskStatus,
+        priority: row.taskPriority,
+        dueDate: row.taskDueDate,
+        estimatedHours: row.taskEstimatedHours,
+        groupId: row.taskGroupId,
+        createdAt: row.taskCreatedAt,
+        updatedAt: row.taskUpdatedAt,
+        createdBy: {
+          id: row.creatorId || row.taskCreatedById,
+          fullName: row.creatorFullName,
+          email: row.creatorEmail,
+          avatarUrl: row.creatorAvatarUrl,
         },
-        assignees,
-        grades,
-      };
-    })
-  );
+        assignees: [],
+        grades: [],
+      });
+    }
 
-  return tasksWithDetails;
+    const task = taskMap.get(row.taskId)!;
+
+    // Add assignee if not already added
+    if (
+      row.assigneeId &&
+      row.assigneeUserId &&
+      !task.assignees.find((a) => a.id === row.assigneeId)
+    ) {
+      task.assignees.push({
+        id: row.assigneeId,
+        userId: row.assigneeUserId,
+        user: {
+          id: row.assigneeUserId,
+          fullName: row.assigneeUserFullName,
+          email: row.assigneeUserEmail,
+          avatarUrl: row.assigneeUserAvatarUrl,
+        },
+      });
+    }
+
+    // Add grade if not already added
+    if (
+      row.gradeId &&
+      row.gradeTaskId &&
+      row.gradeStudentId &&
+      row.gradeGraderId &&
+      row.gradePoints !== null &&
+      row.gradeMaxPoints !== null &&
+      row.gradeGradedAt &&
+      row.gradeUpdatedAt &&
+      row.studentId &&
+      !task.grades.find((g) => g.id === row.gradeId)
+    ) {
+      task.grades.push({
+        id: row.gradeId,
+        taskId: row.gradeTaskId,
+        studentId: row.gradeStudentId,
+        graderId: row.gradeGraderId,
+        points: row.gradePoints,
+        maxPoints: row.gradeMaxPoints,
+        feedback: row.gradeFeedback,
+        gradedAt: row.gradeGradedAt,
+        updatedAt: row.gradeUpdatedAt,
+        task: {
+          id: row.taskId,
+          title: row.taskTitle,
+          description: row.taskDescription,
+          commitLink: row.taskCommitLink,
+          mergeRequestLink: row.taskMergeRequestLink,
+          status: row.taskStatus,
+          priority: row.taskPriority,
+          dueDate: row.taskDueDate,
+          groupId: row.taskGroupId,
+        },
+        student: {
+          id: row.studentId,
+          fullName: row.studentFullName,
+          email: row.studentEmail,
+          avatarUrl: row.studentAvatarUrl,
+        },
+        grader: row.graderId
+          ? {
+              id: row.graderId,
+              fullName: row.graderFullName,
+              email: row.graderEmail,
+            }
+          : null,
+      });
+    }
+  }
+
+  return Array.from(taskMap.values());
 }
 
 export async function gradeTask(
@@ -257,6 +325,9 @@ export async function getTaskGrade(
   taskId: string,
   studentId: string
 ): Promise<TaskGradeWithDetails | null> {
+  const studentProfiles = alias(profiles, "student_profiles");
+  const graderProfiles = alias(profiles, "grader_profiles");
+
   const [grade] = await db
     .select({
       id: finalTaskGrades.id,
@@ -280,21 +351,24 @@ export async function getTaskGrade(
         groupId: finalTasks.groupId,
       },
       student: {
-        id: profiles.id,
-        fullName: profiles.fullName,
-        email: profiles.email,
-        avatarUrl: profiles.avatarUrl,
+        id: studentProfiles.id,
+        fullName: studentProfiles.fullName,
+        email: studentProfiles.email,
+        avatarUrl: studentProfiles.avatarUrl,
       },
       grader: {
-        id: profiles.id,
-        fullName: profiles.fullName,
-        email: profiles.email,
+        id: graderProfiles.id,
+        fullName: graderProfiles.fullName,
+        email: graderProfiles.email,
       },
     })
     .from(finalTaskGrades)
     .innerJoin(finalTasks, eq(finalTaskGrades.taskId, finalTasks.id))
-    .innerJoin(profiles, eq(finalTaskGrades.studentId, profiles.id))
-    .leftJoin(profiles, eq(finalTaskGrades.graderId, profiles.id))
+    .innerJoin(
+      studentProfiles,
+      eq(finalTaskGrades.studentId, studentProfiles.id)
+    )
+    .leftJoin(graderProfiles, eq(finalTaskGrades.graderId, graderProfiles.id))
     .where(
       and(
         eq(finalTaskGrades.taskId, taskId),
