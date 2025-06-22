@@ -30,6 +30,9 @@ import {
   User,
   CheckCircle,
   Eye,
+  GitCommit,
+  GitMerge,
+  ExternalLink,
 } from "lucide-react";
 import type { TaskForGrading } from "@/lib/final-grading-service";
 
@@ -171,50 +174,183 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Task Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Badge variant={getPriorityColor(task.priority) as any}>
-                  {task.priority}
-                </Badge>
-                {task.title}
-                {task.estimatedHours && (
-                  <Badge variant="outline">{task.estimatedHours}h</Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                Group: {task.groupId} • Created by {task.createdBy.fullName}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {task.description && (
-                  <div>
-                    <h4 className="font-medium mb-2">Task Description:</h4>
-                    <div className="bg-muted p-4 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
-                      {renderTextWithLinks(
-                        getOriginalDescription(task.description)
-                      )}
-                    </div>
-                  </div>
-                )}
+          {/* Complete Task Details - Matching Grading Interface */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="font-semibold mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Complete Task Information
+            </h4>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Due Date:</span>{" "}
-                    {task.dueDate
-                      ? new Date(task.dueDate).toLocaleDateString()
-                      : "No due date"}
-                  </div>
-                  <div>
-                    <span className="font-medium">Status:</span>{" "}
-                    <Badge variant="secondary">{task.status}</Badge>
+            <div className="space-y-4">
+              {/* Title and Priority */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <h5 className="font-medium text-lg">{task.title}</h5>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge
+                      variant={
+                        task.priority === "high"
+                          ? "destructive"
+                          : task.priority === "medium"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {task.priority} priority
+                    </Badge>
+                    <Badge variant="outline">
+                      {task.status.replace("_", " ")}
+                    </Badge>
+                    {task.estimatedHours && (
+                      <Badge variant="outline">{task.estimatedHours}h</Badge>
+                    )}
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Description */}
+              {task.description && (
+                <div>
+                  <h6 className="font-medium text-sm mb-2">Description</h6>
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-white p-3 rounded border">
+                    {renderTextWithLinks(
+                      getOriginalDescription(task.description)
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Estimated Hours and Due Date */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {task.estimatedHours && (
+                  <div>
+                    <h6 className="font-medium text-sm mb-1">
+                      Estimated Hours
+                    </h6>
+                    <p className="text-sm text-muted-foreground">
+                      {task.estimatedHours} hour
+                      {task.estimatedHours !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                )}
+                {task.dueDate && (
+                  <div>
+                    <h6 className="font-medium text-sm mb-1">Due Date</h6>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(task.dueDate).toLocaleDateString()} at{" "}
+                      {new Date(task.dueDate).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Assignees */}
+              {task.assignees.length > 0 && (
+                <div>
+                  <h6 className="font-medium text-sm mb-2">
+                    All Assigned Students
+                  </h6>
+                  <div className="flex flex-wrap gap-2">
+                    {task.assignees.map((assignee) => (
+                      <div
+                        key={assignee.user.id}
+                        className="flex items-center gap-2 bg-white rounded-full px-3 py-1 border"
+                      >
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage
+                            src={assignee.user.avatarUrl || undefined}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(assignee.user.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">
+                          {assignee.user.fullName}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Creation and Update Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm pt-2 border-t">
+                <div>
+                  <h6 className="font-medium mb-1">Created</h6>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage
+                        src={task.createdBy.avatarUrl || undefined}
+                      />
+                      <AvatarFallback className="text-xs">
+                        {getInitials(task.createdBy.fullName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-muted-foreground text-xs">
+                        {task.createdBy.fullName}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {new Date(task.createdAt).toLocaleDateString()} at{" "}
+                        {new Date(task.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h6 className="font-medium mb-1">Last Updated</h6>
+                  <p className="text-muted-foreground text-xs">
+                    {new Date(task.updatedAt).toLocaleDateString()} at{" "}
+                    {new Date(task.updatedAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Links */}
+          {(task.commitLink || task.mergeRequestLink) && (
+            <div className="space-y-3">
+              <h6 className="font-medium text-sm">Student Submission Links</h6>
+              <div className="flex gap-2">
+                {task.commitLink && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => window.open(task.commitLink!, "_blank")}
+                  >
+                    <GitCommit className="h-4 w-4" />
+                    View Commit
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                )}
+                {task.mergeRequestLink && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() =>
+                      window.open(task.mergeRequestLink!, "_blank")
+                    }
+                  >
+                    <GitMerge className="h-4 w-4" />
+                    View MR
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Appeal Information */}
           {appealInfo && (
