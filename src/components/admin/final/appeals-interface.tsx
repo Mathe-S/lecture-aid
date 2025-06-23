@@ -82,7 +82,8 @@ function extractAppealInfo(description: string | null) {
 
   const appealText = appealMatch[1].trim();
   const pointsMatch = appealText.match(/Requested Points:\s*(\d+)/);
-  const reasonMatch = appealText.match(/Reason:\s*([\s\S]*?)(?=\n|$)/);
+  // Capture everything after "Reason:" until the end of the appeal text
+  const reasonMatch = appealText.match(/Reason:\s*([\s\S]*)/);
 
   return {
     requestedPoints: pointsMatch ? parseInt(pointsMatch[1]) : null,
@@ -162,7 +163,7 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -173,7 +174,7 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-y-auto flex-1 pr-2">
           {/* Complete Task Details - Matching Grading Interface */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h4 className="font-semibold mb-3 flex items-center gap-2">
@@ -373,7 +374,7 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
                 {appealInfo.reason && (
                   <div>
                     <span className="font-medium">Student&apos;s Reason:</span>
-                    <div className="mt-1 p-3 bg-white rounded border text-sm">
+                    <div className="mt-1 p-3 bg-white rounded border text-sm whitespace-pre-wrap max-h-none">
                       {appealInfo.reason}
                     </div>
                   </div>
@@ -506,7 +507,7 @@ function AppealDialog({ task, isOpen, onClose, onResolve }: AppealDialogProps) {
           )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 flex-shrink-0 border-t pt-4">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
@@ -619,8 +620,7 @@ export function AppealsInterface({ tasks, week }: AppealsInterfaceProps) {
                     {appealInfo.reason && (
                       <p className="text-sm mt-1">
                         <span className="font-medium">Reason:</span>{" "}
-                        {appealInfo.reason.substring(0, 100)}
-                        {appealInfo.reason.length > 100 && "..."}
+                        {appealInfo.reason}
                       </p>
                     )}
                   </div>
