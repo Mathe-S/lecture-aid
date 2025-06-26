@@ -513,7 +513,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
       {/* Grade Appeal Dialog */}
       {showAppealDialog && canAppeal && userGrade && (
         <Dialog open={showAppealDialog} onOpenChange={setShowAppealDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -531,7 +531,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-xl font-bold text-slate-800">
-                      {userGrade.points}
+                      {userGrade.points} points
                     </div>
                   </div>
                   <div className="text-sm text-slate-600">
@@ -540,11 +540,33 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                 </div>
               </div>
 
+              {/* Instructor Feedback */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-blue-600" />
+                  Instructor Feedback
+                </h4>
+                {userGrade.feedback ? (
+                  <div className="bg-white border rounded-lg p-3">
+                    <div className="text-sm whitespace-pre-wrap text-slate-700">
+                      {userGrade.feedback}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-slate-500">
+                    <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">
+                      No feedback provided for this task.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Appeal Form */}
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="appealPoints">
-                    What grade do you think you deserve?
+                    What grade do you think you deserve? *
                   </Label>
                   <Input
                     id="appealPoints"
@@ -552,7 +574,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                     min="0"
                     value={appealPoints}
                     onChange={(e) => setAppealPoints(e.target.value)}
-                    placeholder={`Enter points `}
+                    placeholder="Enter points you believe you deserve"
                     className="mt-1"
                   />
                 </div>
@@ -565,13 +587,14 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                     id="appealReason"
                     value={appealReason}
                     onChange={(e) => setAppealReason(e.target.value)}
-                    placeholder="Explain why you think your grade should be different..."
+                    placeholder="Explain why you think your grade should be different based on the feedback above..."
                     rows={4}
                     className="mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Provide a clear explanation of why you believe your work
-                    deserves a different grade.
+                    deserves a different grade. Reference the feedback above if
+                    needed.
                   </p>
                 </div>
               </div>
@@ -585,6 +608,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                       Appeal Guidelines
                     </p>
                     <ul className="text-orange-700 space-y-1 text-xs">
+                      <li>• Review the instructor feedback above carefully</li>
                       <li>• Your appeal will be reviewed by the instructor</li>
                       <li>• Provide specific reasons for your appeal</li>
                       <li>
@@ -607,7 +631,7 @@ export function TaskCard({ task, canDrag, group, userId }: TaskCardProps) {
                 </Button>
                 <Button
                   onClick={handleAppealSubmit}
-                  disabled={appealMutation.isPending}
+                  disabled={appealMutation.isPending || !appealPoints}
                   className="gap-2"
                 >
                   {appealMutation.isPending ? (
