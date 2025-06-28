@@ -41,7 +41,8 @@ export default function LeaderboardPage() {
           <CardHeader>
             <CardTitle>Top Performers</CardTitle>
             <CardDescription>
-              Ranking based on quiz, assignment, and extra points.
+              Ranking based on quiz, assignment, extra, and final project points
+              (max 400).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -101,6 +102,12 @@ export default function LeaderboardPage() {
                         <div className="text-xs text-muted-foreground">
                           Total Points
                         </div>
+                        {(student as any).basePoints !== undefined && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Base: {(student as any).basePoints} + Final:{" "}
+                            {(student as any).finalProjectPoints || 0}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

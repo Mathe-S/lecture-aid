@@ -1,12 +1,16 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import db from "@/db";
 import {
   studentGrades,
   quizResults,
   assignmentSubmissions,
   profiles,
-  GradeWithProfilesType,
 } from "@/db/drizzle/schema";
+import {
+  finalGroupMembers,
+  finalTaskGrades,
+  finalTasks,
+} from "@/db/drizzle/final-schema";
 import { getMidtermEvaluationsForUser } from "./midterm-service";
 
 /**
@@ -311,9 +315,8 @@ export async function recalculateAllGrades() {
  */
 export async function getLeaderboardData() {
   try {
-    // Define the type for the leaderboard entry if GradeWithProfilesType isn't exactly right
-    // For simplicity, assuming GradeWithProfilesType includes what we need
-    const leaderboard = await db
+    // First get the base grades
+    const baseLeaderboard = await db
       .select({
         userId: studentGrades.userId,
         totalPoints: studentGrades.totalPoints,
@@ -325,21 +328,79 @@ export async function getLeaderboardData() {
         },
       })
       .from(studentGrades)
-      .innerJoin(profiles, eq(studentGrades.userId, profiles.id))
-      .orderBy(sql`${studentGrades.totalPoints} DESC NULLS LAST`) // Order by totalPoints descending
-      .limit(10); // Limit to top 10
+      .innerJoin(profiles, eq(studentGrades.userId, profiles.id));
 
-    // Map the result to include the nested profile structure expected by the frontend
-    const formattedLeaderboard = leaderboard.map((entry) => ({
-      userId: entry.userId,
-      totalPoints: entry.totalPoints,
-      // Mimic the structure from getAllStudentGrades if necessary
-      user: {
-        profiles: [entry.profile],
-      },
-    }));
+    // Get final project scores for all users
+    const finalScores = await db
+      .select({
+        userId: finalGroupMembers.userId,
+        groupId: finalGroupMembers.groupId,
+      })
+      .from(finalGroupMembers);
 
-    return formattedLeaderboard as GradeWithProfilesType[]; // Cast to the expected type
+    // Calculate final project points for each user
+    const finalProjectScores = await Promise.all(
+      finalScores.map(async (member) => {
+        // Get graded tasks for this user
+        const gradedTasks = await db
+          .select({
+            points: finalTaskGrades.points,
+          })
+          .from(finalTaskGrades)
+          .innerJoin(finalTasks, eq(finalTaskGrades.taskId, finalTasks.id))
+          .where(
+            and(
+              eq(finalTasks.groupId, member.groupId),
+              eq(finalTaskGrades.studentId, member.userId)
+            )
+          );
+
+        const totalFinalPoints = gradedTasks.reduce(
+          (sum, task) => sum + (task.points || 0),
+          0
+        );
+
+        // Cap final project points at 400
+        const cappedFinalPoints = Math.min(totalFinalPoints, 400);
+
+        return {
+          userId: member.userId,
+          finalProjectPoints: cappedFinalPoints,
+        };
+      })
+    );
+
+    // Create a map for quick lookup of final project scores
+    const finalScoreMap = new Map(
+      finalProjectScores.map((score) => [
+        score.userId,
+        score.finalProjectPoints,
+      ])
+    );
+
+    // Combine base grades with final project points
+    const combinedLeaderboard = baseLeaderboard.map((entry) => {
+      const finalPoints = finalScoreMap.get(entry.userId) || 0;
+      const combinedTotalPoints = (entry.totalPoints || 0) + finalPoints;
+
+      return {
+        userId: entry.userId,
+        totalPoints: combinedTotalPoints,
+        basePoints: entry.totalPoints || 0,
+        finalProjectPoints: finalPoints,
+        // Mimic the structure from getAllStudentGrades if necessary
+        user: {
+          profiles: [entry.profile],
+        },
+      };
+    });
+
+    // Sort by combined total points and limit to top 10
+    const sortedLeaderboard = combinedLeaderboard
+      .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0))
+      .slice(0, 10);
+
+    return sortedLeaderboard as any; // Return with extended properties
   } catch (error) {
     console.error("Error fetching leaderboard data:", error);
     throw error;
