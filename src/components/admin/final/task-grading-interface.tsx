@@ -485,7 +485,7 @@ export function TaskGradingInterface({ tasks }: TaskGradingInterfaceProps) {
               <TableCell>
                 <div className="space-y-2">
                   <div>
-                    <p className="font-medium">{task.title}</p>
+                    <p className="font-medium">{task.title.slice(0, 100)}</p>
                     {task.description && (
                       <p className="text-sm text-muted-foreground">
                         {task.description.slice(0, 100)}
